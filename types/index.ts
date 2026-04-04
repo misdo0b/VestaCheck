@@ -31,7 +31,7 @@ export interface InspectionReport {
     electricity: number;
     gas?: number;
   };
-  keysCount: number;
+  keyInventories: { id: string; type: string; count: number }[];
   generalObservations: string;
 
   // Contact locataire

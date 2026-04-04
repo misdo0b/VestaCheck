@@ -31,7 +31,9 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
       ownerId: initialData?.ownerId || 'owner1',
       inspectorId: initialData?.inspectorId || 'agent1',
       counters: initialData?.counters || { water: 0, electricity: 0, gas: 0 },
-      keysCount: initialData?.keysCount || 0,
+      keyInventories: initialData?.keyInventories || [
+        { id: crypto.randomUUID(), type: 'Clés du logement', count: 2 }
+      ],
       generalObservations: initialData?.generalObservations || '',
       rooms: (initialData?.rooms as any) || [
         {
@@ -104,7 +106,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
                 {methods.formState.errors.propertyAddress && <li>Adresse manquante ou trop courte</li>}
                 {methods.formState.errors.tenantName && <li>Nom du locataire requis</li>}
                 {methods.formState.errors.counters && <li>Index de compteurs non valides</li>}
-                {methods.formState.errors.keysCount && <li>Nombre de clés requis</li>}
+                {methods.formState.errors.keyInventories && <li>Inventaire des clés requis</li>}
                 {methods.formState.errors.rooms && <li>Configurez au moins une pièce</li>}
               </ul>
             </div>

@@ -33,7 +33,11 @@ export const InspectionReportSchema = z.object({
     electricity: z.number().min(0, "L'index d'électricité doit être un nombre positif"),
     gas: z.number().min(0).optional(),
   }),
-  keysCount: z.number().min(0, "Le nombre de clés ne peut pas être négatif"),
+  keyInventories: z.array(z.object({
+    id: z.string(),
+    type: z.string().min(1, "Le type de clé est requis"),
+    count: z.number().min(0, "Le compte ne peut pas être négatif"),
+  })),
   generalObservations: z.string().min(0).default(''),
 
   rooms: z.array(RoomSchema).min(1, "Au moins une pièce est requise"),

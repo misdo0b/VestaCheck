@@ -1,17 +1,42 @@
 import React from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import { InspectionFormData } from '@/lib/validations/inspection';
-import { Droplets, Zap, Flame } from 'lucide-react';
+import { Droplets, Zap, Flame, Key, Plus, Trash2, Hash } from 'lucide-react';
+
+const KEY_SUGGESTIONS = [
+  "Clés du logement", 
+  "Clés de la chambre", 
+  "Badges d'accès", 
+  "Clés de la boîte aux lettres", 
+  "Badge de parking",
+  "Vigik",
+  "Télécommande portail"
+];
 
 export const CounterSection: React.FC = () => {
-  const { register, formState: { errors } } = useFormContext<InspectionFormData>();
+  const { register, control, formState: { errors } } = useFormContext<InspectionFormData>();
+  
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "keyInventories"
+  });
+
+  // Pour calculer le total des clés en temps réel
+  const watchKeys = useWatch({
+    control,
+    name: "keyInventories"
+  });
+
+  const totalKeys = watchKeys?.reduce((acc, curr) => acc + (Number(curr.count) || 0), 0) || 0;
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
       <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-        📊 Index des Compteurs (Conformité)
+        📊 Index des Compteurs & Clés
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      {/* Section Compteurs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
           <label className="flex items-center gap-2 text-sm font-semibold text-blue-800 mb-2">
             <Droplets size={18} /> Eau (m³)
@@ -24,9 +49,6 @@ export const CounterSection: React.FC = () => {
               errors.counters?.water ? 'border-red-500' : 'border-blue-200'
             }`}
           />
-          {errors.counters?.water && (
-            <p className="text-red-500 text-xs mt-1">{errors.counters.water.message}</p>
-          )}
         </div>
 
         <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
@@ -41,14 +63,11 @@ export const CounterSection: React.FC = () => {
               errors.counters?.electricity ? 'border-red-500' : 'border-yellow-200'
             }`}
           />
-          {errors.counters?.electricity && (
-            <p className="text-red-500 text-xs mt-1">{errors.counters.electricity.message}</p>
-          )}
         </div>
 
         <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
           <label className="flex items-center gap-2 text-sm font-semibold text-orange-800 mb-2">
-            <Flame size={18} /> Gaz (Facultatif - m³)
+            <Flame size={18} /> Gaz (m³)
           </label>
           <input
             type="number"
@@ -59,23 +78,69 @@ export const CounterSection: React.FC = () => {
         </div>
       </div>
       
-      <div className="mt-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Nombre de clés remises
-        </label>
-        <div className="flex items-center gap-4">
-          <input
-            type="number"
-            {...register('keysCount', { valueAsNumber: true })}
-            className={`w-24 p-2 border rounded-lg outline-none ${
-              errors.keysCount ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          <span className="text-sm text-gray-500 italic">Inclut les badges, pass et clés de boîte aux lettres.</span>
+      {/* Section Clés Dynamique */}
+      <div className="border-t border-gray-50 pt-6">
+        <div className="flex justify-between items-center mb-4">
+          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
+            <Key size={18} className="text-blue-600" /> Inventaire des Clés & Badges
+          </label>
+          <button
+            type="button"
+            onClick={() => append({ id: crypto.randomUUID(), type: '', count: 1 })}
+            className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            <Plus size={14} /> Ajouter un type
+          </button>
         </div>
-        {errors.keysCount && (
-          <p className="text-red-500 text-xs mt-1">{errors.keysCount.message}</p>
-        )}
+
+        <div className="space-y-3">
+          {fields.map((field, index) => (
+            <div key={field.id} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg group">
+              <div className="flex-1">
+                <input
+                  {...register(`keyInventories.${index}.type` as const)}
+                  list="key-types"
+                  placeholder="Type de clé (Ex: Clés logement...)"
+                  className="w-full bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none text-sm font-medium"
+                />
+                <datalist id="key-types">
+                  {KEY_SUGGESTIONS.map(s => <option key={s} value={s} />)}
+                </datalist>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-400 font-bold uppercase">Quantité</span>
+                <input
+                  type="number"
+                  {...register(`keyInventories.${index}.count` as const, { valueAsNumber: true })}
+                  className="w-16 p-1 border border-gray-200 rounded text-center text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Empêcher la suppression du premier champ (Clés du logement) pour la conformité */}
+              {index > 0 && (
+                <button
+                  type="button"
+                  onClick={() => remove(index)}
+                  className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Total des Clés */}
+        <div className="mt-4 flex justify-end items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+          <div className="flex items-center gap-2 text-blue-800">
+            <Hash size={16} />
+            <span className="text-sm font-bold">TOTAL des clés et badges remis :</span>
+          </div>
+          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border-2 border-blue-400 text-blue-900 font-black text-lg shadow-sm">
+            {totalKeys}
+          </div>
+        </div>
       </div>
     </div>
   );
