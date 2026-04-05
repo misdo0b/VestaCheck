@@ -22,6 +22,22 @@ export interface Room {
   items: InspectionItem[];
 }
 
+export interface Property {
+  id: string;
+  name: string;
+  address: string;
+  surface: number;
+  roomCount: number;
+  ownerId: string;
+}
+
+export interface PropertyTemplate {
+  id: string;
+  name: string;
+  propertyId: string;
+  rooms: Room[];
+}
+
 export interface SignatureMetadata {
   drawData?: string; // Base64 signature
   type: 'Local' | 'Distance' | 'Aucune';
@@ -30,6 +46,7 @@ export interface SignatureMetadata {
 
 export interface InspectionReport {
   id: string;
+  propertyId: string; // Lien avec l'entité Property
   propertyAddress: string;
   date: string;
   type: 'Entrée' | 'Sortie';
