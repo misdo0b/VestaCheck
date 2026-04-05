@@ -19,6 +19,7 @@ import { User, UserRole } from '@/types';
 import { mockUsers } from '@/data/mockUsers';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationDialog from '@/components/admin/ConfirmationDialog';
+import ResetPasswordModal from '@/components/admin/ResetPasswordModal';
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>(mockUsers);
@@ -28,6 +29,7 @@ export default function UserManagement() {
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [confirmAction, setConfirmAction] = useState<'delete' | 'reset' | null>(null);
 
@@ -70,19 +72,25 @@ export default function UserManagement() {
     }
   };
 
-  const handleResetPassword = () => {
+  const handleResetPassword = (newPassword: string) => {
     if (selectedUser) {
-      // Simulate reset
-      alert(`Un lien de réinitialisation a été envoyé à ${selectedUser.email}`);
-      setIsConfirmOpen(false);
-      setSelectedUser(null);
+      // Simulate direct update in state
+      setUsers(users.map(u => 
+        u.id === selectedUser.id ? { ...u, password: newPassword } as any : u
+      ));
+      console.log(`Password updated for ${selectedUser.email}: ${newPassword}`);
+      // The ResetPasswordModal handles the success state and closing
     }
   };
 
   const openConfirm = (user: User, action: 'delete' | 'reset') => {
     setSelectedUser(user);
-    setConfirmAction(action);
-    setIsConfirmOpen(true);
+    if (action === 'reset') {
+      setIsResetModalOpen(true);
+    } else {
+      setConfirmAction(action);
+      setIsConfirmOpen(true);
+    }
   };
 
   const getRoleBadge = (role: UserRole) => {
@@ -261,8 +269,18 @@ export default function UserManagement() {
             : `Confirmez-vous l'envoi d'un email de réinitialisation à ${selectedUser.email} ?`
           }
           onClose={() => setIsConfirmOpen(false)}
-          onConfirm={confirmAction === 'delete' ? handleDelete : handleResetPassword}
-          type={confirmAction === 'delete' ? 'danger' : 'warning'}
+          onConfirm={handleDelete}
+          type="danger"
+        />
+      )}
+
+      {isResetModalOpen && selectedUser && (
+        <ResetPasswordModal 
+          isOpen={isResetModalOpen}
+          user={selectedUser}
+          initialPassword={(selectedUser as any).password}
+          onClose={() => { setIsResetModalOpen(false); setSelectedUser(null); }}
+          onSubmit={handleResetPassword}
         />
       )}
     </div>
