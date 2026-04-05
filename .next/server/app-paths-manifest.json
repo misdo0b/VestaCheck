@@ -1,5 +1,9 @@
 {
-  "/login/page": "app/login/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/admin/users/page": "app/admin/users/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/dashboard/properties/page": "app/dashboard/properties/page.js",
+  "/dashboard/properties/[id]/page": "app/dashboard/properties/[id]/page.js",
+  "/dashboard/inspections/new/page": "app/dashboard/inspections/new/page.js",
+  "/page": "app/page.js",
+  "/dashboard/templates/new/page": "app/dashboard/templates/new/page.js"
 }
