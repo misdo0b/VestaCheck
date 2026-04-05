@@ -5,13 +5,27 @@ export interface InspectionItem {
   label: string; 
   condition: Condition;
   comment: string;
-  photos: string[]; // Tableau d'URLs ou base64
+  photos: PhotoMetadata[]; // Nouveau format avec métadonnées
+}
+
+export interface PhotoMetadata {
+  id: string;
+  fullResBase64?: string;   // Version brute avant synchro (temporaire)
+  compressedBase64: string; // Version miniature pour le mode offline
+  cloudUrl?: string;        // URL distante après synchro
+  isSynced: boolean;
 }
 
 export interface Room {
   id: string;
   name: string;
   items: InspectionItem[];
+}
+
+export interface SignatureMetadata {
+  drawData?: string; // Base64 signature
+  type: 'Local' | 'Distance' | 'Aucune';
+  signedAt?: string;
 }
 
 export interface InspectionReport {
@@ -37,6 +51,11 @@ export interface InspectionReport {
   // Contact locataire
   tenantEmail: string;
   tenantPhone: string;
+
+  signatures: {
+    tenant: SignatureMetadata;
+    inspector: SignatureMetadata;
+  };
 
   rooms: Room[];
   isFinalized: boolean;

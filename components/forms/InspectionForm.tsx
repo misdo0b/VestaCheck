@@ -8,8 +8,11 @@ import { HeaderSection } from './sections/HeaderSection';
 import { CounterSection } from './sections/CounterSection';
 import { RoomSection } from './sections/RoomSection';
 import { SignatureSection } from './sections/SignatureSection';
-import { Save, Send, AlertCircle } from 'lucide-react';
+import { Save, Send, AlertCircle, FileDown, Loader2 } from 'lucide-react';
 import { useInspectionStore } from '@/store/useInspectionStore';
+import { generatePDF } from '@/lib/utils/generate-pdf';
+import { PDFTemplate } from '../pdf/PDFTemplate';
+import { useState } from 'react';
 
 interface Props {
   initialData?: Partial<InspectionFormData>;
@@ -17,6 +20,12 @@ interface Props {
 
 export const InspectionForm: React.FC<Props> = ({ initialData }) => {
   const setCurrentInspection = useInspectionStore((state) => state.setCurrentInspection);
+  const [isExporting, setIsExporting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const methods = useForm<InspectionFormData>({
     resolver: zodResolver(InspectionReportSchema) as any,
@@ -34,6 +43,10 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
       keyInventories: initialData?.keyInventories || [
         { id: crypto.randomUUID(), type: 'Clés du logement', count: 2 }
       ],
+      signatures: initialData?.signatures || {
+        tenant: { type: 'Aucune' },
+        inspector: { type: 'Aucune' }
+      },
       generalObservations: initialData?.generalObservations || '',
       rooms: (initialData?.rooms as any) || [
         {
@@ -56,6 +69,45 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
     alert("Rapport enregistré avec succès !");
   };
 
+  const handleExportPDF = async () => {
+    const data = methods.getValues();
+    
+    // Vérification minimale des signatures
+    if (!data.signatures.tenant.drawData && !data.signatures.inspector.drawData) {
+      if (!confirm("Le rapport n'est pas encore signé. Souhaitez-vous quand même exporter un brouillon ?")) {
+        return;
+      }
+    }
+
+    setIsExporting(true);
+    try {
+      // Un court délai pour s'assurer que le DOM du template est prêt si besoin
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Sanitisation robuste du nom de fichier
+      const safeTenantName = data.tenantName
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Supprime les accents
+        .replace(/[^a-z0-9]/gi, '_') // Remplace tout ce qui n'est pas alphanumérique par _
+        .toLowerCase();
+      
+      const fileName = `Rapport_${safeTenantName}_${data.date.replace(/\//g, '-')}.pdf`;
+      console.log("Lancement du téléchargement PDF :", fileName);
+      
+      await generatePDF('inspection-report-pdf', fileName);
+    } catch (error) {
+      console.error("Erreur lors de l'export PDF:", error);
+      alert("Une erreur est survenue lors de la génération du PDF.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-600" size={40} />
+    </div>;
+  }
+
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)} className="max-w-5xl mx-auto pb-24">
@@ -74,8 +126,17 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
           <div className="flex gap-3">
             <button
               type="button"
+              disabled={isExporting}
+              onClick={handleExportPDF}
+              className="px-4 py-2 text-sm font-bold text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              {isExporting ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
+              <span className="hidden md:inline">Exporter PDF</span>
+            </button>
+            <button
+              type="button"
               onClick={() => console.log("Sauvegarde temporaire contextuelle")}
-              className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors hidden md:block"
+              className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors hidden lg:block"
             >
               Brouillon
             </button>
@@ -112,6 +173,11 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
             </div>
           </div>
         )}
+
+        {/* Template PDF (Caché mais présent pour html2canvas) */}
+        <div style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
+           <PDFTemplate data={methods.watch()} />
+        </div>
       </form>
     </FormProvider>
   );
