@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types';
 import { mockUsers } from '@/data/mock-data';
-import { idbStorage } from '@/lib/utils/store-storage';
+import { idbStorage } from '../lib/utils/store-storage';
 
 interface UserStore {
   users: User[];
