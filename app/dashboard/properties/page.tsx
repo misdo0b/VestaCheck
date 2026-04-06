@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { PropertyCard } from '@/components/properties/PropertyCard';
@@ -9,8 +10,14 @@ import { PropertyModal } from '@/components/properties/PropertyModal';
 import { Plus, Search, Building2, Filter, LayoutGrid, List, X, SlidersHorizontal } from 'lucide-react';
 
 export default function PropertiesPage() {
+  const { data: session } = useSession();
   const { properties } = usePropertyStore();
   const { inspections } = useInspectionStore();
+  
+  const user = session?.user as any;
+  const userRole = user?.role;
+  const userId = user?.id;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -31,7 +38,18 @@ export default function PropertiesPage() {
   };
 
   const filteredProperties = useMemo(() => {
-    return properties.filter(p => {
+    // 1. Isolation par rôle
+    let baseProperties = properties;
+
+    if (userRole === 'Agent') {
+      baseProperties = properties.filter(p => p.agentId === userId);
+    } else if (userRole === 'Propriétaire') {
+      baseProperties = properties.filter(p => p.ownerId === userId);
+    }
+    // Administrateur voit tout (pas de filtre)
+
+    // 2. Filtres UI
+    return baseProperties.filter(p => {
       const lastInspection = getLastInspection(p.id);
       const isOccupied = lastInspection ? lastInspection.type === 'Entrée' : false;
       
@@ -55,7 +73,7 @@ export default function PropertiesPage() {
 
       return matchesSearch && matchesStatus && matchesType && matchesSurface && matchesRooms;
     });
-  }, [properties, searchQuery, filters, inspections]);
+  }, [properties, userRole, userId, searchQuery, filters, inspections]);
 
   const resetFilters = () => {
     setFilters({

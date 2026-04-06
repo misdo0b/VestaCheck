@@ -53,7 +53,7 @@ export const usePropertyStore = create<PropertyState>()(
       })),
 
       getTemplatesByProperty: (propertyId) => {
-        return get().templates.filter(t => t.propertyId === propertyId);
+        return get().templates?.filter(t => t.propertyId === propertyId) || [];
       }
     }),
     {

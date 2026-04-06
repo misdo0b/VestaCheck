@@ -30,6 +30,7 @@ export interface Property {
   type: 'Appartement' | 'Maison';
   roomCount: number;
   ownerId: string;
+  agentId?: string; // ID de l'agent responsable
   templateIds?: string[];
 }
 

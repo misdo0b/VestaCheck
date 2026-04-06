@@ -5,9 +5,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { X, Save, Trash2, Home, MapPin, Maximize, Layers, User } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { Property, User as UserType } from '@/types';
 import { usePropertyStore } from '@/store/usePropertyStore';
-import { mockUsers } from '@/data/mock-data';
+import { useUserStore } from '@/store/useUserStore';
 import { toast } from 'sonner';
 
 const propertySchema = z.object({
@@ -17,6 +18,7 @@ const propertySchema = z.object({
   type: z.enum(['Appartement', 'Maison']),
   roomCount: z.number().min(1, "Au moins une pièce"),
   ownerId: z.string().min(1, "Propriétaire requis"),
+  agentId: z.string().optional(),
 });
 
 type PropertyFormData = z.infer<typeof propertySchema>;
@@ -28,8 +30,16 @@ interface PropertyModalProps {
 }
 
 export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps) {
+  const { data: session } = useSession();
   const { addProperty, updateProperty, deleteProperty } = usePropertyStore();
-  const owners = mockUsers.filter(u => u.role === 'Propriétaire');
+  const { users } = useUserStore();
+  
+  const currentUser = session?.user as any;
+  const isAdmin = currentUser?.role === 'Administrateur';
+  const isAgent = currentUser?.role === 'Agent';
+
+  const owners = users.filter(u => u.role === 'Propriétaire');
+  const availableAgents = users.filter(u => u.role === 'Agent' || u.role === 'Administrateur');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -40,20 +50,25 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
       type: 'Appartement',
       roomCount: 1,
       ownerId: '',
+      agentId: isAgent ? currentUser.id : '',
     }
   });
 
   useEffect(() => {
-    if (property) reset(property);
-    else reset({
-      name: '',
-      address: '',
-      surface: 0,
-      type: 'Appartement',
-      roomCount: 1,
-      ownerId: '',
-    });
-  }, [property, reset, isOpen]);
+    if (property) {
+      reset(property);
+    } else {
+      reset({
+        name: '',
+        address: '',
+        surface: 0,
+        type: 'Appartement',
+        roomCount: 1,
+        ownerId: '',
+        agentId: isAgent ? currentUser?.id : '',
+      });
+    }
+  }, [property, reset, isOpen, isAgent, currentUser?.id]);
 
   const onSubmit = (data: PropertyFormData) => {
     if (property) {
@@ -63,7 +78,8 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
       addProperty({
         ...data,
         id: `prop_${Date.now()}`,
-        templateIds: []
+        templateIds: [],
+        agentId: data.agentId || (isAgent ? currentUser?.id : undefined)
       });
       toast.success("Nouveau bien immobilier ajouté !");
     }
@@ -126,7 +142,7 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
               <label className="block text-sm font-medium text-slate-400 mb-1">Propriétaire</label>
               <select 
                 {...register('ownerId')}
-                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-blue-500 transition-colors"
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 transition-colors cursor-pointer"
               >
                 <option value="">Sélectionner...</option>
                 {owners.map(owner => (
@@ -134,6 +150,33 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
                 ))}
               </select>
               {errors.ownerId && <p className="text-red-400 text-xs mt-1 text-nowrap">{errors.ownerId.message}</p>}
+            </div>
+
+            {/* Agent Field */}
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Agent responsable</label>
+              {isAdmin ? (
+                <select 
+                  {...register('agentId')}
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 transition-colors cursor-pointer"
+                >
+                  <option value="">Non assigné</option>
+                  {availableAgents.map(agent => (
+                    <option key={agent.id} value={agent.id}>{agent.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="relative group">
+                  <User className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+                  <input 
+                    type="text"
+                    disabled
+                    value={currentUser?.name || ''}
+                    className="w-full bg-slate-950/50 border border-white/5 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-500 cursor-not-allowed"
+                  />
+                  <input type="hidden" {...register('agentId')} />
+                </div>
+              )}
             </div>
           </div>
 

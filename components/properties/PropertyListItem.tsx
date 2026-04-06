@@ -4,6 +4,7 @@ import React from 'react';
 import { Property, InspectionReport } from '@/types';
 import { Home, MapPin, Maximize, Layers, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { useUserStore } from '@/store/useUserStore';
 
 interface PropertyListItemProps {
   property: Property;
@@ -11,6 +12,7 @@ interface PropertyListItemProps {
 }
 
 export function PropertyListItem({ property, lastInspection }: PropertyListItemProps) {
+  const { users } = useUserStore();
   const isOccupied = lastInspection ? lastInspection.type === 'Entrée' : false;
 
   return (
@@ -36,19 +38,35 @@ export function PropertyListItem({ property, lastInspection }: PropertyListItemP
 
       {/* Stats - Hidden on mobile */}
       <div className="hidden md:flex items-center gap-8 px-8 border-x border-white/5">
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-[60px]">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Surface</span>
           <div className="flex items-center gap-1.5 text-slate-300">
             <Maximize className="w-4 h-4 text-blue-400/60" />
             <span className="font-semibold">{property.surface} m²</span>
           </div>
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-[40px]">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Pièces</span>
           <div className="flex items-center gap-1.5 text-slate-300">
             <Layers className="w-4 h-4 text-blue-400/60" />
             <span className="font-semibold">{property.roomCount}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Stakeholders - Hidden on mobile */}
+      <div className="hidden lg:flex items-center gap-8 px-8 border-r border-white/5">
+        <div className="flex flex-col min-w-[120px]">
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Propriétaire</span>
+          <span className="text-sm font-semibold text-slate-300 truncate max-w-[150px]">
+            {users.find(u => u.id === property.ownerId)?.name || property.ownerId}
+          </span>
+        </div>
+        <div className="flex flex-col min-w-[120px]">
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1 text-blue-400/80">Agent</span>
+          <span className="text-sm font-semibold text-blue-400 truncate max-w-[150px]">
+            {users.find(u => u.id === property.agentId)?.name || property.agentId || 'Non assigné'}
+          </span>
         </div>
       </div>
 
