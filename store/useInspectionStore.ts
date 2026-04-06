@@ -13,6 +13,7 @@ interface InspectionState {
   updateItem: (roomId: string, itemId: string, updates: Partial<InspectionItem>) => void;
   addPhoto: (roomId: string, itemId: string, photoUrl: string) => void;
   saveOffline: () => void;
+  finalizeInspection: (id: string, fullData?: InspectionReport) => void;
 }
 
 export const useInspectionStore = create<InspectionState>((set) => ({
@@ -76,5 +77,21 @@ export const useInspectionStore = create<InspectionState>((set) => ({
   saveOffline: () => {
     // Logique de persistance locale via IndexedDB ou LocalStorage
     console.log("Sauvegarde locale effectuée (Simulée)");
-  }
+  },
+
+  finalizeInspection: (id, fullData) => set((state) => {
+    const targetReport = fullData || (state.currentInspection?.id === id ? state.currentInspection : state.inspections.find(r => r.id === id));
+    
+    if (!targetReport) return state;
+
+    const finalizedReport = { ...targetReport, isFinalized: true };
+    const exists = state.inspections.some(r => r.id === id);
+
+    return {
+      currentInspection: finalizedReport,
+      inspections: exists
+        ? state.inspections.map(r => r.id === id ? finalizedReport : r)
+        : [...state.inspections, finalizedReport]
+    };
+  })
 }));

@@ -13,15 +13,19 @@ import { useInspectionStore } from '@/store/useInspectionStore';
 import { generatePDF } from '@/lib/utils/generate-pdf';
 import { PDFTemplate } from '../pdf/PDFTemplate';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Props {
   initialData?: Partial<InspectionFormData>;
+  isTemplateMode?: boolean;
 }
 
 export const InspectionForm: React.FC<Props> = ({ initialData }) => {
   const setCurrentInspection = useInspectionStore((state) => state.setCurrentInspection);
+  const finalizeInspection = useInspectionStore((state) => state.finalizeInspection);
   const [isExporting, setIsExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   React.useEffect(() => {
     setMounted(true);
@@ -64,10 +68,21 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
     mode: 'onTouched'
   });
 
+  const { isValid } = methods.formState;
+  const isFinalized = methods.watch('isFinalized');
+  const tenantSig = methods.watch('signatures.tenant');
+  const inspectorSig = methods.watch('signatures.inspector');
+
+  const bothSignaturesPresent = !!tenantSig?.drawData && !!inspectorSig?.drawData;
+  const isLocked = !!tenantSig?.drawData || !!inspectorSig?.drawData;
+  const canFinalize = isValid && bothSignaturesPresent && isFinalized;
+
   const onSubmit = (data: InspectionFormData) => {
     console.log("Données validées prêtes à l'envoi :", data);
     setCurrentInspection(data);
-    alert("Rapport enregistré avec succès !");
+    finalizeInspection(data.id, data as any);
+    alert("Rapport finalisé et enregistré avec succès !");
+    router.push(`/dashboard/properties/${data.propertyId}`);
   };
 
   const handleExportPDF = async () => {
@@ -137,7 +152,8 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
             
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all active:scale-95 border border-blue-400/50"
+              disabled={!canFinalize}
+              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all active:scale-95 border border-blue-400/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-600 disabled:active:scale-100"
             >
               <Send size={18} /> 
               <span>Finaliser</span>
@@ -146,10 +162,15 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
         </div>
 
         {/* Sections du Formulaire */}
-        <div className="space-y-4 px-2">
-          <HeaderSection />
-          <CounterSection />
-          <RoomSection />
+        <div className="space-y-4 px-2 relative">
+          <fieldset disabled={isLocked} className="space-y-4 relative group/locked">
+            {isLocked && (
+              <div className="absolute inset-x-0 -inset-y-2 z-10 pointer-events-none rounded-2xl border-2 border-amber-500/20 bg-slate-950/20 backdrop-blur-[0.5px] transition-all" />
+            )}
+            <HeaderSection />
+            <CounterSection />
+            <RoomSection />
+          </fieldset>
           <SignatureSection />
         </div>
 
