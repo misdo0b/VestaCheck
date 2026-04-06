@@ -28,6 +28,7 @@ export const mockProperties: Property[] = [
     name: 'Appartement Haussmann - Élysée',
     address: '12 rue de la Paix, 75002 Paris',
     surface: 85,
+    type: 'Appartement',
     roomCount: 3,
     ownerId: 'owner1'
   },
@@ -36,6 +37,7 @@ export const mockProperties: Property[] = [
     name: 'Studio Bastille',
     address: '45 rue de Lappe, 75011 Paris',
     surface: 28,
+    type: 'Appartement',
     roomCount: 1,
     ownerId: 'owner1'
   }
