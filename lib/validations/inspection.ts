@@ -26,6 +26,7 @@ export const RoomSchema = z.object({
 
 export const InspectionReportSchema = z.object({
   id: z.string(),
+  propertyId: z.string(),
   propertyAddress: z.string().min(5, "L'adresse est trop courte"),
   date: z.string().min(1, "La date de l'inspection est requise"),
   type: z.enum(['Entrée', 'Sortie']),

@@ -32,44 +32,49 @@ export const SignatureSection: React.FC = () => {
   const isLocked = !!(tenantSig?.drawData || inspectorSig?.drawData);
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8 overflow-hidden relative">
+    <div className="bg-slate-900/50 p-8 rounded-2xl shadow-xl border border-white/5 mb-8 overflow-hidden relative backdrop-blur-sm">
       {isLocked && (
-        <div className="absolute top-4 right-6 flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200 text-xs font-bold animate-pulse">
+        <div className="absolute top-6 right-8 flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20 text-[10px] font-bold uppercase tracking-wider animate-pulse transition-all">
           <Lock size={12} /> Dossier Verrouillé - Signatures en cours
         </div>
       )}
 
-      <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-        🖋️ Finalisation & Signatures
-      </h2>
+      <div className="flex items-center gap-3 mb-10">
+        <div className="bg-blue-500/10 p-2 rounded-lg">
+          <PenTool className="text-blue-400" size={24} />
+        </div>
+        <h2 className="text-xl font-bold text-white tracking-tight">
+          Finalisation & Signatures
+        </h2>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* Signature Locataire */}
         <div className="space-y-4">
-          <label className="block text-sm font-bold text-gray-700 uppercase tracking-widest text-center">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">
             Signature du Locataire
           </label>
-          <div className="border-2 border-dashed border-gray-100 rounded-2xl h-48 flex flex-col items-center justify-center bg-gray-50/50 p-4 relative group">
+          <div className="border-2 border-dashed border-white/5 rounded-3xl h-56 flex flex-col items-center justify-center bg-slate-950/40 p-6 relative group/sig overflow-hidden shadow-inner">
             {tenantSig?.drawData ? (
-              <img src={tenantSig.drawData} alt="Signature Locataire" className="max-h-full max-w-full object-contain" />
+              <img src={tenantSig.drawData} alt="Signature Locataire" className="max-h-full max-w-full object-contain brightness-110 contrast-125" />
             ) : (
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex gap-2">
+              <div className="flex flex-col items-center gap-5">
+                <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => openSignaturePad('tenant')}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-xs font-bold shadow-lg shadow-blue-100"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all text-xs font-bold shadow-lg shadow-blue-600/20"
                   >
                     <PenTool size={14} /> Signer au doigt
                   </button>
                   <button
                     type="button"
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all text-xs font-bold"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20 transition-all text-xs font-bold"
                   >
-                    <Smartphone size={14} /> Lien Magique
+                    <Smartphone size={14} /> SMS
                   </button>
                 </div>
-                <p className="text-[10px] text-gray-400 font-medium">Capture locale ou envoi par SMS/Email</p>
+                <p className="text-[10px] text-slate-600 font-medium tracking-wide uppercase">Capture locale ou distante</p>
               </div>
             )}
           </div>
@@ -77,35 +82,39 @@ export const SignatureSection: React.FC = () => {
 
         {/* Signature Inspecteur */}
         <div className="space-y-4">
-          <label className="block text-sm font-bold text-gray-700 uppercase tracking-widest text-center">
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">
             Signature de l'Inspecteur
           </label>
-          <div className="border-2 border-dashed border-gray-100 rounded-2xl h-48 flex flex-col items-center justify-center bg-gray-50/50 p-4 relative group">
+          <div className="border-2 border-dashed border-white/5 rounded-3xl h-56 flex flex-col items-center justify-center bg-slate-950/40 p-6 relative group/sig overflow-hidden shadow-inner">
             {inspectorSig?.drawData ? (
-              <img src={inspectorSig.drawData} alt="Signature Inspecteur" className="max-h-full max-w-full object-contain" />
+              <img src={inspectorSig.drawData} alt="Signature Inspecteur" className="max-h-full max-w-full object-contain brightness-110 contrast-125" />
             ) : (
               <button
                 type="button"
                 onClick={() => openSignaturePad('inspector')}
-                className="flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-full hover:bg-gray-900 transition-all text-sm font-bold shadow-xl active:scale-95"
+                className="flex items-center gap-3 px-6 py-3 bg-slate-100 text-slate-900 rounded-2xl hover:bg-white transition-all text-sm font-bold shadow-xl active:scale-95 flex items-center"
               >
-                <CheckCircle size={18} /> Signer le rapport
+                <CheckCircle size={18} className="text-blue-600 focus:ring-4 focus:ring-blue-500/10" /> 
+                <span>Signer le rapport</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-gray-100">
-        <label className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-xl border border-blue-100 cursor-pointer hover:bg-blue-50 transition-colors">
-          <input
-            {...register('isFinalized')}
-            type="checkbox"
-            disabled={!tenantSig?.drawData || !inspectorSig?.drawData}
-            className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-blue-200 disabled:opacity-30"
-          />
-          <span className="text-sm text-blue-900 font-medium">
-            Je certifie que les informations saisies sont exactes et conformes à l'état réel du logement au jour J.
+      <div className="mt-10 pt-8 border-t border-white/5">
+        <label className="flex items-start gap-4 p-5 bg-blue-500/5 rounded-2xl border border-blue-500/10 cursor-pointer hover:bg-blue-500/10 transition-all group">
+          <div className="mt-0.5">
+            <input
+              {...register('isFinalized')}
+              type="checkbox"
+              disabled={!tenantSig?.drawData || !inspectorSig?.drawData}
+              className="w-5 h-5 rounded-lg bg-slate-900 border-white/10 text-blue-600 focus:ring-blue-500/20 focus:ring-offset-0 disabled:opacity-30 cursor-pointer transition-all"
+            />
+          </div>
+          <span className="text-sm text-slate-300 font-medium leading-relaxed group-hover:text-white transition-colors">
+            Je certifie que les informations saisies sont exactes et conformes à l'état réel du logement au jour de l'inspection. 
+            <span className="block text-xs text-slate-500 mt-1 font-normal italic">Ce document a valeur légale une fois signé et finalisé.</span>
           </span>
         </label>
       </div>
