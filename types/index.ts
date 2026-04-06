@@ -27,8 +27,10 @@ export interface Property {
   name: string;
   address: string;
   surface: number;
+  type: 'Appartement' | 'Maison';
   roomCount: number;
   ownerId: string;
+  templateIds?: string[];
 }
 
 export interface PropertyTemplate {
