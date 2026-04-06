@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Property, PropertyTemplate, Room } from '@/types';
 import { mockProperties } from '@/data/mock-data';
 
@@ -19,32 +20,40 @@ interface PropertyState {
   getTemplatesByProperty: (propertyId: string) => PropertyTemplate[];
 }
 
-export const usePropertyStore = create<PropertyState>((set, get) => ({
-  properties: mockProperties,
-  templates: [], // Initialement vide, à charger si besoin
-  loading: false,
+export const usePropertyStore = create<PropertyState>()(
+  persist(
+    (set, get) => ({
+      properties: mockProperties,
+      templates: [], // Initialement vide, à charger si besoin
+      loading: false,
 
-  setProperties: (properties) => set({ properties }),
-  
-  addProperty: (property) => set((state) => ({
-    properties: [...state.properties, property]
-  })),
+      setProperties: (properties) => set({ properties }),
+      
+      addProperty: (property) => set((state) => ({
+        properties: [...state.properties, property]
+      })),
 
-  updateProperty: (id, updates) => set((state) => ({
-    properties: state.properties.map(p => p.id === id ? { ...p, ...updates } : p)
-  })),
+      updateProperty: (id, updates) => set((state) => ({
+        properties: state.properties.map(p => p.id === id ? { ...p, ...updates } : p)
+      })),
 
-  deleteProperty: (id) => set((state) => ({
-    properties: state.properties.filter(p => p.id !== id)
-  })),
+      deleteProperty: (id) => set((state) => ({
+        properties: state.properties.filter(p => p.id !== id)
+      })),
 
-  setTemplates: (templates) => set({ templates }),
+      setTemplates: (templates) => set({ templates }),
 
-  addTemplate: (template) => set((state) => ({
-    templates: [...state.templates, template]
-  })),
+      addTemplate: (template) => set((state) => ({
+        templates: [...state.templates, template]
+      })),
 
-  getTemplatesByProperty: (propertyId) => {
-    return get().templates.filter(t => t.propertyId === propertyId);
-  }
-}));
+      getTemplatesByProperty: (propertyId) => {
+        return get().templates.filter(t => t.propertyId === propertyId);
+      }
+    }),
+    {
+      name: 'vestacheck-properties-storage',
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+);

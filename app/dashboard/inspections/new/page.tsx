@@ -43,8 +43,9 @@ function NewInspectionForm() {
       propertyId: property.id,
       propertyAddress: property.address,
       ownerId: property.ownerId,
-      // If template is selected, clone its rooms
-      rooms: selectedTemplate ? JSON.parse(JSON.stringify(selectedTemplate.rooms)) : undefined
+      // If template is selected, clone its rooms and keys
+      rooms: selectedTemplate ? JSON.parse(JSON.stringify(selectedTemplate.rooms)) : undefined,
+      keyInventories: selectedTemplate?.keyInventories ? JSON.parse(JSON.stringify(selectedTemplate.keyInventories)) : undefined
     };
 
     return (

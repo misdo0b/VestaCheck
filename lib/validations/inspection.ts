@@ -66,4 +66,16 @@ export const InspectionReportSchema = z.object({
   isFinalized: z.boolean().default(false),
 });
 
+// Sch├®ma all├®g├® pour le mode Template (Pas de locataire, pas de compteurs requis)
+export const PropertyTemplateSchema = z.object({
+  id: z.string(),
+  propertyId: z.string(),
+  rooms: z.array(RoomSchema).min(1, "Au moins une pi├¿ce est requise"),
+  keyInventories: z.array(z.object({
+    id: z.string(),
+    type: z.string().min(1, "Le type de cl├® est requis"),
+    count: z.number().min(0),
+  })).optional(),
+}).passthrough(); // Autorise les autres champs sans les valider
+
 export type InspectionFormData = z.infer<typeof InspectionReportSchema>;
