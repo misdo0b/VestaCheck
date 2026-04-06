@@ -1,77 +1,121 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { User } from '@/types';
-import { mockUsers } from '@/data/mock-data';
-import { idbStorage } from '../lib/utils/store-storage';
+import { User, SyncStatus } from '@/types';
+import { db } from '@/lib/db';
 
 interface UserStore {
   users: User[];
   loading: boolean;
+  error: string | null;
 
   // Actions
-  fetchUsers: () => Promise<void>;
-  addUser: (user: User) => Promise<void>;
+  initStore: () => Promise<void>;
+  fetchUsers: () => Promise<void>; // Fetch from server and update local
+  addUser: (user: Omit<User, 'serverVersion' | 'lastModified' | 'syncStatus'>) => Promise<void>;
   updateUser: (id: string, updates: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
 }
 
-// Helper pour synchroniser avec le serveur
-const syncWithServer = async (users: User[]) => {
-  try {
-    await fetch('/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(users),
-    });
-  } catch (error) {
-    console.error('Sync failed:', error);
-  }
-};
+export const useUserStore = create<UserStore>((set, get) => ({
+  users: [],
+  loading: false,
+  error: null,
 
-export const useUserStore = create<UserStore>()(
-  persist(
-    (set, get) => ({
-      users: [], // Initialisé vide, sera rempli par fetchUsers ou la persistance IDB
-      loading: false,
-
-      fetchUsers: async () => {
-        set({ loading: true });
-        try {
-          const res = await fetch('/api/users');
-          const users = await res.json();
-          if (Array.isArray(users)) {
-            set({ users, loading: false });
-          }
-        } catch (error) {
-          console.error('Fetch users failed:', error);
-          set({ loading: false });
-        }
-      },
-      
-      addUser: async (user) => {
-        set((state) => ({
-          users: [...state.users, user]
-        }));
-        await syncWithServer(get().users);
-      },
-
-      updateUser: async (id, updates) => {
-        set((state) => ({
-          users: state.users.map(u => u.id === id ? { ...u, ...updates } : u)
-        }));
-        await syncWithServer(get().users);
-      },
-
-      deleteUser: async (id) => {
-        set((state) => ({
-          users: state.users.filter(u => u.id !== id)
-        }));
-        await syncWithServer(get().users);
-      },
-    }),
-    {
-      name: 'vestacheck-users-storage',
-      storage: createJSONStorage(() => idbStorage),
+  initStore: async () => {
+    set({ loading: true });
+    try {
+      const localUsers = await db.users.toArray();
+      set({ users: localUsers, loading: false });
+    } catch (err) {
+      console.error('Failed to init UserStore:', err);
+      set({ loading: false, error: 'Erreur lors du chargement local' });
     }
-  )
-);
+  },
+
+  fetchUsers: async () => {
+    set({ loading: true });
+    try {
+      const res = await fetch('/api/users');
+      const serverUsers = await res.json();
+      
+      if (Array.isArray(serverUsers)) {
+        // Mise à jour de la base de données locale
+        await db.users.bulkPut(serverUsers);
+        set({ users: serverUsers, loading: false });
+      }
+    } catch (error) {
+      console.warn('Fetch users failed, using local data:', error);
+      const localUsers = await db.users.toArray();
+      set({ users: localUsers, loading: false });
+    }
+  },
+  
+  addUser: async (userData) => {
+    const newUser: User = {
+      ...userData,
+      serverVersion: 0,
+      lastModified: new Date().toISOString(),
+      syncStatus: 'pending'
+    };
+
+    set((state) => ({ users: [...state.users, newUser] }));
+
+    try {
+      await db.users.add(newUser);
+      await db.enqueueMutation({
+        type: 'CREATE',
+        entity: 'user',
+        entityId: newUser.id,
+        data: newUser
+      });
+      // La synchro effective sera gérée par le hook useSync
+    } catch (err) {
+      console.error('Failed to add user locally:', err);
+    }
+  },
+
+  updateUser: async (id, updates) => {
+    set((state) => ({
+      users: state.users.map(u => u.id === id ? { 
+        ...u, 
+        ...updates, 
+        syncStatus: 'pending',
+        lastModified: new Date().toISOString() 
+      } : u)
+    }));
+
+    try {
+      await db.users.update(id, { 
+        ...updates, 
+        syncStatus: 'pending',
+        lastModified: new Date().toISOString() 
+      });
+      
+      await db.enqueueMutation({
+        type: 'UPDATE',
+        entity: 'user',
+        entityId: id,
+        data: updates
+      });
+    } catch (err) {
+      console.error('Failed to update user locally:', err);
+    }
+  },
+
+  deleteUser: async (id) => {
+    set((state) => ({
+      users: state.users.filter(u => u.id !== id)
+    }));
+
+    try {
+      await db.users.delete(id);
+      await db.enqueueMutation({
+        type: 'DELETE',
+        entity: 'user',
+        entityId: id,
+        data: { id }
+      });
+    } catch (err) {
+      console.error('Failed to delete user locally:', err);
+    }
+  },
+}));

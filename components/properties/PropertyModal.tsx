@@ -79,7 +79,10 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
         ...data,
         id: `prop_${Date.now()}`,
         templateIds: [],
-        agentId: data.agentId || (isAgent ? currentUser?.id : undefined)
+        agentId: data.agentId || (isAgent ? currentUser?.id : undefined),
+        serverVersion: 1,
+        lastModified: new Date().toISOString(),
+        syncStatus: 'pending', // Marqué comme en attente de synchro initiale
       });
       toast.success("Nouveau bien immobilier ajouté !");
     }

@@ -6,6 +6,9 @@ export const mockUsers: User[] = [
     name: 'Mehdi Architecte',
     email: 'admin@vestacheck.fr',
     role: 'Administrateur',
+    serverVersion: 1,
+    lastModified: new Date().toISOString(),
+    syncStatus: 'synced',
   },
   {
     id: 'agent1',
@@ -13,12 +16,18 @@ export const mockUsers: User[] = [
     email: 'jean.agent@agence.fr',
     role: 'Agent',
     agencyId: 'agence_nord',
+    serverVersion: 1,
+    lastModified: new Date().toISOString(),
+    syncStatus: 'synced',
   },
   {
     id: 'owner1',
     name: 'Paul Propriétaire',
     email: 'paul.p@gmail.com',
     role: 'Propriétaire',
+    serverVersion: 1,
+    lastModified: new Date().toISOString(),
+    syncStatus: 'synced',
   }
 ];
 
@@ -31,7 +40,10 @@ export const mockProperties: Property[] = [
     type: 'Appartement',
     roomCount: 3,
     ownerId: 'owner1',
-    agentId: 'agent1'
+    agentId: 'agent1',
+    serverVersion: 1,
+    lastModified: new Date().toISOString(),
+    syncStatus: 'synced',
   },
   {
     id: 'prop_002',
@@ -41,7 +53,10 @@ export const mockProperties: Property[] = [
     type: 'Appartement',
     roomCount: 1,
     ownerId: 'owner1',
-    agentId: 'agent1'
+    agentId: 'agent1',
+    serverVersion: 1,
+    lastModified: new Date().toISOString(),
+    syncStatus: 'synced',
   }
 ];
 
@@ -93,5 +108,8 @@ export const mockInspections: InspectionReport[] = [
       }
     ],
     isFinalized: false,
+    serverVersion: 1,
+    lastModified: new Date().toISOString(),
+    syncStatus: 'synced',
   }
 ];

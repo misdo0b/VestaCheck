@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { LogOut, User } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import Image from 'next/image';
+import { SyncStatusIndicator } from './SyncStatusIndicator';
 
 export const Navbar = () => {
   const { data: session } = useSession();
@@ -32,6 +32,9 @@ export const Navbar = () => {
         {/* User Actions */}
         {session?.user && (
           <div className="flex items-center gap-4">
+            {/* Nouveau composant de synchronisation */}
+            <SyncStatusIndicator />
+
             <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5">
               <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center">
                 <User className="w-3.5 h-3.5 text-slate-400" />

@@ -22,6 +22,8 @@ export interface Room {
   items: InspectionItem[];
 }
 
+export type SyncStatus = 'synced' | 'pending' | 'error';
+
 export interface Property {
   id: string;
   name: string;
@@ -32,6 +34,11 @@ export interface Property {
   ownerId: string;
   agentId?: string; // ID de l'agent responsable
   templateIds?: string[];
+  
+  // Champs de synchronisation
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
 }
 
 export interface PropertyTemplate {
@@ -40,6 +47,11 @@ export interface PropertyTemplate {
   propertyId: string;
   rooms: Room[];
   keyInventories?: { id: string; type: string; count: number }[];
+  
+  // Champs de synchronisation
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
 }
 
 export interface SignatureMetadata {
@@ -80,6 +92,11 @@ export interface InspectionReport {
 
   rooms: Room[];
   isFinalized: boolean;
+
+  // Champs de synchronisation
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
 }
 
 export type UserRole = 'Administrateur' | 'Agent' | 'Propriétaire';
@@ -91,4 +108,9 @@ export interface User {
   password?: string; // Optionnel pour les transferts client, requis pour l'auth
   role: UserRole;
   agencyId?: string; // Pour regrouper des agents par agence
+  
+  // Champs de synchronisation
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
 }
