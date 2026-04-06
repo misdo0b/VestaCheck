@@ -96,6 +96,36 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data }) => {
         </table>
       </div>
 
+      {/* Section Inventaire des Clés */}
+      <div className="pdf-section mb-12">
+        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <div className="w-8 h-1 bg-blue-600 rounded"></div> Inventaire des Clés
+        </h3>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-900 text-white text-left text-[10px] uppercase tracking-widest font-bold">
+              <th className="p-4 rounded-tl-xl italic">Type de Clé / Badge</th>
+              <th className="p-4 rounded-tr-xl italic text-right">Quantité</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm">
+            {data.keyInventories.map((key) => (
+              <tr key={key.id} className="border-b border-gray-100 font-bold">
+                <td className="p-4">{key.type}</td>
+                <td className="p-4 text-blue-600 font-black text-right">{key.count}</td>
+              </tr>
+            ))}
+            {data.keyInventories.length === 0 && (
+              <tr>
+                <td colSpan={2} className="p-4 text-center text-gray-400 italic py-6">
+                  Aucune clé ou badge n'a été répertorié.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
       {/* État des Pièces */}
       <div className="mb-12">
         <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
