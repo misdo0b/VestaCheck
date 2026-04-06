@@ -1,4 +1,4 @@
-import { InspectionReport, User } from '@/types';
+import { InspectionReport, User, Property } from '@/types';
 
 export const mockUsers: User[] = [
   {
@@ -22,15 +22,50 @@ export const mockUsers: User[] = [
   }
 ];
 
+export const mockProperties: Property[] = [
+  {
+    id: 'prop_001',
+    name: 'Appartement Haussmann - Élysée',
+    address: '12 rue de la Paix, 75002 Paris',
+    surface: 85,
+    roomCount: 3,
+    ownerId: 'owner1'
+  },
+  {
+    id: 'prop_002',
+    name: 'Studio Bastille',
+    address: '45 rue de Lappe, 75011 Paris',
+    surface: 28,
+    roomCount: 1,
+    ownerId: 'owner1'
+  }
+];
+
 export const mockInspections: InspectionReport[] = [
   {
     id: 'rep_001',
+    propertyId: 'prop_001',
     propertyAddress: '12 rue de la Paix, 75002 Paris',
     date: '2026-04-10',
     type: 'Entrée',
     ownerId: 'owner1',
     inspectorId: 'agent1',
     tenantName: 'Sophie Locataire',
+    tenantEmail: 'sophie.l@gmail.com',
+    tenantPhone: '06 12 34 56 78',
+    counters: {
+      water: 125,
+      electricity: 4567,
+    },
+    keyInventories: [
+      { id: 'key_1', type: 'Entrée principale', count: 2 },
+      { id: 'key_2', type: 'Boîte aux lettres', count: 1 }
+    ],
+    generalObservations: 'Logement en excellent état général.',
+    signatures: {
+      tenant: { type: 'Aucune' },
+      inspector: { type: 'Aucune' }
+    },
     rooms: [
       {
         id: 'room_salon',

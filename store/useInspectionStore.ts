@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { InspectionReport } from '@/types';
+import { InspectionReport, InspectionItem, PhotoMetadata } from '@/types';
 import { mockInspections } from '@/data/mock-data';
 
 interface InspectionState {
@@ -10,7 +10,7 @@ interface InspectionState {
   // Actions
   setInspections: (inspections: InspectionReport[]) => void;
   setCurrentInspection: (report: InspectionReport | null) => void;
-  updateItem: (roomId: string, itemId: string, updates: Partial<any>) => void;
+  updateItem: (roomId: string, itemId: string, updates: Partial<InspectionItem>) => void;
   addPhoto: (roomId: string, itemId: string, photoUrl: string) => void;
   saveOffline: () => void;
 }
@@ -55,7 +55,12 @@ export const useInspectionStore = create<InspectionState>((set) => ({
         ...room,
         items: room.items.map(item => {
           if (item.id !== itemId) return item;
-          return { ...item, photos: [...item.photos, photoUrl] };
+          const newPhoto: PhotoMetadata = {
+            id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            compressedBase64: photoUrl,
+            isSynced: false
+          };
+          return { ...item, photos: [...item.photos, newPhoto] };
         })
       };
     });
