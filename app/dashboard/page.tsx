@@ -4,7 +4,7 @@ import React from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, LogOut, User as UserIcon, ShieldCheck, ClipboardList } from 'lucide-react';
+import { LogOut, User as UserIcon, ShieldCheck, Building2 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -50,25 +50,17 @@ export default function DashboardPage() {
 
         {/* Dashboard Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 hover:border-blue-500/30 transition-all group">
+          {/* Parc Immobilier - Visible pour tous les rôles connectés */}
+          <Link href="/dashboard/properties" className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 hover:border-blue-500/30 transition-all group">
             <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <ClipboardList className="w-6 h-6 text-blue-500" />
+              <Building2 className="w-6 h-6 text-blue-500" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-1">États des lieux</h3>
-            <p className="text-slate-400 text-sm mb-4">Gérez vos inspections et raccordements.</p>
-            <button className="text-blue-400 text-sm font-medium hover:underline">Accéder →</button>
-          </div>
-
-          {(role === 'Administrateur' || role === 'Agent') && (
-            <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 hover:border-indigo-500/30 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <LayoutDashboard className="w-6 h-6 text-indigo-500" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-1">Planning</h3>
-              <p className="text-slate-400 text-sm mb-4">Consultez vos interventions prévues.</p>
-              <button className="text-indigo-400 text-sm font-medium hover:underline">Accéder →</button>
+            <h3 className="text-lg font-semibold text-white mb-1">Parc Immobilier</h3>
+            <p className="text-slate-400 text-sm mb-4">Gérez vos biens, consultez l'historique et lancez de nouveaux états des lieux.</p>
+            <div className="text-blue-400 text-sm font-medium hover:underline flex items-center gap-1">
+              Accéder <span>→</span>
             </div>
-          )}
+          </Link>
 
           {role === 'Administrateur' && (
             <Link href="/admin/users" className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 hover:border-purple-500/30 transition-all group">
@@ -77,7 +69,9 @@ export default function DashboardPage() {
               </div>
               <h3 className="text-lg font-semibold text-white mb-1">Administration</h3>
               <p className="text-slate-400 text-sm mb-4">Gestion des utilisateurs et agences.</p>
-              <div className="text-purple-400 text-sm font-medium hover:underline">Accéder →</div>
+              <div className="text-purple-400 text-sm font-medium hover:underline flex items-center gap-1">
+                Accéder <span>→</span>
+              </div>
             </Link>
           )}
         </div>
