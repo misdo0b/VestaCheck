@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
+import { useSession } from 'next-auth/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { InspectionReportSchema, InspectionFormData } from '@/lib/validations/inspection';
 import { HeaderSection } from './sections/HeaderSection';
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export const InspectionForm: React.FC<Props> = ({ initialData }) => {
+  const { data: session } = useSession();
   const setCurrentInspection = useInspectionStore((state) => state.setCurrentInspection);
   const [isExporting, setIsExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -174,7 +176,10 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
 
         {/* Template PDF (Caché mais présent pour html2canvas) */}
         <div style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
-           <PDFTemplate data={methods.watch()} />
+           <PDFTemplate 
+             data={methods.watch()} 
+             inspectorName={session?.user?.name || undefined}
+           />
         </div>
       </form>
     </FormProvider>

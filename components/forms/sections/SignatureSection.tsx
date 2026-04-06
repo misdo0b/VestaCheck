@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
+import { useSession } from 'next-auth/react';
 import { InspectionFormData } from '@/lib/validations/inspection';
 import { SignaturePad } from '../../ui/SignaturePad';
 import { PenTool, Mail, CheckCircle, Lock, Smartphone } from 'lucide-react';
 
 export const SignatureSection: React.FC = () => {
+  const { data: session } = useSession();
   const { register, trigger, setValue, watch, formState: { errors } } = useFormContext<InspectionFormData>();
   const [activePad, setActivePad] = useState<'tenant' | null | 'inspector'>(null);
+
+  const agentName = session?.user?.name || "Agent VestaCheck";
 
   const tenantSig = watch('signatures.tenant');
   const inspectorSig = watch('signatures.inspector');
@@ -83,7 +87,7 @@ export const SignatureSection: React.FC = () => {
         {/* Signature Inspecteur */}
         <div className="space-y-4">
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">
-            Signature de l'Inspecteur
+            Signature de : {agentName}
           </label>
           <div className="border-2 border-dashed border-white/5 rounded-3xl h-56 flex flex-col items-center justify-center bg-slate-950/40 p-6 relative group/sig overflow-hidden shadow-inner">
             {inspectorSig?.drawData ? (
@@ -121,7 +125,7 @@ export const SignatureSection: React.FC = () => {
 
       {activePad && (
         <SignaturePad
-          title={activePad === 'tenant' ? 'Signature du Locataire' : "Signature de l'Inspecteur"}
+          title={activePad === 'tenant' ? 'Signature du Locataire' : `Signature de : ${agentName}`}
           onSave={(base64) => handleSaveSignature(activePad, base64)}
           onClose={() => setActivePad(null)}
         />

@@ -14,9 +14,10 @@ const STYLE = {
 
 interface PDFTemplateProps {
   data: InspectionFormData;
+  inspectorName?: string;
 }
 
-export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data }) => {
+export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, inspectorName }) => {
   return (
     <div 
       id="inspection-report-pdf"
@@ -208,7 +209,7 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data }) => {
               )}
             </div>
             <div className="text-center">
-              <p className="text-[10px] font-black text-blue-600 uppercase mb-4 tracking-widest">L'Inspecteur</p>
+              <p className="text-[10px] font-black text-blue-600 uppercase mb-4 tracking-widest">Signature de l'Agent</p>
               <div className="h-32 bg-white rounded-2xl flex items-center justify-center border border-slate-100 overflow-hidden relative shadow-sm">
                 {data.signatures.inspector.drawData ? (
                   <img src={data.signatures.inspector.drawData} alt="Signature Inspecteur" className="max-h-full max-w-full mix-blend-multiply" />
@@ -216,7 +217,9 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data }) => {
                   <span className="text-slate-300 text-[10px] uppercase font-black tracking-tighter">Document non signé</span>
                 )}
               </div>
-              <p className="mt-4 text-xs font-black text-slate-900 uppercase tracking-tight font-serif italic text-blue-600">VestaCheck Agent</p>
+              <p className="mt-4 text-xs text-slate-900 font-semibold uppercase tracking-tight">
+                {inspectorName || 'Agent VestaCheck'}
+              </p>
               {data.signatures.inspector.signedAt && (
                 <p className="text-[9px] text-slate-400 mt-1 font-medium">Le {new Date(data.signatures.inspector.signedAt).toLocaleDateString('fr-FR')} à {new Date(data.signatures.inspector.signedAt).toLocaleTimeString('fr-FR')}</p>
               )}
