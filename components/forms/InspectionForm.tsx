@@ -3,13 +3,14 @@
 import React from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { InspectionReportSchema, InspectionFormData } from '@/lib/validations/inspection';
+import { InspectionReportSchema, InspectionFormData, PropertyTemplateSchema } from '@/lib/validations/inspection';
 import { HeaderSection } from './sections/HeaderSection';
 import { CounterSection } from './sections/CounterSection';
 import { RoomSection } from './sections/RoomSection';
 import { SignatureSection } from './sections/SignatureSection';
-import { Save, Send, AlertCircle, FileDown, Loader2 } from 'lucide-react';
+import { Save, Send, AlertCircle, FileDown, Loader2, LayoutGrid } from 'lucide-react';
 import { useInspectionStore } from '@/store/useInspectionStore';
+import { usePropertyStore } from '@/store/usePropertyStore';
 import { generatePDF } from '@/lib/utils/generate-pdf';
 import { PDFTemplate } from '../pdf/PDFTemplate';
 import { useState } from 'react';
@@ -20,9 +21,9 @@ interface Props {
   isTemplateMode?: boolean;
 }
 
-export const InspectionForm: React.FC<Props> = ({ initialData }) => {
-  const setCurrentInspection = useInspectionStore((state) => state.setCurrentInspection);
+export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = false }) => {
   const finalizeInspection = useInspectionStore((state) => state.finalizeInspection);
+  const addTemplate = usePropertyStore((state) => state.addTemplate);
   const [isExporting, setIsExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -32,7 +33,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
   }, []);
   
   const methods = useForm<InspectionFormData>({
-    resolver: zodResolver(InspectionReportSchema) as any,
+    resolver: zodResolver(isTemplateMode ? PropertyTemplateSchema : InspectionReportSchema) as any,
     defaultValues: {
       id: initialData?.id || crypto.randomUUID(),
       propertyId: (initialData as any)?.propertyId || 'prop1',
@@ -78,8 +79,20 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
   const canFinalize = isValid && bothSignaturesPresent && isFinalized;
 
   const onSubmit = (data: InspectionFormData) => {
-    console.log("Données validées prêtes à l'envoi :", data);
-    setCurrentInspection(data);
+    if (isTemplateMode) {
+      const templateData = {
+        id: crypto.randomUUID(),
+        propertyId: data.propertyId,
+        name: `Template ${new Date().toLocaleDateString()}`,
+        rooms: data.rooms,
+        keyInventories: data.keyInventories
+      };
+      addTemplate(templateData);
+      alert("Template enregistré avec succès !");
+      router.push(`/dashboard/properties/${data.propertyId}`);
+      return;
+    }
+
     finalizeInspection(data.id, data as any);
     alert("Rapport finalisé et enregistré avec succès !");
     router.push(`/dashboard/properties/${data.propertyId}`);
@@ -130,17 +143,19 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
         {/* Barre d'Action Supérieure */}
         <div className="sticky top-4 z-20 flex justify-between items-center bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/5 mb-10 mx-2 transition-all duration-300">
           <div className="flex items-center gap-4">
-            <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-500/20">
-              <Save size={20} />
+            <div className={`${isTemplateMode ? 'bg-emerald-600' : 'bg-blue-600'} p-2.5 rounded-xl text-white shadow-lg ${isTemplateMode ? 'shadow-emerald-500/20' : 'shadow-blue-500/20'}`}>
+              {isTemplateMode ? <LayoutGrid size={20} /> : <Save size={20} />}
             </div>
             <div>
-              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-[0.2em]">VestaCheck</p>
-              <h1 className="text-xl font-bold text-white tracking-tight">Rapport d'Inspection</h1>
+              <p className={`text-[10px] ${isTemplateMode ? 'text-emerald-400' : 'text-blue-400'} font-bold uppercase tracking-[0.2em]`}>VestaCheck</p>
+              <h1 className="text-xl font-bold text-white tracking-tight">
+                {isTemplateMode ? "Configuration du Template" : "Rapport d'Inspection"}
+              </h1>
             </div>
           </div>
           
           <div className="flex gap-3">
-            {isFinalized && (
+            {!isTemplateMode && isFinalized && (
               <button
                 type="button"
                 disabled={isExporting}
@@ -154,11 +169,11 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
             
             <button
               type="submit"
-              disabled={!canFinalize}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all active:scale-95 border border-blue-400/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-600 disabled:active:scale-100"
+              disabled={isTemplateMode ? false : !canFinalize}
+              className={`flex items-center gap-2 px-6 py-2 ${isTemplateMode ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'} text-white rounded-xl font-bold shadow-lg transition-all active:scale-95 border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed`}
             >
-              <Send size={18} /> 
-              <span>Finaliser</span>
+              {isTemplateMode ? <Save size={18} /> : <Send size={18} />} 
+              <span>{isTemplateMode ? "Enregistrer le Template" : "Finaliser"}</span>
             </button>
           </div>
         </div>
@@ -166,14 +181,18 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
         {/* Sections du Formulaire */}
         <div className="space-y-4 px-2 relative">
           <fieldset disabled={isLocked} className="space-y-4 relative group/locked">
-            {isLocked && (
+            {isLocked && !isTemplateMode && (
               <div className="absolute inset-x-0 -inset-y-2 z-10 pointer-events-none rounded-2xl border-2 border-amber-500/20 bg-slate-950/20 backdrop-blur-[0.5px] transition-all" />
             )}
-            <HeaderSection />
-            <CounterSection />
+            
+            {!isTemplateMode && <HeaderSection />}
+            
+            <CounterSection isTemplateMode={isTemplateMode} />
+            
             <RoomSection />
           </fieldset>
-          <SignatureSection />
+          
+          {!isTemplateMode && <SignatureSection />}
         </div>
 
         {/* Resume des Erreurs Globales */}
@@ -185,9 +204,9 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
             <div>
               <p className="text-red-400 font-bold text-sm">Des erreurs subsistent dans le formulaire :</p>
               <ul className="list-disc list-inside text-red-400/80 text-xs mt-1.5 space-y-1">
-                {methods.formState.errors.propertyAddress && <li>Adresse manquante ou trop courte</li>}
-                {methods.formState.errors.tenantName && <li>Nom du locataire requis</li>}
-                {methods.formState.errors.counters && <li>Index de compteurs non valides</li>}
+                {!isTemplateMode && methods.formState.errors.propertyAddress && <li>Adresse manquante ou trop courte</li>}
+                {!isTemplateMode && methods.formState.errors.tenantName && <li>Nom du locataire requis</li>}
+                {!isTemplateMode && methods.formState.errors.counters && <li>Index de compteurs non valides</li>}
                 {methods.formState.errors.keyInventories && <li>Inventaire des clés requis</li>}
                 {methods.formState.errors.rooms && <li>Configurez au moins une pièce</li>}
               </ul>

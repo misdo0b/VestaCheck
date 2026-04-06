@@ -38,6 +38,7 @@ export interface PropertyTemplate {
   name: string;
   propertyId: string;
   rooms: Room[];
+  keyInventories?: { id: string; type: string; count: number }[];
 }
 
 export interface SignatureMetadata {
