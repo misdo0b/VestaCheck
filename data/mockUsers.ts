@@ -7,7 +7,10 @@ export const mockUsers: (User & { password: string })[] = [
     email: 'admin@vestacheck.com',
     password: 'password123',
     role: 'Administrateur',
-    agencyId: 'agency_75'
+    agencyId: 'agency_75',
+    serverVersion: 1,
+    lastModified: new Date().toISOString(),
+    syncStatus: 'synced'
   },
   {
     id: 'agent_1',
@@ -15,13 +18,19 @@ export const mockUsers: (User & { password: string })[] = [
     email: 'agent@vestacheck.com',
     password: 'password123',
     role: 'Agent',
-    agencyId: 'agency_75'
+    agencyId: 'agency_75',
+    serverVersion: 1,
+    lastModified: new Date().toISOString(),
+    syncStatus: 'synced'
   },
   {
     id: 'owner_1',
     name: 'Robert Propriétaire',
     email: 'owner@vestacheck.com',
     password: 'password123',
-    role: 'Propriétaire'
+    role: 'Propriétaire',
+    serverVersion: 1,
+    lastModified: new Date().toISOString(),
+    syncStatus: 'synced'
   }
 ];
