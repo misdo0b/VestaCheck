@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
-
+import Image from 'next/image';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,11 +49,16 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md p-8 relative z-10">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-8 transition-all hover:border-white/20">
-          <div className="text-center mb-10">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mb-2">
-              VestaCheck
-            </h1>
-            <p className="text-slate-400">Le futur de la gestion immobilière</p>
+          <div className="flex flex-col items-center mb-10">
+            <Image 
+              src="/assets/logo-horizontal.png" 
+              alt="VestaCheck Logo" 
+              width={220} 
+              height={60} 
+              className="mb-2 h-auto w-auto object-contain"
+              priority
+            />
+            <p className="text-slate-400 text-sm tracking-wide">Le futur de la gestion immobilière</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

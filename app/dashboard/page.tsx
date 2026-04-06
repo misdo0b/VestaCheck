@@ -22,26 +22,7 @@ export default function DashboardPage() {
   const role = user?.role || 'Utilisateur';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200">
-      {/* Navigation */}
-      <nav className="border-b border-white/5 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-xl tracking-tight text-white">VestaCheck</span>
-          </div>
-          <button 
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white border border-transparent hover:border-white/10"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Déconnexion</span>
-          </button>
-        </div>
-      </nav>
-
+    <div className="min-h-screen bg-slate-950 text-slate-200 pt-16">
       <main className="max-w-7xl mx-auto px-4 py-12">
         <header className="mb-12">
           <h1 className="text-4xl font-bold text-white mb-2">Bienvenue, {user?.name || 'Utilisateur'}</h1>

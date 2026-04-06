@@ -62,8 +62,8 @@ export default function PropertyDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200">
-      {/* Header */}
-      <div className="bg-slate-900/50 border-b border-white/5 sticky top-0 z-40 backdrop-blur-xl">
+      {/* Header local qui se place sous la Navbar globale (sticky top-20 car Navbar = 80px/h-20) */}
+      <div className="bg-slate-900/50 border-b border-white/5 sticky top-20 z-40 backdrop-blur-xl">
         <div className="max-w-5xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
