@@ -3,7 +3,7 @@
     "id": "admin_1",
     "name": "Amélie Admin",
     "email": "admin@vestacheck.com",
-    "password": "password123",
+    "password": "$2b$10$huOoUPnhk6HKQAt66VE2PeQar2meUcSXabKGeK2nd.aniMCQhUiUq",
     "role": "Administrateur",
     "agencyId": "agency_75"
   },
@@ -11,7 +11,7 @@
     "id": "agent_1",
     "name": "Jean Agent",
     "email": "agent@vestacheck.com",
-    "password": "password123",
+    "password": "$2b$10$pLFh.X71btgntDObFlr8g.aEmO1JBboKTfKF5sQP58f9k/Qd7lH9e",
     "role": "Agent",
     "agencyId": "agency_75"
   },
@@ -19,14 +19,14 @@
     "id": "owner_1",
     "name": "Robert Propriétaire",
     "email": "owner@vestacheck.com",
-    "password": "password123",
+    "password": "$2b$10$11tDoQl4CWrJiy4KHYmVzOCCTKYcqv7C8o5/fu6T9nSOUdxkUWbOa",
     "role": "Propriétaire"
   },
   {
     "id": "user_wgqsu3a9z",
     "name": "Mehdi",
     "email": "sdougamehdi@gmail.com",
-    "password": "V6vyzpqv",
+    "password": "$2b$10$nBKV7/rGeiD9eHBS8PF9/.2xaDxPNmXI41S/w2O96Qyr/M9aG8GJu",
     "role": "Administrateur",
     "agencyId": "N/A"
   },
@@ -34,7 +34,7 @@
     "id": "user_188n0jffg",
     "name": "Test Validation",
     "email": "test@validation.fr",
-    "password": "test123456",
+    "password": "$2b$10$Pv3IwvnTcMhxuhtKoI6.j.7LcdGU08XIK7iUBmQjr3Dx10svzkBR.",
     "role": "Agent",
     "agencyId": "N/A"
   }

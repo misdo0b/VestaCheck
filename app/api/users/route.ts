@@ -20,9 +20,18 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const users = await request.json();
+    const { hashPassword } = await import('@/lib/utils/password');
+
+    // On hache les mots de passe si ce n'est pas déjà fait (ex: nouvel utilisateur)
+    const hashedUsers = await Promise.all(users.map(async (u: any) => {
+      if (u.password && !u.password.startsWith('$2a$')) {
+        return { ...u, password: await hashPassword(u.password) };
+      }
+      return u;
+    }));
     
     // Pour cet environnement de dev, nous persistons tout le tableau envoyé par le store
-    await fs.writeFile(DB_PATH, JSON.stringify(users, null, 2), 'utf8');
+    await fs.writeFile(DB_PATH, JSON.stringify(hashedUsers, null, 2), 'utf8');
     
     return NextResponse.json({ success: true });
   } catch (error) {

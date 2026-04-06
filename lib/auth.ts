@@ -22,8 +22,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const users = JSON.parse(data);
 
           const user = users.find((u: any) => u.email === credentials.email);
+          const { comparePassword } = await import('@/lib/utils/password');
 
-          if (user && user.password === credentials.password) {
+          if (user && await comparePassword(credentials.password as string, user.password)) {
             // On ne renvoie pas le mot de passe vers le client
             const { password, ...userWithoutPassword } = user;
             return userWithoutPassword;
