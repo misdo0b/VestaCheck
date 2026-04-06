@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { 
@@ -15,26 +16,41 @@ import { generatePDF } from '@/lib/utils/generate-pdf';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+import { useUserStore } from '@/store/useUserStore';
+
 export default function PropertyDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const { properties, templates, getTemplatesByProperty } = usePropertyStore();
   const { inspections } = useInspectionStore();
+  const { users } = useUserStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
 
   const property = properties.find(p => p.id === id);
+  const owner = users.find(u => u.id === property?.ownerId);
+  const agent = users.find(u => u.id === property?.agentId);
   const propertyTemplates = id ? getTemplatesByProperty(id as string) : [];
   const propertyInspections = inspections
     .filter(i => i.propertyId === id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  if (!property) {
+  const { data: session } = useSession();
+  const currentUser = session?.user as any;
+  const userRole = currentUser?.role;
+  const userId = currentUser?.id;
+
+  const isAuthorized = !property || 
+    userRole === 'Administrateur' || 
+    (userRole === 'Agent' && property.agentId === userId) ||
+    (userRole === 'Propriétaire' && property.ownerId === userId);
+
+  if (!property || !isAuthorized) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
         <Building2 className="w-16 h-16 text-slate-800 mb-4" />
-        <h1 className="text-2xl font-bold text-white mb-2">Bien non trouvé</h1>
-        <button onClick={() => router.back()} className="text-blue-400 hover:underline">Retourner à la liste</button>
+        <h1 className="text-2xl font-bold text-white mb-2">Accès restreint ou bien non trouvé</h1>
+        <button onClick={() => router.push('/dashboard/properties')} className="text-blue-400 hover:underline">Retourner à la liste</button>
       </div>
     );
   }
@@ -137,7 +153,17 @@ export default function PropertyDetailPage() {
                   </div>
                   <div>
                     <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">Propriétaire</h4>
-                    <p className="text-lg text-white">ID: {property.ownerId}</p>
+                    <p className="text-lg text-white font-medium">{owner?.name || property.ownerId}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1 text-blue-400/80">Agent responsable</h4>
+                    <p className="text-lg text-blue-400 font-medium">{agent?.name || property.agentId || 'Non assigné'}</p>
                   </div>
                 </div>
               </div>

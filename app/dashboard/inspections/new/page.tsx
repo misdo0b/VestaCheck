@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { InspectionForm } from '@/components/forms/InspectionForm';
-import { ArrowLeft, LayoutGrid, FileText, Sparkles } from 'lucide-react';
-import { PropertyTemplate, Room } from '@/types';
+import { ArrowLeft, LayoutGrid, FileText, Sparkles, ShieldAlert } from 'lucide-react';
+import { PropertyTemplate } from '@/types';
 
 function NewInspectionForm() {
+  const { data: session } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
   const propertyId = searchParams.get('propertyId');
@@ -20,11 +22,25 @@ function NewInspectionForm() {
   const property = properties.find(p => p.id === propertyId);
   const templates = propertyId ? getTemplatesByProperty(propertyId) : [];
 
-  if (!propertyId || !property) {
+  const currentUser = session?.user as any;
+  const userRole = currentUser?.role;
+  const userId = currentUser?.id;
+
+  const isAuthorized = !property || 
+    userRole === 'Administrateur' || 
+    (userRole === 'Agent' && property.agentId === userId) ||
+    (userRole === 'Propriétaire' && property.ownerId === userId);
+
+  if (!propertyId || !property || !isAuthorized) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-        <h1 className="text-xl font-bold text-white mb-4">Aucun bien sélectionné</h1>
-        <button onClick={() => router.push('/dashboard/properties')} className="text-blue-400">Retour aux biens</button>
+        <ShieldAlert className="w-16 h-16 text-slate-800 mb-4" />
+        <h1 className="text-xl font-bold text-white mb-4">
+          {!property ? "Bien non trouvé" : "Accès non autorisé"}
+        </h1>
+        <button onClick={() => router.push('/dashboard/properties')} className="text-blue-400 hover:underline">
+          Retour aux biens
+        </button>
       </div>
     );
   }

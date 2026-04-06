@@ -30,7 +30,8 @@ export const mockProperties: Property[] = [
     surface: 85,
     type: 'Appartement',
     roomCount: 3,
-    ownerId: 'owner1'
+    ownerId: 'owner1',
+    agentId: 'agent1'
   },
   {
     id: 'prop_002',
@@ -39,7 +40,8 @@ export const mockProperties: Property[] = [
     surface: 28,
     type: 'Appartement',
     roomCount: 1,
-    ownerId: 'owner1'
+    ownerId: 'owner1',
+    agentId: 'agent1'
   }
 ];
 
