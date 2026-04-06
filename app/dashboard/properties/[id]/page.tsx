@@ -6,9 +6,12 @@ import { usePropertyStore } from '@/store/usePropertyStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { 
   Building2, MapPin, Maximize, Layers, User, Calendar, 
-  ArrowLeft, Edit3, Plus, FileText, CheckCircle2, Clock, ChevronRight
+  ArrowLeft, Edit3, Plus, FileText, CheckCircle2, Clock, ChevronRight,
+  Eye, FileDown, Loader2
 } from 'lucide-react';
 import { PropertyModal } from '@/components/properties/PropertyModal';
+import { PDFTemplate } from '@/components/pdf/PDFTemplate';
+import { generatePDF } from '@/lib/utils/generate-pdf';
 import Link from 'next/link';
 
 export default function PropertyDetailPage() {
@@ -17,6 +20,7 @@ export default function PropertyDetailPage() {
   const { properties, templates, getTemplatesByProperty } = usePropertyStore();
   const { inspections } = useInspectionStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   const property = properties.find(p => p.id === id);
   const propertyTemplates = id ? getTemplatesByProperty(id as string) : [];
@@ -36,6 +40,25 @@ export default function PropertyDetailPage() {
 
   const lastInspection = propertyInspections[0];
   const isOccupied = lastInspection ? lastInspection.type === 'Entrée' : false;
+
+  const handleExportPDF = async (inspection: any) => {
+    setExportingId(inspection.id);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const safeTenantName = inspection.tenantName
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/gi, '_')
+        .toLowerCase();
+      
+      const fileName = `Rapport_${safeTenantName}_${inspection.date.replace(/\//g, '-')}.pdf`;
+      await generatePDF('inspection-report-pdf-history', fileName);
+    } catch (error) {
+      console.error("Erreur lors de l'export PDF:", error);
+      alert("Une erreur est survenue lors de la génération du PDF.");
+    } finally {
+      setExportingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200">
@@ -170,8 +193,32 @@ export default function PropertyDetailPage() {
                             </span>
                           )}
                         </div>
-                        <h4 className="text-white font-semibold mb-1">Locataire: {inspection.tenantName}</h4>
-                        <p className="text-slate-500 text-xs italic">Inspecteur: {inspection.inspectorId}</p>
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                          <div className="flex flex-col">
+                            <h4 className="text-white font-semibold mb-1">Locataire: {inspection.tenantName}</h4>
+                            <p className="text-slate-500 text-xs italic">Inspecteur: {inspection.inspectorId}</p>
+                          </div>
+                          <div className="flex gap-2">
+                             <Link 
+                                href={`/dashboard/inspections/${inspection.id}`}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-all border border-white/5"
+                             >
+                                <Eye size={14} />
+                                {inspection.isFinalized ? 'Voir' : 'Continuer'}
+                             </Link>
+                             
+                             {inspection.isFinalized && (
+                               <button 
+                                 onClick={() => handleExportPDF(inspection)}
+                                 disabled={exportingId !== null}
+                                 className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg text-xs font-bold transition-all border border-blue-500/10 disabled:opacity-50"
+                               >
+                                 {exportingId === inspection.id ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+                                 PDF
+                               </button>
+                             )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -231,6 +278,16 @@ export default function PropertyDetailPage() {
         onClose={() => setIsEditModalOpen(false)} 
         property={property}
       />
+
+      {/* Template PDF caché pour génération depuis historique */}
+      {exportingId && (
+        <div style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
+          <PDFTemplate 
+            id="inspection-report-pdf-history"
+            data={propertyInspections.find(i => i.id === exportingId) as any} 
+          />
+        </div>
+      )}
     </div>
   );
 }

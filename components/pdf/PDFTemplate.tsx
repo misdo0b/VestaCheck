@@ -14,12 +14,13 @@ const STYLE = {
 
 interface PDFTemplateProps {
   data: InspectionFormData;
+  id?: string;
 }
 
-export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data }) => {
+export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection-report-pdf' }) => {
   return (
     <div 
-      id="inspection-report-pdf"
+      id={id}
       className={`${STYLE.BG_PAPER} p-12 text-slate-800 font-sans`}
       style={{ width: '210mm', minHeight: '297mm' }} // Format A4
     >
@@ -85,23 +86,23 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data }) => {
               </tr>
             </thead>
             <tbody className="text-sm text-slate-700">
-              <tr className="border-b border-slate-100 font-bold">
-                <td className="p-4">Eau potable</td>
-                <td className="p-4 text-blue-600 font-black">{data.counters.water}</td>
-                <td className="p-4 text-slate-400 text-right">m³</td>
-              </tr>
-              <tr className="border-b border-slate-100 font-bold">
-                <td className="p-4">Électricité</td>
-                <td className="p-4 text-amber-600 font-black">{data.counters.electricity}</td>
-                <td className="p-4 text-slate-400 text-right">kWh</td>
-              </tr>
-              {data.counters.gas !== undefined && (
-                <tr className="font-bold">
-                  <td className="p-4">Gaz naturel</td>
-                  <td className="p-4 text-orange-600 font-black">{data.counters.gas}</td>
+                <tr className="border-b border-slate-100 font-bold">
+                  <td className="p-4">Eau potable</td>
+                  <td className="p-4 text-blue-600 font-black">{String(data.counters?.water ?? '0')}</td>
                   <td className="p-4 text-slate-400 text-right">m³</td>
                 </tr>
-              )}
+                <tr className="border-b border-slate-100 font-bold">
+                  <td className="p-4">Électricité</td>
+                  <td className="p-4 text-amber-600 font-black">{String(data.counters?.electricity ?? '0')}</td>
+                  <td className="p-4 text-slate-400 text-right">kWh</td>
+                </tr>
+                {data.counters?.gas !== undefined && (
+                  <tr className="font-bold">
+                    <td className="p-4">Gaz naturel</td>
+                    <td className="p-4 text-orange-600 font-black">{String(data.counters.gas ?? '0')}</td>
+                    <td className="p-4 text-slate-400 text-right">m³</td>
+                  </tr>
+                )}
             </tbody>
           </table>
         </div>
