@@ -1,7 +1,7 @@
 import React from 'react';
 import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import { InspectionFormData } from '@/lib/validations/inspection';
-import { Droplets, Zap, Flame, Key, Plus, Trash2, Hash } from 'lucide-react';
+import { Droplets, Zap, Flame, Key, Plus, Trash2, Hash, Activity } from 'lucide-react';
 
 const KEY_SUGGESTIONS = [
   "Clés du logement", 
@@ -34,68 +34,76 @@ export const CounterSection: React.FC = () => {
   const totalKeys = watchKeys?.reduce((acc, curr) => acc + (Number(curr.count) || 0), 0) || 0;
 
   return (
-    <div className={`bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8 ${
+    <div className={`bg-slate-900/50 p-8 rounded-2xl shadow-xl border border-white/5 mb-8 backdrop-blur-sm ${
       isLocked ? 'opacity-75' : ''
     }`}>
-      <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-        📊 Index des Compteurs & Clés
-      </h2>
+      <div className="flex items-center gap-3 mb-8">
+        <div className="bg-indigo-500/10 p-2 rounded-lg">
+          <Activity className="text-indigo-400" size={24} />
+        </div>
+        <h2 className="text-xl font-bold text-white tracking-tight">
+          Compteurs & Clés
+        </h2>
+      </div>
       
       <fieldset disabled={isLocked}>
         {/* Section Compteurs */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <label className="flex items-center gap-2 text-sm font-semibold text-blue-800 mb-2">
-              <Droplets size={18} /> Eau (m³)
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="bg-blue-500/5 p-5 rounded-2xl border border-blue-500/10 hover:border-blue-500/20 transition-colors group">
+            <label className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">
+              <Droplets size={16} className="group-hover:scale-110 transition-transform" /> Eau (m³)
             </label>
             <input
               type="number"
               step="0.01"
               {...register('counters.water', { valueAsNumber: true })}
-              className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
-                errors.counters?.water ? 'border-red-500' : 'border-blue-200'
+              className={`w-full bg-slate-950/50 border rounded-xl px-4 py-2.5 text-white outline-none focus:ring-4 focus:ring-blue-500/10 transition-all ${
+                errors.counters?.water ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 focus:border-blue-500/50'
               }`}
             />
           </div>
 
-          <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-            <label className="flex items-center gap-2 text-sm font-semibold text-yellow-800 mb-2">
-              <Zap size={18} /> Électricité (kWh)
+          <div className="bg-amber-500/5 p-5 rounded-2xl border border-amber-500/10 hover:border-amber-500/20 transition-colors group">
+            <label className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-widest mb-3">
+              <Zap size={16} className="group-hover:scale-110 transition-transform" /> Électricité (kWh)
             </label>
             <input
               type="number"
               step="1"
               {...register('counters.electricity', { valueAsNumber: true })}
-              className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none ${
-                errors.counters?.electricity ? 'border-red-500' : 'border-yellow-200'
+              className={`w-full bg-slate-950/50 border rounded-xl px-4 py-2.5 text-white outline-none focus:ring-4 focus:ring-amber-500/10 transition-all ${
+                errors.counters?.electricity ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 focus:border-amber-500/50'
               }`}
             />
           </div>
 
-          <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
-            <label className="flex items-center gap-2 text-sm font-semibold text-orange-800 mb-2">
-              <Flame size={18} /> Gaz (m³)
+          <div className="bg-orange-500/5 p-5 rounded-2xl border border-orange-500/10 hover:border-orange-500/20 transition-colors group">
+            <label className="flex items-center gap-2 text-xs font-bold text-orange-400 uppercase tracking-widest mb-3">
+              <Flame size={16} className="group-hover:scale-110 transition-transform" /> Gaz (m³)
             </label>
             <input
               type="number"
               step="0.01"
               {...register('counters.gas', { valueAsNumber: true })}
-              className="w-full p-2 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full bg-slate-950/50 border border-white/10 focus:border-orange-500/50 rounded-xl px-4 py-2.5 text-white outline-none focus:ring-4 focus:ring-orange-500/10 transition-all"
             />
           </div>
         </div>
         
         {/* Section Clés Dynamique */}
-        <div className="border-t border-gray-50 pt-6">
-          <div className="flex justify-between items-center mb-4">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
-              <Key size={18} className="text-blue-600" /> Inventaire des Clés & Badges
-            </label>
+        <div className="border-t border-white/5 pt-8">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2">
+              <Key size={18} className="text-blue-400" />
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                Inventaire des Clés & Badges
+              </label>
+            </div>
             {!isLocked && (
               <button
                 type="button"
                 onClick={() => append({ id: crypto.randomUUID(), type: '', count: 1 })}
-                className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                className="flex items-center gap-2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20"
               >
                 <Plus size={14} /> Ajouter un type
               </button>
@@ -104,33 +112,33 @@ export const CounterSection: React.FC = () => {
 
           <div className="space-y-3">
             {fields.map((field, index) => (
-              <div key={field.id} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg group">
+              <div key={field.id} className="flex items-center gap-4 bg-slate-950/40 p-4 rounded-xl group border border-white/[0.02] hover:border-white/5 transition-all">
                 <div className="flex-1">
                   <input
                     {...register(`keyInventories.${index}.type` as const)}
                     list="key-types"
-                    placeholder="Type de clé (Ex: Clés logement...)"
-                    className="w-full bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none text-sm font-medium"
+                    placeholder="Ex: Clés logement, Badge parking..."
+                    className="w-full bg-transparent border-b border-white/10 focus:border-blue-500/50 outline-none text-sm font-medium text-white placeholder:text-slate-600 pb-1 py-1"
                   />
                   <datalist id="key-types">
                     {KEY_SUGGESTIONS.map(s => <option key={s} value={s} />)}
                   </datalist>
                 </div>
                 
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase">Quantité</span>
+                <div className="flex items-center gap-3 bg-slate-900 px-3 py-1.5 rounded-lg border border-white/5">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Quantité</span>
                   <input
                     type="number"
                     {...register(`keyInventories.${index}.count` as const, { valueAsNumber: true })}
-                    className="w-16 p-1 border border-gray-200 rounded text-center text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-12 bg-transparent text-center text-sm font-bold text-blue-400 outline-none"
                   />
                 </div>
 
-                {!isLocked && index > 0 && (
+                {!isLocked && (
                   <button
                     type="button"
                     onClick={() => remove(index)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-colors p-1"
+                    className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all p-1.5 hover:bg-red-500/10 rounded-lg"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -140,12 +148,12 @@ export const CounterSection: React.FC = () => {
           </div>
 
           {/* Total des Clés */}
-          <div className="mt-4 flex justify-end items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="flex items-center gap-2 text-blue-800">
-              <Hash size={16} />
-              <span className="text-sm font-bold">TOTAL des clés et badges remis :</span>
+          <div className="mt-8 flex justify-end items-center gap-4 p-4 bg-indigo-500/5 rounded-2xl border border-indigo-500/10">
+            <div className="flex items-center gap-2 text-indigo-300">
+              <Hash size={18} />
+              <span className="text-sm font-bold tracking-tight">TOTAL des clés et badges remis :</span>
             </div>
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border-2 border-blue-400 text-blue-900 font-black text-lg shadow-sm">
+            <div className="w-14 h-14 bg-indigo-500 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/20">
               {totalKeys}
             </div>
           </div>

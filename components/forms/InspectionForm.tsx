@@ -31,6 +31,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
     resolver: zodResolver(InspectionReportSchema) as any,
     defaultValues: {
       id: initialData?.id || crypto.randomUUID(),
+      propertyId: (initialData as any)?.propertyId || 'prop1',
       date: initialData?.date || new Date().toISOString().split('T')[0],
       type: initialData?.type || 'Entrée',
       propertyAddress: initialData?.propertyAddress || '',
@@ -103,23 +104,23 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
   };
 
   if (!mounted) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <Loader2 className="animate-spin text-blue-600" size={40} />
+    return <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-500" size={40} />
     </div>;
   }
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(onSubmit)} className="max-w-5xl mx-auto pb-24">
+      <form onSubmit={methods.handleSubmit(onSubmit)} className="max-w-5xl mx-auto pb-24 min-h-screen bg-slate-950">
         {/* Barre d'Action Supérieure */}
-        <div className="sticky top-4 z-20 flex justify-between items-center bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white/20 mb-10 mx-2">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg text-white">
+        <div className="sticky top-4 z-20 flex justify-between items-center bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/5 mb-10 mx-2 transition-all duration-300">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-500/20">
               <Save size={20} />
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest">VestaCheck</p>
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">Édition du Rapport</h1>
+              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-[0.2em]">VestaCheck</p>
+              <h1 className="text-xl font-bold text-white tracking-tight">Rapport d'Inspection</h1>
             </div>
           </div>
           
@@ -128,23 +129,18 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
               type="button"
               disabled={isExporting}
               onClick={handleExportPDF}
-              className="px-4 py-2 text-sm font-bold text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-semibold text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {isExporting ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
               <span className="hidden md:inline">Exporter PDF</span>
             </button>
-            <button
-              type="button"
-              onClick={() => console.log("Sauvegarde temporaire contextuelle")}
-              className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors hidden lg:block"
-            >
-              Brouillon
-            </button>
+            
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-200 transition-all active:scale-95"
+              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all active:scale-95 border border-blue-400/50"
             >
-              <Send size={18} /> Finaliser
+              <Send size={18} /> 
+              <span>Finaliser</span>
             </button>
           </div>
         </div>
@@ -159,11 +155,13 @@ export const InspectionForm: React.FC<Props> = ({ initialData }) => {
 
         {/* Resume des Erreurs Globales */}
         {Object.keys(methods.formState.errors).length > 0 && (
-          <div className="mt-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-            <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
+          <div className="mt-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-4 mx-2">
+            <div className="bg-red-500/20 p-2 rounded-lg">
+              <AlertCircle className="text-red-400 shrink-0" size={20} />
+            </div>
             <div>
-              <p className="text-red-800 font-bold text-sm">Des erreurs subsistent dans le formulaire :</p>
-              <ul className="list-disc list-inside text-red-700 text-xs mt-1 space-y-1">
+              <p className="text-red-400 font-bold text-sm">Des erreurs subsistent dans le formulaire :</p>
+              <ul className="list-disc list-inside text-red-400/80 text-xs mt-1.5 space-y-1">
                 {methods.formState.errors.propertyAddress && <li>Adresse manquante ou trop courte</li>}
                 {methods.formState.errors.tenantName && <li>Nom du locataire requis</li>}
                 {methods.formState.errors.counters && <li>Index de compteurs non valides</li>}
