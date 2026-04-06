@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { StoreInitializer } from "@/components/providers/StoreInitializer";
 import { Navbar } from "@/components/layout/Navbar";
 import { Toaster } from "sonner";
 
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="fr" className="dark">
       <body className="antialiased font-sans bg-slate-950 text-slate-200 min-h-screen">
         <AuthProvider>
+          <StoreInitializer />
           <Navbar />
           {children}
           <Toaster 

@@ -4,8 +4,8 @@ export const ConditionSchema = z.enum(['Neuf', 'Très Bon', 'Bon', 'Usage', 'Mau
 
 export const PhotoMetadataSchema = z.object({
   id: z.string(),
-  fullResBase64: z.string().optional(),
-  compressedBase64: z.string(),
+  compressedBase64: z.string(), // Version miniature (RAM)
+  hasFullRes: z.boolean().optional(), // Présent dans IndexedDB
   cloudUrl: z.string().optional(),
   isSynced: z.boolean(),
 });

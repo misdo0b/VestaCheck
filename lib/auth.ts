@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { mockUsers } from "@/data/mockUsers";
+import fs from 'fs/promises';
+import path from 'path';
 import { UserRole } from "@/types";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -14,12 +15,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = mockUsers.find(u => u.email === credentials.email);
+        try {
+          // Lecture dynamique de la "Base de données" JSON
+          const DB_PATH = path.join(process.cwd(), 'data', 'users-db.json');
+          const data = await fs.readFile(DB_PATH, 'utf8');
+          const users = JSON.parse(data);
 
-        if (user && user.password === credentials.password) {
-          // On ne renvoie pas le mot de passe vers le client
-          const { password, ...userWithoutPassword } = user;
-          return userWithoutPassword;
+          const user = users.find((u: any) => u.email === credentials.email);
+
+          if (user && user.password === credentials.password) {
+            // On ne renvoie pas le mot de passe vers le client
+            const { password, ...userWithoutPassword } = user;
+            return userWithoutPassword;
+          }
+        } catch (error) {
+          console.error("Auth DB Error:", error);
         }
 
         return null;

@@ -16,13 +16,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { User, UserRole } from '@/types';
-import { mockUsers } from '@/data/mockUsers';
+import { useUserStore } from '@/store/useUserStore';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationDialog from '@/components/admin/ConfirmationDialog';
 import ResetPasswordModal from '@/components/admin/ResetPasswordModal';
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const { users, addUser, updateUser, deleteUser } = useUserStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'All'>('All');
   
@@ -45,28 +45,28 @@ export default function UserManagement() {
   }, [users, searchTerm, roleFilter]);
 
   // Actions
-  const handleCreateOrUpdate = (data: Partial<User>) => {
+  const handleCreateOrUpdate = async (data: any) => {
     if (selectedUser) {
-      // Update (not strictly requested but good for maturity)
-      setUsers(users.map(u => u.id === selectedUser.id ? { ...u, ...data } as User : u));
+      await updateUser(selectedUser.id, data);
     } else {
       // Create
       const newUser: User = {
         id: `user_${Math.random().toString(36).substr(2, 9)}`,
         name: data.name!,
         email: data.email!,
+        password: data.password || 'password123',
         role: data.role as UserRole,
         agencyId: data.agencyId || 'N/A'
       };
-      setUsers([newUser, ...users]);
+      await addUser(newUser);
     }
     setIsModalOpen(false);
     setSelectedUser(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedUser) {
-      setUsers(users.filter(u => u.id !== selectedUser.id));
+      await deleteUser(selectedUser.id);
       setIsConfirmOpen(false);
       setSelectedUser(null);
     }
@@ -74,12 +74,8 @@ export default function UserManagement() {
 
   const handleResetPassword = (newPassword: string) => {
     if (selectedUser) {
-      // Simulate direct update in state
-      setUsers(users.map(u => 
-        u.id === selectedUser.id ? { ...u, password: newPassword } as any : u
-      ));
+      updateUser(selectedUser.id, { password: newPassword } as any);
       console.log(`Password updated for ${selectedUser.email}: ${newPassword}`);
-      // The ResetPasswordModal handles the success state and closing
     }
   };
 

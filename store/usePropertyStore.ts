@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Property, PropertyTemplate, Room } from '@/types';
 import { mockProperties } from '@/data/mock-data';
+import { idbStorage } from '@/lib/utils/store-storage';
 
 interface PropertyState {
   properties: Property[];
@@ -18,14 +19,14 @@ interface PropertyState {
   setTemplates: (templates: PropertyTemplate[]) => void;
   addTemplate: (template: PropertyTemplate) => void;
   updateTemplate: (id: string, updates: Partial<PropertyTemplate>) => void;
-  getTemplatesByProperty: (propertyId: string) => PropertyTemplate[];
+  getTemplatesByProperty: (propertyId: string) => PropertyTemplate[] | undefined;
 }
 
 export const usePropertyStore = create<PropertyState>()(
   persist(
     (set, get) => ({
       properties: mockProperties,
-      templates: [], // Initialement vide, à charger si besoin
+      templates: [], 
       loading: false,
 
       setProperties: (properties) => set({ properties }),
@@ -53,12 +54,12 @@ export const usePropertyStore = create<PropertyState>()(
       })),
 
       getTemplatesByProperty: (propertyId) => {
-        return get().templates.filter(t => t.propertyId === propertyId);
+        return get().templates?.filter(t => t.propertyId === propertyId);
       }
     }),
     {
       name: 'vestacheck-properties-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => idbStorage),
     }
   )
 );

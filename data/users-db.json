@@ -1,0 +1,41 @@
+[
+  {
+    "id": "admin_1",
+    "name": "Amélie Admin",
+    "email": "admin@vestacheck.com",
+    "password": "password123",
+    "role": "Administrateur",
+    "agencyId": "agency_75"
+  },
+  {
+    "id": "agent_1",
+    "name": "Jean Agent",
+    "email": "agent@vestacheck.com",
+    "password": "password123",
+    "role": "Agent",
+    "agencyId": "agency_75"
+  },
+  {
+    "id": "owner_1",
+    "name": "Robert Propriétaire",
+    "email": "owner@vestacheck.com",
+    "password": "password123",
+    "role": "Propriétaire"
+  },
+  {
+    "id": "user_wgqsu3a9z",
+    "name": "Mehdi",
+    "email": "sdougamehdi@gmail.com",
+    "password": "V6vyzpqv",
+    "role": "Administrateur",
+    "agencyId": "N/A"
+  },
+  {
+    "id": "user_188n0jffg",
+    "name": "Test Validation",
+    "email": "test@validation.fr",
+    "password": "test123456",
+    "role": "Agent",
+    "agencyId": "N/A"
+  }
+]

@@ -10,8 +10,8 @@ export interface InspectionItem {
 
 export interface PhotoMetadata {
   id: string;
-  fullResBase64?: string;   // Version brute avant synchro (temporaire)
-  compressedBase64: string; // Version miniature pour le mode offline
+  compressedBase64: string; // Version miniature pour le mode offline (RAM)
+  hasFullRes?: boolean;      // Indique si la version HD est dans IndexedDB
   cloudUrl?: string;        // URL distante après synchro
   isSynced: boolean;
 }
@@ -87,6 +87,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string; // Optionnel pour les transferts client, requis pour l'auth
   role: UserRole;
   agencyId?: string; // Pour regrouper des agents par agence
 }

@@ -3,7 +3,7 @@ import { useFormContext } from 'react-hook-form';
 import { useSession } from 'next-auth/react';
 import { InspectionFormData } from '@/lib/validations/inspection';
 import { SignaturePad } from '../../ui/SignaturePad';
-import { PenTool, Lock } from 'lucide-react';
+import { PenTool, Lock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const SignatureSection: React.FC = () => {
@@ -37,7 +37,8 @@ export const SignatureSection: React.FC = () => {
     setActivePad(null);
   };
 
-  const isLocked = !!(tenantSig?.drawData || inspectorSig?.drawData);
+  const isLocked = !!(tenantSig?.drawData && inspectorSig?.drawData);
+  const isDataLocked = !!(tenantSig?.drawData || inspectorSig?.drawData);
 
   // Composant réutilisable pour la boîte de signature
   const SignatureBox = ({ role, label, data }: { role: 'tenant' | 'inspector', label: string, data?: string }) => (
@@ -69,9 +70,15 @@ export const SignatureSection: React.FC = () => {
 
   return (
     <div className="bg-slate-900/50 p-8 rounded-2xl shadow-xl border border-white/5 mb-8 overflow-hidden relative backdrop-blur-sm">
+      {isDataLocked && !isLocked && (
+        <div className="absolute top-6 right-8 flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20 text-[10px] font-bold uppercase tracking-wider animate-pulse transition-all">
+          <Lock size={12} /> Données Verrouillées - Signatures en cours
+        </div>
+      )}
+
       {isLocked && (
-        <div className="absolute top-6 right-8 flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20 text-[10px] font-bold uppercase tracking-wider animate-pulse transition-all">
-          <Lock size={12} /> Dossier Verrouillé - Signatures en cours
+        <div className="absolute top-6 right-8 flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider transition-all">
+          <CheckCircle2 size={12} className="text-emerald-400" /> Signatures Complètes
         </div>
       )}
 

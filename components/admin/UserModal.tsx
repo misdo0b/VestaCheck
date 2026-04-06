@@ -10,6 +10,7 @@ import { User, UserRole } from '@/types';
 const userSchema = z.object({
   name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
   email: z.string().email('Adresse email invalide'),
+  password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères').optional().or(z.literal('')),
   role: z.enum(['Administrateur', 'Agent', 'Propriétaire']),
   agencyId: z.string().optional(),
 });
@@ -99,6 +100,23 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
               />
             </div>
             {errors.email && <p className="text-xs text-red-500 mt-1 ml-1">{errors.email.message}</p>}
+          </div>
+
+          {/* Password (for new users) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+              {user ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe initial'}
+            </label>
+            <div className="relative group">
+              <Save className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input 
+                {...register('password')}
+                type="password"
+                placeholder="••••••••"
+                className={`w-full bg-slate-950 border ${errors.password ? 'border-red-500/50' : 'border-white/5'} rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 ${errors.password ? 'focus:ring-red-500/20' : 'focus:ring-blue-500/20'} transition-all`}
+              />
+            </div>
+            {errors.password && <p className="text-xs text-red-500 mt-1 ml-1">{errors.password.message}</p>}
           </div>
 
           {/* Role & Agency Grid */}
