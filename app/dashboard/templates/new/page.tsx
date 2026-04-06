@@ -10,9 +10,11 @@ function NewTemplateForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const propertyId = searchParams.get('propertyId');
-  const { properties } = usePropertyStore();
+  const templateId = searchParams.get('templateId');
+  const { properties, templates } = usePropertyStore();
   
   const property = properties.find(p => p.id === propertyId);
+  const existingTemplate = templateId ? templates.find(t => t.id === templateId) : null;
 
   if (!propertyId || !property) {
     return (
@@ -23,14 +25,21 @@ function NewTemplateForm() {
     );
   }
 
-  const initialData = {
+  const initialData = existingTemplate ? {
+    propertyId: property.id,
+    propertyAddress: property.address,
+    ownerId: property.ownerId,
+    templateName: existingTemplate.name,
+    rooms: existingTemplate.rooms,
+    keyInventories: existingTemplate.keyInventories || []
+  } : {
     propertyId: property.id,
     propertyAddress: property.address,
     ownerId: property.ownerId,
     rooms: [
       {
         id: 'initial_room_1',
-        name: '', // Empty string to avoid concatenation with user input
+        name: '', 
         items: [
           { id: 'initial_item_1', label: 'Murs', condition: 'Bon' as const, comment: '', photos: [] },
           { id: 'initial_item_2', label: 'Sols', condition: 'Bon' as const, comment: '', photos: [] }
@@ -50,7 +59,9 @@ function NewTemplateForm() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-white">Nouveau Template</h1>
+            <h1 className="text-xl font-bold text-white">
+              {templateId ? 'Modifier le Template' : 'Nouveau Template'}
+            </h1>
             <p className="text-xs text-blue-400 font-semibold">{property.name}</p>
           </div>
         </div>
@@ -61,7 +72,11 @@ function NewTemplateForm() {
       </div>
       
       <div className="mt-8">
-        <InspectionForm initialData={initialData as any} isTemplateMode={true} />
+        <InspectionForm 
+          initialData={initialData as any} 
+          isTemplateMode={true} 
+          templateId={templateId || undefined} 
+        />
       </div>
     </div>
   );

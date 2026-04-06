@@ -8,6 +8,7 @@ import { X, Save, Trash2, Home, MapPin, Maximize, Layers, User } from 'lucide-re
 import { Property, User as UserType } from '@/types';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { mockUsers } from '@/data/mock-data';
+import { toast } from 'sonner';
 
 const propertySchema = z.object({
   name: z.string().min(3, "Le nom doit faire au moins 3 caractères"),
@@ -57,12 +58,14 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
   const onSubmit = (data: PropertyFormData) => {
     if (property) {
       updateProperty(property.id, data);
+      toast.success("Bien immobilier mis à jour !");
     } else {
       addProperty({
         ...data,
         id: `prop_${Date.now()}`,
         templateIds: []
       });
+      toast.success("Nouveau bien immobilier ajouté !");
     }
     onClose();
   };
@@ -168,6 +171,7 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
                 onClick={() => {
                   if (confirm('Supprimer ce bien ?')) {
                     deleteProperty(property.id);
+                    toast.success("Le bien a été supprimé.");
                     onClose();
                   }
                 }}

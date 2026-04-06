@@ -13,6 +13,7 @@ import { PropertyModal } from '@/components/properties/PropertyModal';
 import { PDFTemplate } from '@/components/pdf/PDFTemplate';
 import { generatePDF } from '@/lib/utils/generate-pdf';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
@@ -52,9 +53,10 @@ export default function PropertyDetailPage() {
       
       const fileName = `Rapport_${safeTenantName}_${inspection.date.replace(/\//g, '-')}.pdf`;
       await generatePDF('inspection-report-pdf-history', fileName);
+      toast.success("PDF généré avec succès !");
     } catch (error) {
       console.error("Erreur lors de l'export PDF:", error);
-      alert("Une erreur est survenue lors de la génération du PDF.");
+      toast.error("Une erreur est survenue lors de la génération du PDF.");
     } finally {
       setExportingId(null);
     }
@@ -250,13 +252,22 @@ export default function PropertyDetailPage() {
               <div className="space-y-3">
                 {propertyTemplates.length > 0 ? (
                   propertyTemplates.map(template => (
-                    <button key={template.id} className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-sm transition-colors text-left">
-                      <div className="flex flex-col">
-                        <span className="text-white font-medium">{template.name}</span>
-                        <span className="text-[10px] text-slate-500 uppercase">{template.rooms.length} pièces configurées</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-500" />
-                    </button>
+                    <div key={template.id} className="flex gap-2 group">
+                      <button className="flex-1 flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-sm transition-colors text-left">
+                        <div className="flex flex-col">
+                          <span className="text-white font-medium">{template.name}</span>
+                          <span className="text-[10px] text-slate-500 uppercase">{template.rooms.length} pièces configurées</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-500" />
+                      </button>
+                      <Link 
+                        href={`/dashboard/templates/new?propertyId=${property.id}&templateId=${template.id}`}
+                        className="p-3 bg-white/5 hover:bg-blue-600/20 border border-white/5 hover:border-blue-500/20 rounded-xl text-slate-500 hover:text-blue-400 transition-all flex items-center justify-center"
+                        title="Modifier le template"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Link>
+                    </div>
                   ))
                 ) : (
                   <p className="text-slate-500 text-xs">Aucun template spécifique lié.</p>

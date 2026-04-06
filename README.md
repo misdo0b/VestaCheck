@@ -10,34 +10,28 @@
 
 ## 📸 Aperçu de l'Application
 
-### Dashboard Principal
-L'interface centrale offre un accès rapide à la gestion immobilière, aux inspections en cours et à l'administration du personnel.
-![Dashboard](public/assets/screenshots/dashboard.png)
+### Dashboard & Notifications
+L'interface utilise un système de notifications "Glassmorphism" (Sonner) pour un feedback utilisateur élégant et non intrusif.
+![Notifications](public/assets/screenshots/notifications-demo.png)
 
-### Gestion du Parc Immobilier
-Visualisez vos biens et accédez à l'historique complet de chaque logement.
-![Propriétés](public/assets/screenshots/properties.png)
+### Gestion du Parc & Templates
+Chaque bien dispose de ses propres modèles de configuration (templates) éditables pour accélérer les futurs états des lieux.
+![Détails Bien](public/assets/screenshots/property-details.png)
 
-### États des Lieux Multi-Section
-Un historique clair pour chaque propriété, permettant de comparer les états d'entrée et de sortie.
-![Inspections](public/assets/screenshots/inspections.png)
-
-### Administration & Rôles
-Gestion fine des accès pour les Administrateurs, Agents et Propriétaires.
-![Admin](public/assets/screenshots/admin.png)
+### Rapports PDF Haute Définition
+Génération de documents officiels avec en-têtes répétables, pagination automatique et rendu net (Scale x3).
+![PDF Export](public/assets/screenshots/inspections.png)
 
 ---
 
-## 🔥 Fonctionnalités Clés
+## 🔥 Fonctionnalités Avancées
 
 - 🏠 **Hiérarchie Structurée** : Organisation par Propriété > Inspection > Pièce > Élément.
-- 📸 **Documentation Visuelle** : Prise de photos en temps réel pour justifier l'état de chaque élément.
-- ✍️ **Signature Électronique** : Signature tactile directement sur l'interface pour validation immédiate.
-- 📄 **Génération PDF** : Export instantané de rapports professionnels et certifiés.
-- 🔐 **Rôles & Permissions** : 
-  - **Administrateur** : Vue d'ensemble et gestion des agences.
-  - **Agent** : Création et réalisation des inspections sur le terrain.
-  - **Propriétaire** : Accès en lecture seule à ses biens et rapports.
+- 📋 **Gestion de Templates** : Création, nommage et édition de modèles par bien (ex: "T2 Standard", "Meublé Luxe").
+- 📄 **Moteur PDF HD** : Exportation haute fidélité utilisant un système de capture par couches pour une netteté maximale.
+- 🔔 **Notifications Globales** : Système de toast `Sonner` intégré avec support du Dark Mode.
+- ✍️ **Signature Électronique** : Signature tactile sécurisée avec verrouillage automatique du rapport.
+- 🔐 **Rôles & Permissions** : Accès segmentés (Administrateur, Agent, Propriétaire).
 - 📡 **Mode Hors-Ligne** : Optimistic UI permettant la saisie fluide même sans connexion réseau.
 
 ---
@@ -45,19 +39,20 @@ Gestion fine des accès pour les Administrateurs, Agents et Propriétaires.
 ## 🛠️ Stack Technique
 
 ### Frontend & Framework
-- **React 19 / Next.js 15 (App Router)** : Performance et SEO optimisés.
-- **Tailwind CSS** : Design "Glassmorphism" et interface responsive.
-- **Lucide React** : Iconographie moderne.
+- **React 19 / Next.js 15 (App Router)** : Performance et rendu hybride (SSR/CSR).
+- **Tailwind CSS** : Design system sur-mesure et composants "Glassmorphism".
+- **Lucide React** : Iconographie vectorielle.
+- **Sonner** : Moteur de notifications interactives.
 
 ### Logique & Data
-- **TypeScript** : Typage strict pour une robustesse maximale (Schéma `InspectionReport`).
-- **Zustand** : Gestion d'état global et persistance locale.
-- **NextAuth.js v5** : Authentification sécurisée et gestion de sessions.
-- **React Hook Form + Zod** : Validation de formulaires complexe.
+- **TypeScript** : Typage strict (Schéma `InspectionReport` et `PropertyTemplate`).
+- **Zustand** : Store global persistant (localStorage) pour le mode déconnecté.
+- **NextAuth.js v5** : Authentification sécurisée.
+- **React Hook Form + Zod** : Moteur de validation de schémas complexe.
 
-### Outils Spécialisés
-- **jsPDF / html2canvas** : Moteur de génération de documents PDF.
-- **React Signature Canvas** : Module de signature électronique.
+### Moteur de Document
+- **jsPDF / html2canvas** : Génération de PDF HD avec gestion dynamique des sauts de page.
+- **React Signature Canvas** : Capture de signatures manuscrites.
 
 ---
 
@@ -70,8 +65,6 @@ npm install
 # Lancement en mode développement
 npm run dev
 ```
-
-L'application sera accessible sur [http://localhost:3000](http://localhost:3000).
 
 ---
 

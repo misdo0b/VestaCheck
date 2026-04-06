@@ -15,15 +15,19 @@ import { generatePDF } from '@/lib/utils/generate-pdf';
 import { PDFTemplate } from '../pdf/PDFTemplate';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface Props {
-  initialData?: Partial<InspectionFormData>;
+  initialData?: Partial<InspectionFormData> & { templateName?: string };
   isTemplateMode?: boolean;
+  templateId?: string;
 }
 
-export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = false }) => {
+export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = false, templateId }) => {
   const finalizeInspection = useInspectionStore((state) => state.finalizeInspection);
   const addTemplate = usePropertyStore((state) => state.addTemplate);
+  const updateTemplate = usePropertyStore((state) => state.updateTemplate);
+  const [templateName, setTemplateName] = useState(initialData?.templateName || '');
   const [isExporting, setIsExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -80,21 +84,32 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
 
   const onSubmit = (data: InspectionFormData) => {
     if (isTemplateMode) {
-      const templateData = {
-        id: crypto.randomUUID(),
-        propertyId: data.propertyId,
-        name: `Template ${new Date().toLocaleDateString()}`,
-        rooms: data.rooms,
-        keyInventories: data.keyInventories
-      };
-      addTemplate(templateData);
-      alert("Template enregistré avec succès !");
+      if (templateId) {
+        // Mode Édition
+        updateTemplate(templateId, {
+          name: templateName || `Template ${new Date().toLocaleDateString()}`,
+          rooms: data.rooms,
+          keyInventories: data.keyInventories
+        });
+        toast.success("Template mis à jour avec succès !");
+      } else {
+        // Mode Création
+        const templateData = {
+          id: crypto.randomUUID(),
+          propertyId: data.propertyId,
+          name: templateName || `Template ${new Date().toLocaleDateString()}`,
+          rooms: data.rooms,
+          keyInventories: data.keyInventories
+        };
+        addTemplate(templateData);
+        toast.success("Template enregistré avec succès !");
+      }
       router.push(`/dashboard/properties/${data.propertyId}`);
       return;
     }
 
     finalizeInspection(data.id, data as any);
-    alert("Rapport finalisé et enregistré avec succès !");
+    toast.success("Rapport finalisé et enregistré avec succès !");
     router.push(`/dashboard/properties/${data.propertyId}`);
   };
 
@@ -123,9 +138,10 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       console.log("Lancement du téléchargement PDF :", fileName);
       
       await generatePDF('inspection-report-pdf', fileName);
+      toast.success("PDF généré avec succès !");
     } catch (error) {
       console.error("Erreur lors de l'export PDF:", error);
-      alert("Une erreur est survenue lors de la génération du PDF.");
+      toast.error("Une erreur est survenue lors de la génération du PDF.");
     } finally {
       setIsExporting(false);
     }
@@ -180,6 +196,24 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
 
         {/* Sections du Formulaire */}
         <div className="space-y-4 px-2 relative">
+          {isTemplateMode && (
+             <div className="mb-6 p-6 bg-slate-900/40 border border-emerald-500/20 rounded-3xl backdrop-blur-sm shadow-xl shadow-emerald-500/5">
+                <label className="block text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-3">
+                  Nom du Template de Configuration
+                </label>
+                <div className="relative group">
+                  <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/50 group-focus-within:text-emerald-400 transition-colors" size={20} />
+                  <input 
+                    type="text"
+                    placeholder="Ex: Configuration Standard Studio / T2..."
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-semibold"
+                  />
+                </div>
+             </div>
+          )}
+          
           <fieldset disabled={isLocked} className="space-y-4 relative group/locked">
             {isLocked && !isTemplateMode && (
               <div className="absolute inset-x-0 -inset-y-2 z-10 pointer-events-none rounded-2xl border-2 border-amber-500/20 bg-slate-950/20 backdrop-blur-[0.5px] transition-all" />

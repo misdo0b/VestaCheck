@@ -17,6 +17,7 @@ interface PropertyState {
   // Template Actions
   setTemplates: (templates: PropertyTemplate[]) => void;
   addTemplate: (template: PropertyTemplate) => void;
+  updateTemplate: (id: string, updates: Partial<PropertyTemplate>) => void;
   getTemplatesByProperty: (propertyId: string) => PropertyTemplate[];
 }
 
@@ -45,6 +46,10 @@ export const usePropertyStore = create<PropertyState>()(
 
       addTemplate: (template) => set((state) => ({
         templates: [...state.templates, template]
+      })),
+
+      updateTemplate: (id, updates) => set((state) => ({
+        templates: state.templates.map(t => t.id === id ? { ...t, ...updates } : t)
       })),
 
       getTemplatesByProperty: (propertyId) => {
