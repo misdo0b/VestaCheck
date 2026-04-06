@@ -1,25 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useFormContext } from 'react-hook-form';
+import { useSession } from 'next-auth/react';
 import { InspectionFormData } from '@/lib/validations/inspection';
 import { SignaturePad } from '../../ui/SignaturePad';
-import { PenTool, Mail, CheckCircle, Lock, Smartphone } from 'lucide-react';
+import { PenTool, Lock } from 'lucide-react';
 
 export const SignatureSection: React.FC = () => {
-  const { register, trigger, setValue, watch, formState: { errors } } = useFormContext<InspectionFormData>();
-  const [activePad, setActivePad] = useState<'tenant' | null | 'inspector'>(null);
+  const { data: session } = useSession();
+  const { register, setValue, watch } = useFormContext<InspectionFormData>();
 
+  const agentName = session?.user?.name || "Agent VestaCheck";
   const tenantSig = watch('signatures.tenant');
   const inspectorSig = watch('signatures.inspector');
-
-  const openSignaturePad = async (role: 'tenant' | 'inspector') => {
-    // On déclenche la validation des champs obligatoires avant de permettre la signature
-    const isValid = await trigger(['propertyAddress', 'tenantName', 'tenantEmail', 'tenantPhone', 'date', 'rooms']);
-    if (isValid) {
-      setActivePad(role);
-    } else {
-      alert("Veuillez remplir tous les champs obligatoires (adresse, locataire, date, au moins une pièce avec élément) avant de signer.");
-    }
-  };
 
   const handleSaveSignature = (role: 'tenant' | 'inspector', base64: string) => {
     setValue(`signatures.${role}`, {
@@ -51,52 +43,40 @@ export const SignatureSection: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* Signature Locataire */}
         <div className="space-y-4">
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">
-            Signature du Locataire
+          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 text-center">
+            Le Locataire
           </label>
-          <div className="border-2 border-dashed border-white/5 rounded-3xl h-56 flex flex-col items-center justify-center bg-slate-950/40 p-6 relative group/sig overflow-hidden shadow-inner">
+          <div className="relative group/sig">
             {tenantSig?.drawData ? (
-              <img src={tenantSig.drawData} alt="Signature Locataire" className="max-h-full max-w-full object-contain brightness-110 contrast-125" />
-            ) : (
-              <div className="flex flex-col items-center gap-5">
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => openSignaturePad('tenant')}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all text-xs font-bold shadow-lg shadow-blue-600/20"
-                  >
-                    <PenTool size={14} /> Signer au doigt
-                  </button>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20 transition-all text-xs font-bold"
-                  >
-                    <Smartphone size={14} /> SMS
-                  </button>
-                </div>
-                <p className="text-[10px] text-slate-600 font-medium tracking-wide uppercase">Capture locale ou distante</p>
+              <div className="bg-slate-200 rounded-3xl h-64 flex items-center justify-center p-6 border border-slate-300 shadow-inner overflow-hidden">
+                 <img src={tenantSig.drawData} alt="Signature Locataire" className="max-h-full max-w-full object-contain mix-blend-multiply transition-transform hover:scale-105 duration-500" />
               </div>
+            ) : (
+              <SignaturePad 
+                title="Signature du Locataire" 
+                onSave={(base64) => handleSaveSignature('tenant', base64)} 
+                onClose={() => {}}
+              />
             )}
           </div>
         </div>
 
-        {/* Signature Inspecteur */}
+        {/* Signature Agent */}
         <div className="space-y-4">
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">
-            Signature de l'Inspecteur
+          <label className="block text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] mb-4 text-center">
+            {agentName} (Agent)
           </label>
-          <div className="border-2 border-dashed border-white/5 rounded-3xl h-56 flex flex-col items-center justify-center bg-slate-950/40 p-6 relative group/sig overflow-hidden shadow-inner">
+          <div className="relative group/sig">
             {inspectorSig?.drawData ? (
-              <img src={inspectorSig.drawData} alt="Signature Inspecteur" className="max-h-full max-w-full object-contain brightness-110 contrast-125" />
+              <div className="bg-slate-200 rounded-3xl h-64 flex items-center justify-center p-6 border border-slate-300 shadow-inner overflow-hidden">
+                 <img src={inspectorSig.drawData} alt="Signature Agent" className="max-h-full max-w-full object-contain mix-blend-multiply transition-transform hover:scale-105 duration-500" />
+              </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => openSignaturePad('inspector')}
-                className="flex items-center gap-3 px-6 py-3 bg-slate-100 text-slate-900 rounded-2xl hover:bg-white transition-all text-sm font-bold shadow-xl active:scale-95 flex items-center"
-              >
-                <CheckCircle size={18} className="text-blue-600 focus:ring-4 focus:ring-blue-500/10" /> 
-                <span>Signer le rapport</span>
-              </button>
+              <SignaturePad 
+                title={`Signature de : ${agentName}`} 
+                onSave={(base64) => handleSaveSignature('inspector', base64)} 
+                onClose={() => {}}
+              />
             )}
           </div>
         </div>
@@ -118,14 +98,6 @@ export const SignatureSection: React.FC = () => {
           </span>
         </label>
       </div>
-
-      {activePad && (
-        <SignaturePad
-          title={activePad === 'tenant' ? 'Signature du Locataire' : "Signature de l'Inspecteur"}
-          onSave={(base64) => handleSaveSignature(activePad, base64)}
-          onClose={() => setActivePad(null)}
-        />
-      )}
     </div>
   );
 };
