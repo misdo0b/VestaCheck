@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { InspectionFormData } from '@/lib/validations/inspection';
 import { SignaturePad } from '../../ui/SignaturePad';
 import { PenTool, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const SignatureSection: React.FC = () => {
   const { data: session } = useSession();
@@ -20,7 +21,10 @@ export const SignatureSection: React.FC = () => {
     if (isValid) {
       setActivePad(role);
     } else {
-      alert("Veuillez remplir les informations obligatoires (ADRESSE, LOCATAIRE, DATE, PIÈCES) avant de signer. Le formulaire sera ensuite verrouillé.");
+      toast.error("Veuillez remplir les informations obligatoires (ADRESSE, LOCATAIRE, DATE, PIÈCES) avant de signer.", {
+        description: "Le formulaire sera ensuite verrouillé pour garantir l'intégrité du rapport.",
+        duration: 5000
+      });
     }
   };
 
