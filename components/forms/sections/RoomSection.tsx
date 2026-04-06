@@ -51,7 +51,7 @@ export const RoomSection: React.FC = () => {
         )}
       </div>
 
-      <fieldset disabled={isLocked} className="space-y-6">
+      <div className="space-y-6">
         {roomFields.map((room, roomIndex) => (
           <RoomCard 
             key={room.id} 
@@ -60,7 +60,7 @@ export const RoomSection: React.FC = () => {
             onRemove={() => removeRoom(roomIndex)} 
           />
         ))}
-      </fieldset>
+      </div>
 
       {errors.rooms && (
         <p className="text-red-500 text-sm mt-4 text-center italic">{errors.rooms.message}</p>
@@ -77,100 +77,138 @@ const RoomCard: React.FC<{ roomIndex: number; onRemove: () => void; isLocked: bo
   });
 
   return (
-    <div className="bg-slate-900/40 rounded-2xl shadow-xl border border-white/5 overflow-hidden backdrop-blur-sm group/room transition-all hover:border-white/10 mx-2">
-      <div className="bg-slate-950/40 px-6 py-4 border-b border-white/5 flex justify-between items-center">
-        <div className="flex items-center gap-3 flex-1">
+    <div className="bg-slate-900/40 rounded-3xl shadow-xl border border-white/5 overflow-hidden backdrop-blur-sm group/room transition-all hover:border-white/10 mx-2">
+      {/* En-tête de la pièce */}
+      <div className="bg-slate-950/40 px-6 py-5 border-b border-white/5 flex justify-between items-center sm:gap-4 flex-wrap">
+        <div className="flex items-center gap-4 flex-1 min-w-[200px]">
+          <div className="p-2 bg-blue-500/10 rounded-xl">
+             <LayoutGrid className="text-blue-400" size={18} />
+          </div>
           <input
             {...register(`rooms.${roomIndex}.name`)}
-            placeholder="Nom de la pièce (ex: Salon...)"
-            className="bg-transparent font-bold text-white outline-none border-b border-transparent focus:border-blue-500/50 w-full md:w-1/3 text-lg placeholder:text-slate-600"
+            placeholder="Ex : Salon, Cuisine..."
+            className="bg-transparent font-bold text-white outline-none border-b border-transparent focus:border-blue-500/50 w-full text-lg placeholder:text-slate-600 focus:placeholder:text-slate-700 transition-all"
           />
         </div>
         {!isLocked && (
           <button
             type="button"
             onClick={onRemove}
-            className="text-slate-500 hover:text-red-400 p-2 rounded-xl hover:bg-red-500/10 transition-all opacity-0 group-hover/room:opacity-100"
+            className="text-slate-500 hover:text-red-400 p-2.5 rounded-xl hover:bg-red-500/10 transition-all opacity-0 group-hover/room:opacity-100"
+            title="Supprimer la pièce"
           >
             <Trash2 size={20} />
           </button>
         )}
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="text-[10px] uppercase tracking-[0.15em] text-slate-500 bg-slate-950/20">
-              <th className="px-8 py-3 font-bold">Élément</th>
-              <th className="px-4 py-3 font-bold w-40">État</th>
-              <th className="px-4 py-3 font-bold text-right md:text-left">Observations</th>
-              <th className="px-4 py-3 font-bold w-28 text-center">Photos</th>
-              {!isLocked && <th className="px-4 py-3 w-12"></th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/[0.03]">
-            {itemFields.map((item, itemIndex) => (
-              <tr key={item.id} className="group/item hover:bg-white/[0.02] transition-colors">
-                <td className="px-8 py-4">
-                  <input
-                    {...register(`rooms.${roomIndex}.items.${itemIndex}.label` as const)}
-                    list={`suggestions-${roomIndex}`}
-                    className="w-full bg-transparent border-b border-transparent focus:border-blue-500/30 outline-none text-sm font-medium text-slate-200 placeholder:text-slate-700"
-                    placeholder="Désignation..."
-                  />
-                  <datalist id={`suggestions-${roomIndex}`}>
-                    {ITEM_SUGGESTIONS.map(s => <option key={s} value={s} />)}
-                  </datalist>
-                </td>
-                <td className="px-4 py-4">
-                  <select
-                    {...register(`rooms.${roomIndex}.items.${itemIndex}.condition` as const)}
-                    className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 transition-all appearance-none cursor-pointer"
-                  >
-                    {ConditionSchema.options.map(opt => (
-                      <option key={opt} value={opt} className="bg-slate-900 text-white">{opt}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-4 py-4">
-                  <input
-                    {...register(`rooms.${roomIndex}.items.${itemIndex}.comment` as const)}
-                    placeholder="Ajouter une observation..."
-                    className="w-full bg-transparent border-b border-transparent focus:border-blue-500/30 outline-none text-xs text-slate-400 placeholder:text-slate-700 italic"
-                  />
-                </td>
-                <td className="px-4 py-4 text-center">
-                  <div className="flex justify-center scale-90">
-                    <PhotoManager roomIndex={roomIndex} itemIndex={itemIndex} />
-                  </div>
-                </td>
-                {!isLocked && (
-                  <td className="px-4 py-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => removeItem(itemIndex)}
-                      className="opacity-0 group-hover/item:opacity-100 text-slate-600 hover:text-red-400 transition-all"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Liste des éléments en Cartes (Refonte Mobile-First) */}
+      <div className="p-4 sm:p-6 grid grid-cols-1 gap-4">
+        {itemFields.map((item, itemIndex) => (
+          <InspectionItemCard 
+            key={item.id} 
+            roomIndex={roomIndex} 
+            itemIndex={itemIndex} 
+            isLocked={isLocked} 
+            onRemove={() => removeItem(itemIndex)} 
+          />
+        ))}
         
         {!isLocked && (
-          <div className="p-4 bg-slate-950/20 flex justify-center border-t border-white/5">
+          <button
+            type="button"
+            onClick={() => appendItem({ id: crypto.randomUUID(), label: '', condition: 'Bon', comment: '', photos: [] })}
+            className="mt-2 flex items-center justify-center gap-2 py-4 border-2 border-dashed border-white/5 rounded-2xl text-[10px] font-black text-slate-500 hover:text-blue-400 hover:border-blue-500/20 hover:bg-blue-500/5 uppercase tracking-widest transition-all active:scale-[0.98]"
+          >
+            <Plus size={16} /> Ajouter un élément
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const InspectionItemCard: React.FC<{ 
+  roomIndex: number; 
+  itemIndex: number; 
+  isLocked: boolean;
+  onRemove: () => void 
+}> = ({ roomIndex, itemIndex, isLocked, onRemove }) => {
+  const { register, watch } = useFormContext<InspectionFormData>();
+  const condition = watch(`rooms.${roomIndex}.items.${itemIndex}.condition`);
+
+  // Couleurs conditionnelles pour l'UX
+  const getConditionStyles = (c: string) => {
+    switch (c) {
+      case 'Neuf': return 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+      case 'Très Bon': return 'text-blue-400 border-blue-500/20 bg-blue-500/5';
+      case 'Bon': return 'text-slate-300 border-white/10 bg-white/5';
+      case 'Usage': return 'text-amber-400 border-amber-500/20 bg-amber-500/5';
+      case 'Mauvais': return 'text-red-400 border-red-500/20 bg-red-500/5';
+      default: return 'text-slate-400 border-white/10 bg-white/5';
+    }
+  };
+
+  return (
+    <div className={`p-4 rounded-2xl border transition-all duration-300 group/item ${getConditionStyles(condition)} hover:shadow-lg hover:shadow-black/20`}>
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Colonne 1 : Label & État */}
+        <div className="flex-1 space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              {...register(`rooms.${roomIndex}.items.${itemIndex}.label` as const)}
+              list={`suggestions-${roomIndex}`}
+              className="flex-1 bg-transparent border-b border-white/10 focus:border-blue-500/50 outline-none text-sm font-bold text-white placeholder:text-slate-700"
+              placeholder="Désignation de l'élément..."
+            />
+            <datalist id={`suggestions-${roomIndex}`}>
+               {ITEM_SUGGESTIONS.map(s => <option key={s} value={s} />)}
+            </datalist>
+          </div>
+
+          <div className="flex items-center gap-4">
+             <div className="relative w-full sm:w-40">
+                <select
+                  {...register(`rooms.${roomIndex}.items.${itemIndex}.condition` as const)}
+                  className={`w-full bg-slate-950/80 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer ${getConditionStyles(condition)}`}
+                >
+                  {ConditionSchema.options.map(opt => (
+                    <option key={opt} value={opt} className="bg-slate-900 text-white font-semibold">{opt}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                  <Plus size={10} className="rotate-45" />
+                </div>
+             </div>
+             
+             {/* Observation condensée */}
+             <div className="flex-1">
+               <input
+                 {...register(`rooms.${roomIndex}.items.${itemIndex}.comment` as const)}
+                 placeholder="Ajouter une observation rapide..."
+                 className="w-full bg-transparent border-b border-white/5 focus:border-white/20 outline-none text-[11px] text-slate-400 placeholder:text-slate-700 italic"
+               />
+             </div>
+          </div>
+        </div>
+
+        {/* Colonne 2 : Photos & Actions */}
+        <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0">
+          <div className="scale-110 sm:scale-100">
+            <PhotoManager roomIndex={roomIndex} itemIndex={itemIndex} />
+          </div>
+          
+          {!isLocked && (
             <button
               type="button"
-              onClick={() => appendItem({ id: crypto.randomUUID(), label: '', condition: 'Bon', comment: '', photos: [] })}
-              className="flex items-center gap-2 text-[10px] font-bold text-blue-400 hover:text-blue-300 uppercase tracking-widest transition-all py-2 px-6 rounded-xl hover:bg-blue-500/10 border border-transparent hover:border-blue-500/20"
+              onClick={onRemove}
+              className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+              title="Supprimer l'élément"
             >
-              <Plus size={14} /> Ajouter un élément
+              <Trash2 size={16} />
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

@@ -5,29 +5,41 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 
-  // 1. Redirection si non connecté
-  if (!isLoggedIn && (pathname.startsWith("/dashboard") || pathname.startsWith("/inspections"))) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  const isLoginPage = pathname === "/login";
+  const isApiRoute = pathname.startsWith("/api");
+  const isPublicAsset = pathname.startsWith("/_next") || 
+                        pathname.startsWith("/assets") || 
+                        pathname.includes("favicon.ico");
+
+  // On laisse passer les routes publiques (login, api, assets)
+  if (isLoginPage || isApiRoute || isPublicAsset) {
+    // Si on est déjà connecté et qu'on va sur le login, redirection dashboard
+    if (isLoggedIn && isLoginPage) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    return NextResponse.next();
   }
 
-  // 2. Redirection si déjà connecté vers le dashboard (évite la page login)
-  if (isLoggedIn && pathname === "/login") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+  // 1. Redirection si non connecté pour TOUT le reste
+  if (!isLoggedIn) {
+     const loginUrl = new URL("/login", req.url);
+     // Optionnel : ajouter callbackUrl pour revenir après login
+     loginUrl.searchParams.set("callbackUrl", pathname);
+     return NextResponse.redirect(loginUrl);
   }
 
-  // 3. Gestion des accès par rôle (basé sur l'existant)
+  // 2. Gestion des accès par rôle (basé sur l'existant)
   const userRole = (req.auth?.user as any)?.role;
 
   const ROLE_ACCESS: Record<string, string[]> = {
     '/admin': ['Administrateur'],
     '/agent': ['Administrateur', 'Agent'],
-    '/inspections': ['Administrateur', 'Agent', 'Propriétaire'],
+    '/dashboard/inspections': ['Administrateur', 'Agent', 'Propriétaire'],
   };
 
   for (const [route, allowedRoles] of Object.entries(ROLE_ACCESS)) {
     if (pathname.startsWith(route)) {
         if (!userRole || !allowedRoles.includes(userRole)) {
-            // Si le rôle ne correspond pas, redirection vers dashboard principal
             return NextResponse.redirect(new URL("/dashboard", req.url));
         }
     }
