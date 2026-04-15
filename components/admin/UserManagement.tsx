@@ -47,17 +47,22 @@ export default function UserManagement() {
 
   // Actions
   const handleCreateOrUpdate = async (data: any) => {
+    const normalizedData = {
+      ...data,
+      email: data.email?.trim().toLowerCase()
+    };
+
     if (selectedUser) {
-      await updateUser(selectedUser.id, data);
+      await updateUser(selectedUser.id, normalizedData);
     } else {
       // Create
       const newUser: User = {
         id: `user_${Math.random().toString(36).substr(2, 9)}`,
-        name: data.name!,
-        email: data.email!,
-        password: data.password || 'password123',
-        role: data.role as UserRole,
-        agencyId: data.agencyId || 'N/A'
+        name: normalizedData.name!,
+        email: normalizedData.email!,
+        password: normalizedData.password || 'password123',
+        role: normalizedData.role as UserRole,
+        agencyId: normalizedData.agencyId || 'N/A'
       };
       await addUser(newUser);
     }

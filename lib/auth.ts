@@ -21,7 +21,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const data = await fs.readFile(DB_PATH, 'utf8');
           const users = JSON.parse(data);
 
-          const user = users.find((u: any) => u.email === credentials.email);
+          const loginEmail = (credentials.email as string).toLowerCase();
+          const user = users.find((u: any) => u.email.toLowerCase() === loginEmail);
           const { comparePassword } = await import('@/lib/utils/password');
 
           if (user && await comparePassword(credentials.password as string, user.password)) {

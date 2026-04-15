@@ -10,9 +10,12 @@
   {
     "id": "owner1",
     "name": "Paul Propriétaire",
-    "email": "owner@vestacheck.com",
-    "password": "$2b$10$11tDoQl4CWrJiy4KHYmVzOCCTKYcqv7C8o5/fu6T9nSOUdxkUWbOa",
-    "role": "Propriétaire"
+    "email": "paul.p@gmail.com",
+    "password": "$2b$10$ArjgCQtcsadMCkZoiJBks.qGC8SFNYJf9hNfTw424qUUtkFA5zpmK",
+    "role": "Propriétaire",
+    "agencyId": "",
+    "serverVersion": 3,
+    "lastModified": "2026-04-15T19:04:59.878Z"
   },
   {
     "id": "user_wgqsu3a9z",
@@ -34,7 +37,7 @@
     "id": "user_v6zr8bcsp",
     "name": "tyest",
     "email": "test@gmail.com",
-    "password": "zknaixcx",
+    "password": "$2b$10$ViO6A1uqnMFXFdchGoDl5OytHSrIWUB5nvMVTFRhPRe0k0zZjMnea",
     "role": "Propriétaire",
     "agencyId": "N/A",
     "serverVersion": 1,
