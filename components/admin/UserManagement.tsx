@@ -12,7 +12,8 @@ import {
   Mail,
   Building,
   MoreVertical,
-  Filter
+  Filter,
+  Pencil
 } from 'lucide-react';
 import Link from 'next/link';
 import { User, UserRole } from '@/types';
@@ -216,6 +217,13 @@ export default function UserManagement() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                          className="p-2 rounded-lg text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 transition-all border border-transparent hover:border-blue-500/20"
+                          title="Modifier l'utilisateur"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => openConfirm(user, 'reset')}
                           className="p-2 rounded-lg text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 transition-all border border-transparent hover:border-amber-500/20"
