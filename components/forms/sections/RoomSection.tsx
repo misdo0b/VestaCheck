@@ -1,7 +1,7 @@
 import React from 'react';
 import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import { InspectionFormData, ConditionSchema } from '@/lib/validations/inspection';
-import { PlusCircle, Trash2, Camera, Plus } from 'lucide-react';
+import { PlusCircle, Trash2, Camera, Plus, LayoutGrid } from 'lucide-react';
 import { PhotoManager } from '../PhotoManager';
 
 const ITEM_SUGGESTIONS = ['Murs', 'Sols', 'Plafond', 'Fenêtres', 'Portes', 'Radiateur', 'Prises', 'Interrupteurs', 'Plinthes'];
@@ -30,23 +30,28 @@ export const RoomSection: React.FC = () => {
   };
 
   return (
-    <div className={`mb-8 ${isLocked ? 'opacity-75' : ''}`}>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          🖼️ Pièces & Éléments
-        </h2>
+    <div className={`mb-12 ${isLocked ? 'opacity-75' : ''}`}>
+      <div className="flex justify-between items-center mb-8 mx-2">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-500/10 p-2 rounded-lg">
+            <LayoutGrid className="text-blue-400" size={24} />
+          </div>
+          <h2 className="text-xl font-bold text-white tracking-tight">
+            Pièces & Éléments
+          </h2>
+        </div>
         {!isLocked && (
           <button
             type="button"
             onClick={addRoom}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm text-sm font-bold"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 text-sm font-bold border border-blue-400/50 active:scale-95"
           >
             <PlusCircle size={18} /> Ajouter une pièce
           </button>
         )}
       </div>
 
-      <fieldset disabled={isLocked} className="space-y-6">
+      <div className="space-y-6">
         {roomFields.map((room, roomIndex) => (
           <RoomCard 
             key={room.id} 
@@ -55,7 +60,7 @@ export const RoomSection: React.FC = () => {
             onRemove={() => removeRoom(roomIndex)} 
           />
         ))}
-      </fieldset>
+      </div>
 
       {errors.rooms && (
         <p className="text-red-500 text-sm mt-4 text-center italic">{errors.rooms.message}</p>
@@ -72,98 +77,138 @@ const RoomCard: React.FC<{ roomIndex: number; onRemove: () => void; isLocked: bo
   });
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="bg-gray-50 px-6 py-3 border-b border-gray-100 flex justify-between items-center">
-        <input
-          {...register(`rooms.${roomIndex}.name`)}
-          placeholder="Nom de la pièce (ex: Salon...)"
-          className="bg-transparent font-bold text-gray-800 outline-none border-b border-transparent focus:border-blue-500 w-1/3 text-base"
-        />
+    <div className="bg-slate-900/40 rounded-3xl shadow-xl border border-white/5 overflow-hidden backdrop-blur-sm group/room transition-all hover:border-white/10 mx-2">
+      {/* En-tête de la pièce */}
+      <div className="bg-slate-950/40 px-6 py-5 border-b border-white/5 flex justify-between items-center sm:gap-4 flex-wrap">
+        <div className="flex items-center gap-4 flex-1 min-w-[200px]">
+          <div className="p-2 bg-blue-500/10 rounded-xl">
+             <LayoutGrid className="text-blue-400" size={18} />
+          </div>
+          <input
+            {...register(`rooms.${roomIndex}.name`)}
+            placeholder="Ex : Salon, Cuisine..."
+            className="bg-transparent font-bold text-white outline-none border-b border-transparent focus:border-blue-500/50 w-full text-lg placeholder:text-slate-600 focus:placeholder:text-slate-700 transition-all"
+          />
+        </div>
         {!isLocked && (
           <button
             type="button"
             onClick={onRemove}
-            className="text-red-400 hover:text-red-600 p-1 rounded-full transition-colors"
+            className="text-slate-500 hover:text-red-400 p-2.5 rounded-xl hover:bg-red-500/10 transition-all opacity-0 group-hover/room:opacity-100"
+            title="Supprimer la pièce"
           >
-            <Trash2 size={18} />
+            <Trash2 size={20} />
           </button>
         )}
       </div>
 
-      <div className="p-0 overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-gray-400 bg-gray-50/50">
-              <th className="px-6 py-2 font-semibold">Élément</th>
-              <th className="px-4 py-2 font-semibold w-32">État</th>
-              <th className="px-4 py-2 font-semibold">Observations</th>
-              <th className="px-4 py-2 font-semibold w-24 text-center">Photos</th>
-              {!isLocked && <th className="px-4 py-2 w-10"></th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {itemFields.map((item, itemIndex) => (
-              <tr key={item.id} className="group hover:bg-blue-50/30 transition-colors">
-                <td className="px-6 py-3">
-                  <input
-                    {...register(`rooms.${roomIndex}.items.${itemIndex}.label` as const)}
-                    list={`suggestions-${roomIndex}`}
-                    className="w-full bg-transparent border-b border-transparent focus:border-blue-300 outline-none text-sm font-medium text-gray-700"
-                    placeholder="Élément..."
-                  />
-                  <datalist id={`suggestions-${roomIndex}`}>
-                    {ITEM_SUGGESTIONS.map(s => <option key={s} value={s} />)}
-                  </datalist>
-                </td>
-                <td className="px-4 py-3">
-                  <select
-                    {...register(`rooms.${roomIndex}.items.${itemIndex}.condition` as const)}
-                    className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    {ConditionSchema.options.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-4 py-3">
-                  <input
-                    {...register(`rooms.${roomIndex}.items.${itemIndex}.comment` as const)}
-                    placeholder="Observations..."
-                    className="w-full bg-transparent border-b border-transparent focus:border-blue-300 outline-none text-xs text-gray-500"
-                  />
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <div className="flex justify-center">
-                    <PhotoManager roomIndex={roomIndex} itemIndex={itemIndex} />
-                  </div>
-                </td>
-                {!isLocked && (
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => removeItem(itemIndex)}
-                      className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all font-bold"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Liste des éléments en Cartes (Refonte Mobile-First) */}
+      <div className="p-4 sm:p-6 grid grid-cols-1 gap-4">
+        {itemFields.map((item, itemIndex) => (
+          <InspectionItemCard 
+            key={item.id} 
+            roomIndex={roomIndex} 
+            itemIndex={itemIndex} 
+            isLocked={isLocked} 
+            onRemove={() => removeItem(itemIndex)} 
+          />
+        ))}
         
         {!isLocked && (
-          <div className="p-3 bg-gray-50/30 flex justify-center border-t border-gray-50">
+          <button
+            type="button"
+            onClick={() => appendItem({ id: crypto.randomUUID(), label: '', condition: 'Bon', comment: '', photos: [] })}
+            className="mt-2 flex items-center justify-center gap-2 py-4 border-2 border-dashed border-white/5 rounded-2xl text-[10px] font-black text-slate-500 hover:text-blue-400 hover:border-blue-500/20 hover:bg-blue-500/5 uppercase tracking-widest transition-all active:scale-[0.98]"
+          >
+            <Plus size={16} /> Ajouter un élément
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const InspectionItemCard: React.FC<{ 
+  roomIndex: number; 
+  itemIndex: number; 
+  isLocked: boolean;
+  onRemove: () => void 
+}> = ({ roomIndex, itemIndex, isLocked, onRemove }) => {
+  const { register, watch } = useFormContext<InspectionFormData>();
+  const condition = watch(`rooms.${roomIndex}.items.${itemIndex}.condition`);
+
+  // Couleurs conditionnelles pour l'UX
+  const getConditionStyles = (c: string) => {
+    switch (c) {
+      case 'Neuf': return 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5';
+      case 'Très Bon': return 'text-blue-400 border-blue-500/20 bg-blue-500/5';
+      case 'Bon': return 'text-slate-300 border-white/10 bg-white/5';
+      case 'Usage': return 'text-amber-400 border-amber-500/20 bg-amber-500/5';
+      case 'Mauvais': return 'text-red-400 border-red-500/20 bg-red-500/5';
+      default: return 'text-slate-400 border-white/10 bg-white/5';
+    }
+  };
+
+  return (
+    <div className={`p-4 rounded-2xl border transition-all duration-300 group/item ${getConditionStyles(condition)} hover:shadow-lg hover:shadow-black/20`}>
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Colonne 1 : Label & État */}
+        <div className="flex-1 space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              {...register(`rooms.${roomIndex}.items.${itemIndex}.label` as const)}
+              list={`suggestions-${roomIndex}`}
+              className="flex-1 bg-transparent border-b border-white/10 focus:border-blue-500/50 outline-none text-sm font-bold text-white placeholder:text-slate-700"
+              placeholder="Désignation de l'élément..."
+            />
+            <datalist id={`suggestions-${roomIndex}`}>
+               {ITEM_SUGGESTIONS.map(s => <option key={s} value={s} />)}
+            </datalist>
+          </div>
+
+          <div className="flex items-center gap-4">
+             <div className="relative w-full sm:w-40">
+                <select
+                  {...register(`rooms.${roomIndex}.items.${itemIndex}.condition` as const)}
+                  className={`w-full bg-slate-950/80 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer ${getConditionStyles(condition)}`}
+                >
+                  {ConditionSchema.options.map(opt => (
+                    <option key={opt} value={opt} className="bg-slate-900 text-white font-semibold">{opt}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                  <Plus size={10} className="rotate-45" />
+                </div>
+             </div>
+             
+             {/* Observation condensée */}
+             <div className="flex-1">
+               <input
+                 {...register(`rooms.${roomIndex}.items.${itemIndex}.comment` as const)}
+                 placeholder="Ajouter une observation rapide..."
+                 className="w-full bg-transparent border-b border-white/5 focus:border-white/20 outline-none text-[11px] text-slate-400 placeholder:text-slate-700 italic"
+               />
+             </div>
+          </div>
+        </div>
+
+        {/* Colonne 2 : Photos & Actions */}
+        <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0">
+          <div className="scale-110 sm:scale-100">
+            <PhotoManager roomIndex={roomIndex} itemIndex={itemIndex} />
+          </div>
+          
+          {!isLocked && (
             <button
               type="button"
-              onClick={() => appendItem({ id: crypto.randomUUID(), label: '', condition: 'Bon', comment: '', photos: [] })}
-              className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest transition-colors py-1 px-3 rounded-full hover:bg-blue-50"
+              onClick={onRemove}
+              className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+              title="Supprimer l'élément"
             >
-              <Plus size={14} /> Ajouter un élément
+              <Trash2 size={16} />
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

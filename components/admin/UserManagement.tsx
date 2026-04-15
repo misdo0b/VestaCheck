@@ -12,17 +12,18 @@ import {
   Mail,
   Building,
   MoreVertical,
-  Filter
+  Filter,
+  Pencil
 } from 'lucide-react';
 import Link from 'next/link';
 import { User, UserRole } from '@/types';
-import { mockUsers } from '@/data/mockUsers';
+import { useUserStore } from '@/store/useUserStore';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationDialog from '@/components/admin/ConfirmationDialog';
 import ResetPasswordModal from '@/components/admin/ResetPasswordModal';
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const { users, addUser, updateUser, deleteUser } = useUserStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'All'>('All');
   
@@ -45,28 +46,36 @@ export default function UserManagement() {
   }, [users, searchTerm, roleFilter]);
 
   // Actions
-  const handleCreateOrUpdate = (data: Partial<User>) => {
+  const handleCreateOrUpdate = async (data: any) => {
+    const normalizedData = {
+      ...data,
+      email: data.email?.trim().toLowerCase()
+    };
+
     if (selectedUser) {
-      // Update (not strictly requested but good for maturity)
-      setUsers(users.map(u => u.id === selectedUser.id ? { ...u, ...data } as User : u));
+      await updateUser(selectedUser.id, normalizedData);
     } else {
       // Create
       const newUser: User = {
         id: `user_${Math.random().toString(36).substr(2, 9)}`,
-        name: data.name!,
-        email: data.email!,
-        role: data.role as UserRole,
-        agencyId: data.agencyId || 'N/A'
+        name: normalizedData.name!,
+        email: normalizedData.email!,
+        password: normalizedData.password || 'password123',
+        role: normalizedData.role as UserRole,
+        agencyId: normalizedData.agencyId || 'N/A',
+        serverVersion: 1,
+        lastModified: new Date().toISOString(),
+        syncStatus: 'pending'
       };
-      setUsers([newUser, ...users]);
+      await addUser(newUser);
     }
     setIsModalOpen(false);
     setSelectedUser(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedUser) {
-      setUsers(users.filter(u => u.id !== selectedUser.id));
+      await deleteUser(selectedUser.id);
       setIsConfirmOpen(false);
       setSelectedUser(null);
     }
@@ -74,12 +83,8 @@ export default function UserManagement() {
 
   const handleResetPassword = (newPassword: string) => {
     if (selectedUser) {
-      // Simulate direct update in state
-      setUsers(users.map(u => 
-        u.id === selectedUser.id ? { ...u, password: newPassword } as any : u
-      ));
+      updateUser(selectedUser.id, { password: newPassword } as any);
       console.log(`Password updated for ${selectedUser.email}: ${newPassword}`);
-      // The ResetPasswordModal handles the success state and closing
     }
   };
 
@@ -221,6 +226,13 @@ export default function UserManagement() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button 
+                          onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                          className="p-2 rounded-lg text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 transition-all border border-transparent hover:border-blue-500/20"
+                          title="Modifier l'utilisateur"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
                           onClick={() => openConfirm(user, 'reset')}
                           className="p-2 rounded-lg text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 transition-all border border-transparent hover:border-amber-500/20"
                           title="Réinitialiser le mot de passe"
@@ -278,7 +290,6 @@ export default function UserManagement() {
         <ResetPasswordModal 
           isOpen={isResetModalOpen}
           user={selectedUser}
-          initialPassword={(selectedUser as any).password}
           onClose={() => { setIsResetModalOpen(false); setSelectedUser(null); }}
           onSubmit={handleResetPassword}
         />

@@ -10,9 +10,14 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@types/bcryptjs": "^2.4.6",
     "autoprefixer": "^10.4.27",
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "dexie": "^4.4.2",
+    "dexie-react-hooks": "^4.4.0",
     "html2canvas": "^1.4.1",
+    "idb-keyval": "^6.2.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.454.0",
     "next": "15.x",
@@ -21,6 +26,7 @@
     "react-dom": "19.x",
     "react-hook-form": "^7.72.1",
     "react-signature-canvas": "^1.1.0-alpha.2",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.4",
     "zod": "^4.3.6",
     "zustand": "^5.0.0"

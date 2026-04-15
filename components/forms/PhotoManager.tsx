@@ -3,6 +3,7 @@ import { useFormContext, useFieldArray } from 'react-hook-form';
 import { InspectionFormData } from '@/lib/validations/inspection';
 import { Camera, X, Cloud, CloudOff, Loader2, Image as ImageIcon } from 'lucide-react';
 import { compressImage } from '@/lib/utils/image';
+import { PhotoBlobStorage } from '@/lib/utils/blob-storage';
 
 interface PhotoManagerProps {
   roomIndex: number;
@@ -10,7 +11,7 @@ interface PhotoManagerProps {
 }
 
 export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex }) => {
-  const { control, setValue, getValues, watch } = useFormContext<InspectionFormData>();
+  const { control, watch } = useFormContext<InspectionFormData>();
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -29,25 +30,39 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
 
     setIsUploading(true);
     try {
+      const currentPhotos = fields.length;
       for (let i = 0; i < files.length; i++) {
-        if (fields.length >= 4) break; // Limite à 4 photos par élément
+        if (currentPhotos + i >= 4) break; 
 
         const file = files[i];
         const { full, thumb } = await compressImage(file);
+        
+        const photoId = crypto.randomUUID();
 
+        // 1. Sauvegarde HD dans IndexedDB (Caché de la RAM React/Zustand)
+        await PhotoBlobStorage.savePhotoHD(photoId, full);
+
+        // 2. Ajout de la miniature au formulaire (Léger)
         append({
-          id: crypto.randomUUID(),
-          fullResBase64: full,
+          id: photoId,
           compressedBase64: thumb,
+          hasFullRes: true,
           isSynced: false
         });
       }
     } catch (err) {
-      console.error("Erreur lors de la capture photo:", err);
+      console.error("Erreur capture photo:", err);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleRemove = async (index: number, photoId: string) => {
+     // 1. Nettoyage IndexedDB
+     await PhotoBlobStorage.deletePhotoHD(photoId);
+     // 2. Retrait du formulaire
+     remove(index);
   };
 
   const triggerUpload = () => {
@@ -77,7 +92,7 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
           {/* Bouton supprimer */}
           <button
             type="button"
-            onClick={() => remove(pIndex)}
+            onClick={() => handleRemove(pIndex, (photo as any).id)}
             className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
           >
             <X size={14} />

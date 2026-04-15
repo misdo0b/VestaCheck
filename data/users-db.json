@@ -1,0 +1,46 @@
+[
+  {
+    "id": "owner1",
+    "name": "Paul Propriétaire",
+    "email": "paul.p@gmail.com",
+    "password": "$2b$10$8Lbn3qaH97j/0ZgbtfF61OKmoGaxzFsikgogPb/CLBVCZsCGf16m2",
+    "role": "Propriétaire",
+    "agencyId": "",
+    "serverVersion": 5,
+    "lastModified": "2026-04-15T19:34:28.596Z",
+    "syncStatus": "synced"
+  },
+  {
+    "id": "user_v6zr8bcsp",
+    "name": "test",
+    "email": "test@gmail.com",
+    "password": "$2b$10$pAfYNVpuAURsTMNiW7zFTuC84KVWPBC5I3d0raBbfRUgwI4wI1BD6",
+    "role": "Propriétaire",
+    "agencyId": "N/A",
+    "serverVersion": 4,
+    "lastModified": "2026-04-15T19:33:46.454Z",
+    "syncStatus": "pending"
+  },
+  {
+    "id": "user_a9vj3dxap",
+    "name": "Mehdi ADMIN",
+    "email": "sdougamehdi@gmail.com",
+    "password": "$2b$10$LJJJpL6LREMUMqLRkJRB0eLKR4ucNJlb7hdcOXN0gM/WPm9F6F8oG",
+    "role": "Administrateur",
+    "agencyId": "N/A",
+    "serverVersion": 3,
+    "lastModified": "2026-04-15T19:37:47.520Z",
+    "syncStatus": "pending"
+  },
+  {
+    "id": "user_ne8o13elj",
+    "name": "Martin",
+    "email": "martin@gmail.com",
+    "password": "$2b$10$j7tr.FTb6md.hxO0YHiYOulJ.ZVZeGot4JKaenKSXshJoa7DYCvc2",
+    "role": "Agent",
+    "agencyId": "N/A",
+    "serverVersion": 1,
+    "lastModified": "2026-04-15T19:36:42.079Z",
+    "syncStatus": "pending"
+  }
+]

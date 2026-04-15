@@ -2,96 +2,78 @@
   <img src="public/assets/vestacheck-logo.png" alt="VestaCheck Logo" width="400">
 </p>
 
-# VestaCheck - Gestion des États des Lieux
+# VestaCheck - Gestion des États des Lieux Numériques
 
-**VestaCheck** est une application web moderne conçue pour transformer la gestion des états des lieux immobiliers. Alliant une interface premium à une robustesse technique, elle permet aux agents immobiliers et propriétaires de réaliser des inspections précises, visuelles et sécurisées.
+**VestaCheck** est une plateforme professionnelle conçue pour moderniser la réalisation des états des lieux immobiliers. Grâce à son architecture **Offline-First**, elle garantit une fluidité totale sur le terrain, même sans réseau.
 
 ---
 
-## 📸 Aperçu de l'Application
+## 📸 Aperçu de la Plateforme (v2)
 
-### Dashboard Principal
-L'interface centrale offre un accès rapide à la gestion immobilière, aux inspections en cours et à l'administration du personnel.
-![Dashboard](public/assets/screenshots/dashboard.png)
+### Authentification & Sécurité
+Accès sécurisé pour les Administrateurs, Agents et Propriétaires. Les mots de passe sont désormais hachés avec **bcrypt**.
+![Login](public/assets/screenshots/login_v2.png)
+
+### Dashboard & Connectivité
+Suivi en temps réel des inspections et indicateur de synchronisation intelligent.
+![Dashboard](public/assets/screenshots/dashboard_v2.png)
 
 ### Gestion du Parc Immobilier
-Visualisez vos biens et accédez à l'historique complet de chaque logement.
-![Propriétés](public/assets/screenshots/properties.png)
+Vue interactive des biens avec filtres dynamiques (Disponibilité, Type) et mode Grille/Liste.
+![Properties](public/assets/screenshots/properties_grid_v2.png)
 
-### États des Lieux Multi-Section
-Un historique clair pour chaque propriété, permettant de comparer les états d'entrée et de sortie.
-![Inspections](public/assets/screenshots/inspections.png)
-
-### Administration & Rôles
-Gestion fine des accès pour les Administrateurs, Agents et Propriétaires.
-![Admin](public/assets/screenshots/admin.png)
+### Parcours d'Inspection Dynamique
+Interface simplifiée par étapes (Stepper) pour une saisie rapide et sans erreur.
+| Étape 1 : Informations Locataire | Étape 2 : Saisie des Pièces |
+| :---: | :---: |
+| ![Form Step 1](public/assets/screenshots/form_step1_v2.png) | ![Form Rooms](public/assets/screenshots/form_rooms_v2.png) |
 
 ---
 
-## 🔥 Fonctionnalités Clés
+## 🔥 Fonctionnalités Maîtresses
 
-- 🏠 **Hiérarchie Structurée** : Organisation par Propriété > Inspection > Pièce > Élément.
-- 📸 **Documentation Visuelle** : Prise de photos en temps réel pour justifier l'état de chaque élément.
-- ✍️ **Signature Électronique** : Signature tactile directement sur l'interface pour validation immédiate.
-- 📄 **Génération PDF** : Export instantané de rapports professionnels et certifiés.
-- 🔐 **Rôles & Permissions** : 
-  - **Administrateur** : Vue d'ensemble et gestion des agences.
-  - **Agent** : Création et réalisation des inspections sur le terrain.
-  - **Propriétaire** : Accès en lecture seule à ses biens et rapports.
-- 📡 **Mode Hors-Ligne** : Optimistic UI permettant la saisie fluide même sans connexion réseau.
+- 📡 **Offline-First (Dexie.js)** : Saisie locale ultra-rapide avec synchronisation automatique lors de la reconnexion.
+- 📋 **Templates de Biens** : Créez et réutilisez des modèles de pièces pour chaque logement afin de gagner du temps.
+- 🔐 **Sécurité Avancée** : Authentification NextAuth v5 avec hachage bcrypt des données sensibles.
+- 📄 **Moteur PDF HD** : Génération de rapports officiels avec en-têtes répétables et rendu haute fidélité.
+- ✍️ **Signature Tactile** : Signature électronique intégrée pour le locataire et l'agent.
+- 👥 **Console Admin** : Gestion complète des utilisateurs, rôles et agences partenaires.
+![Admin](public/assets/screenshots/admin_v2.png)
 
 ---
 
-## 🛠️ Stack Technique
+## 🛠️ Stack Technique Premium
 
-### Frontend & Framework
-- **React 19 / Next.js 15 (App Router)** : Performance et SEO optimisés.
-- **Tailwind CSS** : Design "Glassmorphism" et interface responsive.
-- **Lucide React** : Iconographie moderne.
+> [!NOTE]
+> Le projet utilise les toutes dernières versions de React et Next.js pour garantir performance et maintenabilité.
 
-### Logique & Data
-- **TypeScript** : Typage strict pour une robustesse maximale (Schéma `InspectionReport`).
-- **Zustand** : Gestion d'état global et persistance locale.
-- **NextAuth.js v5** : Authentification sécurisée et gestion de sessions.
-- **React Hook Form + Zod** : Validation de formulaires complexe.
-
-### Outils Spécialisés
-- **jsPDF / html2canvas** : Moteur de génération de documents PDF.
-- **React Signature Canvas** : Module de signature électronique.
+- **Frontend** : React 19, Next.js 15, Tailwind CSS.
+- **Persistance** : Dexie.js (IndexedDB) + LocalStorage.
+- **Logique** : Zustand (State Management), React Hook Form, Zod.
+- **Auth** : NextAuth.js v5.
+- **Assets** : Lucide React (Icons), Sonner (Toasts).
 
 ---
 
-## 🚀 Installation & Lancement
+## 🚀 Installation Rapide
 
 ```bash
-# Installation des dépendances
+# 1. Cloner et installer
 npm install
 
-# Lancement en mode développement
+# 2. Configurer les variables d'environnement (.env.local)
+NEXTAUTH_SECRET="votre_secret_ici"
+
+# 3. Lancer le serveur de développement
 npm run dev
 ```
 
-L'application sera accessible sur [http://localhost:3000](http://localhost:3000).
-
 ---
 
-## 📐 Structure de Données (Authority Schema)
+## 📐 Autorité du Schéma de Données
 
-Le projet suit scrupuleusement une interface TypeScript unique pour garantir l'intégrité des rapports :
-
-```typescript
-export interface InspectionReport {
-  id: string;
-  propertyAddress: string;
-  date: string;
-  type: 'Entrée' | 'Sortie';
-  ownerId: string;
-  inspectorId: string;
-  tenantName: string;
-  rooms: Room[];
-  isFinalized: boolean;
-}
-```
+Le projet respecte une structure métier rigoureuse définie dans `types/index.ts` :
+`Propriété > Inspection > Pièce > Élément > État + Photos`.
 
 ---
 

@@ -10,8 +10,8 @@ export interface InspectionItem {
 
 export interface PhotoMetadata {
   id: string;
-  fullResBase64?: string;   // Version brute avant synchro (temporaire)
-  compressedBase64: string; // Version miniature pour le mode offline
+  compressedBase64: string; // Version miniature pour le mode offline (RAM)
+  hasFullRes?: boolean;      // Indique si la version HD est dans IndexedDB
   cloudUrl?: string;        // URL distante après synchro
   isSynced: boolean;
 }
@@ -22,6 +22,38 @@ export interface Room {
   items: InspectionItem[];
 }
 
+export type SyncStatus = 'synced' | 'pending' | 'error';
+
+export interface Property {
+  id: string;
+  name: string;
+  address: string;
+  surface: number;
+  type: 'Appartement' | 'Maison';
+  roomCount: number;
+  ownerId: string;
+  agentId?: string; // ID de l'agent responsable
+  templateIds?: string[];
+  
+  // Champs de synchronisation
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
+}
+
+export interface PropertyTemplate {
+  id: string;
+  name: string;
+  propertyId: string;
+  rooms: Room[];
+  keyInventories?: { id: string; type: string; count: number }[];
+  
+  // Champs de synchronisation
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
+}
+
 export interface SignatureMetadata {
   drawData?: string; // Base64 signature
   type: 'Local' | 'Distance' | 'Aucune';
@@ -30,6 +62,7 @@ export interface SignatureMetadata {
 
 export interface InspectionReport {
   id: string;
+  propertyId: string; // Lien avec l'entité Property
   propertyAddress: string;
   date: string;
   type: 'Entrée' | 'Sortie';
@@ -59,6 +92,11 @@ export interface InspectionReport {
 
   rooms: Room[];
   isFinalized: boolean;
+
+  // Champs de synchronisation
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
 }
 
 export type UserRole = 'Administrateur' | 'Agent' | 'Propriétaire';
@@ -67,6 +105,12 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string; // Optionnel pour les transferts client, requis pour l'auth
   role: UserRole;
   agencyId?: string; // Pour regrouper des agents par agence
+  
+  // Champs de synchronisation
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
 }

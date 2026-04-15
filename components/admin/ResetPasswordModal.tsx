@@ -18,10 +18,9 @@ interface ResetPasswordModalProps {
   onClose: () => void;
   onSubmit: (password: string) => void;
   user: User;
-  initialPassword?: string;
 }
 
-export default function ResetPasswordModal({ isOpen, onClose, onSubmit, user, initialPassword }: ResetPasswordModalProps) {
+export default function ResetPasswordModal({ isOpen, onClose, onSubmit, user }: ResetPasswordModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -34,7 +33,7 @@ export default function ResetPasswordModal({ isOpen, onClose, onSubmit, user, in
   } = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
     defaultValues: {
-      password: initialPassword || '',
+      password: '',
     },
   });
 

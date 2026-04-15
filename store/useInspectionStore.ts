@@ -1,75 +1,176 @@
 import { create } from 'zustand';
-import { InspectionReport } from '@/types';
-import { mockInspections } from '@/data/mock-data';
+import { InspectionReport, InspectionItem, PhotoMetadata } from '@/types';
+import { db } from '@/lib/db';
+import { dataURLToBlob } from '@/lib/utils/image';
 
 interface InspectionState {
   inspections: InspectionReport[];
   currentInspection: InspectionReport | null;
   loading: boolean;
+  error: string | null;
   
   // Actions
+  initStore: () => Promise<void>;
   setInspections: (inspections: InspectionReport[]) => void;
-  setCurrentInspection: (report: InspectionReport | null) => void;
-  updateItem: (roomId: string, itemId: string, updates: Partial<any>) => void;
-  addPhoto: (roomId: string, itemId: string, photoUrl: string) => void;
+  setCurrentInspection: (report: InspectionReport | null) => Promise<void>;
+  updateItem: (roomId: string, itemId: string, updates: Partial<InspectionItem>) => Promise<void>;
+  addPhoto: (roomId: string, itemId: string, photoUrl: string) => Promise<void>;
   saveOffline: () => void;
+  finalizeInspection: (id: string, fullData?: InspectionReport) => Promise<void>;
 }
 
-export const useInspectionStore = create<InspectionState>((set) => ({
-  inspections: mockInspections,
+export const useInspectionStore = create<InspectionState>((set, get) => ({
+  inspections: [],
   currentInspection: null,
   loading: false,
+  error: null,
+
+  initStore: async () => {
+    set({ loading: true });
+    try {
+      const localInspections = await db.inspections.toArray();
+      set({ inspections: localInspections, loading: false });
+    } catch (err) {
+      console.error('Failed to init InspectionStore:', err);
+      set({ loading: false, error: 'Erreur lors du chargement des états des lieux' });
+    }
+  },
 
   setInspections: (inspections) => set({ inspections }),
   
-  setCurrentInspection: (report) => set({ currentInspection: report }),
+  setCurrentInspection: async (report) => {
+    set({ currentInspection: report });
+    if (report) {
+      await db.inspections.put(report);
+    }
+  },
 
-  updateItem: (roomId, itemId, updates) => set((state) => {
-    if (!state.currentInspection) return state;
-    
-    const newRooms = state.currentInspection.rooms.map(room => {
-      if (room.id !== roomId) return room;
-      return {
-        ...room,
-        items: room.items.map(item => {
-          if (item.id !== itemId) return { ...item };
-          return { ...item, ...updates };
-        })
-      };
-    });
+  updateItem: async (roomId, itemId, updates) => {
+    const { currentInspection } = get();
+    if (!currentInspection) return;
 
-    return {
-      currentInspection: {
-        ...state.currentInspection,
-        rooms: newRooms
-      }
-    };
-  }),
-
-  addPhoto: (roomId, itemId, photoUrl) => set((state) => {
-    if (!state.currentInspection) return state;
-
-    const newRooms = state.currentInspection.rooms.map(room => {
+    const newRooms = currentInspection.rooms.map(room => {
       if (room.id !== roomId) return room;
       return {
         ...room,
         items: room.items.map(item => {
           if (item.id !== itemId) return item;
-          return { ...item, photos: [...item.photos, photoUrl] };
+          return { ...item, ...updates };
         })
       };
     });
 
-    return {
-      currentInspection: {
-        ...state.currentInspection,
-        rooms: newRooms
-      }
+    const updatedInspection: InspectionReport = {
+      ...currentInspection,
+      rooms: newRooms,
+      syncStatus: 'pending',
+      lastModified: new Date().toISOString()
     };
-  }),
+
+    set({ currentInspection: updatedInspection });
+
+    try {
+      await db.inspections.put(updatedInspection);
+      await db.enqueueMutation({
+        type: 'UPDATE',
+        entity: 'inspection',
+        entityId: updatedInspection.id,
+        data: { rooms: newRooms }
+      });
+    } catch (err) {
+      console.error('Offline update failed:', err);
+    }
+  },
+
+  addPhoto: async (roomId, itemId, photoUrl) => {
+    const { currentInspection } = get();
+    if (!currentInspection) return;
+
+    const photoId = `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newPhoto: PhotoMetadata = {
+      id: photoId,
+      compressedBase64: photoUrl, // Version UI
+      isSynced: false
+    };
+
+    const newRooms = currentInspection.rooms.map(room => {
+      if (room.id !== roomId) return room;
+      return {
+        ...room,
+        items: room.items.map(item => {
+          if (item.id !== itemId) return item;
+          return { ...item, photos: [...item.photos, newPhoto] };
+        })
+      };
+    });
+
+    const updatedInspection: InspectionReport = {
+      ...currentInspection,
+      rooms: newRooms,
+      syncStatus: 'pending',
+      lastModified: new Date().toISOString()
+    };
+
+    set({ currentInspection: updatedInspection });
+
+    try {
+      // 1. Sauvegarde l'inspection mise à jour
+      await db.inspections.put(updatedInspection);
+      
+      // 2. Sauvegarde le Blob HD dans Dexie pour upload ultérieur
+      const blob = dataURLToBlob(photoUrl);
+      await db.photos.add({
+        ...newPhoto,
+        itemId,
+        blob
+      });
+
+      // 3. Mutation de synchronisation
+      await db.enqueueMutation({
+        type: 'UPDATE',
+        entity: 'inspection',
+        entityId: updatedInspection.id,
+        data: { rooms: newRooms }
+      });
+    } catch (err) {
+      console.error('Failed to save photo offline:', err);
+    }
+  },
 
   saveOffline: () => {
-    // Logique de persistance locale via IndexedDB ou LocalStorage
-    console.log("Sauvegarde locale effectuée (Simulée)");
+    console.log("Les données sont persistées automatiquement via Dexie.js");
+  },
+
+  finalizeInspection: async (id, fullData) => {
+    const { currentInspection, inspections } = get();
+    const targetReport = fullData || (currentInspection?.id === id ? currentInspection : inspections.find(r => r.id === id));
+    
+    if (!targetReport) return;
+
+    const finalizedReport: InspectionReport = { 
+      ...targetReport, 
+      isFinalized: true,
+      syncStatus: 'pending',
+      lastModified: new Date().toISOString()
+    };
+
+    set((state) => ({
+      currentInspection: state.currentInspection?.id === id ? finalizedReport : state.currentInspection,
+      inspections: state.inspections.some(r => r.id === id)
+        ? state.inspections.map(r => r.id === id ? finalizedReport : r)
+        : [...state.inspections, finalizedReport]
+    }));
+
+    try {
+      await db.inspections.put(finalizedReport);
+      await db.enqueueMutation({
+        type: 'UPDATE',
+        entity: 'inspection',
+        entityId: id,
+        data: { isFinalized: true }
+      });
+    } catch (err) {
+      console.error('Finalization save failed:', err);
+    }
   }
 }));

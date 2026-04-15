@@ -4,8 +4,8 @@ export const ConditionSchema = z.enum(['Neuf', 'Très Bon', 'Bon', 'Usage', 'Mau
 
 export const PhotoMetadataSchema = z.object({
   id: z.string(),
-  fullResBase64: z.string().optional(),
-  compressedBase64: z.string(),
+  compressedBase64: z.string(), // Version miniature (RAM)
+  hasFullRes: z.boolean().optional(), // Présent dans IndexedDB
   cloudUrl: z.string().optional(),
   isSynced: z.boolean(),
 });
@@ -26,6 +26,7 @@ export const RoomSchema = z.object({
 
 export const InspectionReportSchema = z.object({
   id: z.string(),
+  propertyId: z.string(),
   propertyAddress: z.string().min(5, "L'adresse est trop courte"),
   date: z.string().min(1, "La date de l'inspection est requise"),
   type: z.enum(['Entrée', 'Sortie']),
@@ -64,5 +65,17 @@ export const InspectionReportSchema = z.object({
   rooms: z.array(RoomSchema).min(1, "Au moins une pièce est requise"),
   isFinalized: z.boolean().default(false),
 });
+
+// Sch├®ma all├®g├® pour le mode Template (Pas de locataire, pas de compteurs requis)
+export const PropertyTemplateSchema = z.object({
+  id: z.string(),
+  propertyId: z.string(),
+  rooms: z.array(RoomSchema).min(1, "Au moins une pi├¿ce est requise"),
+  keyInventories: z.array(z.object({
+    id: z.string(),
+    type: z.string().min(1, "Le type de cl├® est requis"),
+    count: z.number().min(0),
+  })).optional(),
+}).passthrough(); // Autorise les autres champs sans les valider
 
 export type InspectionFormData = z.infer<typeof InspectionReportSchema>;
