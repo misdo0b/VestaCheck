@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { hashPassword } from '@/lib/utils/password';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 
@@ -52,6 +53,16 @@ export async function POST(req: Request) {
       if (!table) continue;
 
       affectedFiles.add(entity);
+
+      // Gestion spécifique pour les utilisateurs (hachage du mot de passe)
+      if (entity === 'user' && data?.password) {
+        if (data.password.trim() !== '') {
+          data.password = await hashPassword(data.password);
+        } else {
+          // Si le mot de passe est vide lors d'une modification, on ne le change pas
+          delete data.password;
+        }
+      }
 
       if (type === 'CREATE') {
         // Ajouter si n'existe pas déjà

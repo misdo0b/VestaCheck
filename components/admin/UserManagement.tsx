@@ -12,7 +12,8 @@ import {
   Mail,
   Building,
   MoreVertical,
-  Filter
+  Filter,
+  Pencil
 } from 'lucide-react';
 import Link from 'next/link';
 import { User, UserRole } from '@/types';
@@ -46,17 +47,25 @@ export default function UserManagement() {
 
   // Actions
   const handleCreateOrUpdate = async (data: any) => {
+    const normalizedData = {
+      ...data,
+      email: data.email?.trim().toLowerCase()
+    };
+
     if (selectedUser) {
-      await updateUser(selectedUser.id, data);
+      await updateUser(selectedUser.id, normalizedData);
     } else {
       // Create
       const newUser: User = {
         id: `user_${Math.random().toString(36).substr(2, 9)}`,
-        name: data.name!,
-        email: data.email!,
-        password: data.password || 'password123',
-        role: data.role as UserRole,
-        agencyId: data.agencyId || 'N/A'
+        name: normalizedData.name!,
+        email: normalizedData.email!,
+        password: normalizedData.password || 'password123',
+        role: normalizedData.role as UserRole,
+        agencyId: normalizedData.agencyId || 'N/A',
+        serverVersion: 1,
+        lastModified: new Date().toISOString(),
+        syncStatus: 'pending'
       };
       await addUser(newUser);
     }
@@ -216,6 +225,13 @@ export default function UserManagement() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
+                          className="p-2 rounded-lg text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 transition-all border border-transparent hover:border-blue-500/20"
+                          title="Modifier l'utilisateur"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => openConfirm(user, 'reset')}
                           className="p-2 rounded-lg text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 transition-all border border-transparent hover:border-amber-500/20"
