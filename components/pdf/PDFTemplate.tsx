@@ -1,6 +1,7 @@
 import { InspectionFormData } from '@/lib/validations/inspection';
 import { ShieldCheck, Mail, Phone, MapPin, Calendar, ClipboardCheck, Info } from 'lucide-react';
 import { useTenantStore } from '@/store/useTenantStore';
+import { useUserStore } from '@/store/useUserStore';
 
 const STYLE = {
   BG_PAPER: 'bg-white',
@@ -38,6 +39,10 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
   const tenantName = tenant?.name || 'Locataire inconnu';
   const tenantEmail = tenant?.email || '-';
   const tenantPhone = tenant?.phone || '-';
+  
+  const { users } = useUserStore();
+  const inspector = users.find(u => u.id === data.inspectorId);
+  const inspectorName = inspector?.name || "Inspecteur VestaCheck";
 
   return (
     <div 
@@ -237,7 +242,7 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
                   <span className="text-slate-300 text-[9px] uppercase font-bold tracking-tight">Non signé</span>
                 )}
               </div>
-              <p className="mt-4 text-xs font-bold text-slate-900 uppercase tracking-tight">Agent VestaCheck</p>
+              <p className="mt-4 text-xs font-bold text-slate-900 uppercase tracking-tight">{inspectorName}</p>
               {data.signatures.inspector.signedAt && (
                 <p className="text-[8px] text-slate-400 mt-1 font-medium">Le {new Date(data.signatures.inspector.signedAt).toLocaleDateString('fr-FR')} ├á {new Date(data.signatures.inspector.signedAt).toLocaleTimeString('fr-FR')}</p>
               )}

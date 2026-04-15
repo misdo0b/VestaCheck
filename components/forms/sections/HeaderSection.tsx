@@ -14,13 +14,15 @@ export const HeaderSection: React.FC = () => {
   const type = watch('type');
   const manualTenant = watch('manualTenant');
   
-  const [isManualMode, setIsManualMode] = useState(false);
+  const [isManualMode, setIsManualMode] = useState(type === 'Entrée');
 
-  // Force le mode sélection si c'est une sortie
+  // Gère le mode par défaut selon le type d'inspection
   useEffect(() => {
     if (type === 'Sortie') {
       setIsManualMode(false);
       resetField('manualTenant');
+    } else if (type === 'Entrée') {
+      setIsManualMode(true);
     }
   }, [type, resetField]);
 
@@ -113,14 +115,20 @@ export const HeaderSection: React.FC = () => {
               <div className="flex bg-slate-950/50 border border-white/10 rounded-lg p-0.5">
                 <button 
                   type="button"
-                  onClick={() => setIsManualMode(false)}
+                  onClick={() => {
+                    setIsManualMode(false);
+                    resetField('manualTenant');
+                  }}
                   className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all ${!isManualMode ? 'bg-slate-800 text-blue-400 shadow-sm' : 'text-slate-600 hover:text-slate-400'}`}
                 >
                   SÉLECTION
                 </button>
                 <button 
                   type="button"
-                  onClick={() => setIsManualMode(true)}
+                  onClick={() => {
+                    setIsManualMode(true);
+                    setValue('tenantId', '');
+                  }}
                   className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all ${isManualMode ? 'bg-slate-800 text-blue-400 shadow-sm' : 'text-slate-600 hover:text-slate-400'}`}
                 >
                   SAISIE LIBRE

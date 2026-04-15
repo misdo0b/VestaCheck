@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
+import { useTenantStore } from '@/store/useTenantStore';
 import { PropertyCard } from '@/components/properties/PropertyCard';
 import { PropertyListItem } from '@/components/properties/PropertyListItem';
 import { PropertyModal } from '@/components/properties/PropertyModal';
@@ -13,6 +14,7 @@ export default function PropertiesPage() {
   const { data: session } = useSession();
   const { properties } = usePropertyStore();
   const { inspections } = useInspectionStore();
+  const { tenants } = useTenantStore();
   
   const user = session?.user as any;
   const userRole = user?.role;
@@ -50,8 +52,7 @@ export default function PropertiesPage() {
 
     // 2. Filtres UI
     return baseProperties.filter(p => {
-      const lastInspection = getLastInspection(p.id);
-      const isOccupied = lastInspection ? lastInspection.type === 'Entrée' : false;
+      const isOccupied = tenants.some(t => t.propertyIds.includes(p.id) && t.status === 'Actuel');
       
       // Text Search
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
