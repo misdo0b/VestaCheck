@@ -62,7 +62,10 @@ export default function UserManagement() {
         email: normalizedData.email!,
         password: normalizedData.password || 'password123',
         role: normalizedData.role as UserRole,
-        agencyId: normalizedData.agencyId || 'N/A'
+        agencyId: normalizedData.agencyId || 'N/A',
+        serverVersion: 1,
+        lastModified: new Date().toISOString(),
+        syncStatus: 'pending'
       };
       await addUser(newUser);
     }
