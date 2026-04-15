@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
+import { useTenantStore } from '@/store/useTenantStore';
 import { 
   Building2, MapPin, Maximize, Layers, User, Calendar, 
   ArrowLeft, Edit3, Plus, FileText, CheckCircle2, Clock, ChevronRight,
@@ -23,6 +24,7 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const { properties, templates, getTemplatesByProperty } = usePropertyStore();
   const { inspections } = useInspectionStore();
+  const { tenants } = useTenantStore();
   const { users } = useUserStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
@@ -56,13 +58,15 @@ export default function PropertyDetailPage() {
   }
 
   const lastInspection = propertyInspections[0];
-  const isOccupied = lastInspection ? lastInspection.type === 'Entrée' : false;
+  const isOccupied = tenants.some(t => t.propertyIds.includes(property.id) && t.status === 'Actuel');
 
   const handleExportPDF = async (inspection: any) => {
     setExportingId(inspection.id);
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
-      const safeTenantName = inspection.tenantName
+      const tenant = tenants.find(t => t.id === inspection.tenantId);
+      const nameToUse = tenant?.name || 'Inconnu';
+      const safeTenantName = nameToUse
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]/gi, '_')
         .toLowerCase();
@@ -223,8 +227,27 @@ export default function PropertyDetailPage() {
                         </div>
                         <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
                           <div className="flex flex-col">
-                            <h4 className="text-white font-semibold mb-1">Locataire: {inspection.tenantName}</h4>
-                            <p className="text-slate-500 text-xs italic">Inspecteur: {inspection.inspectorId}</p>
+                            {(() => {
+                              const tenant = tenants.find(t => t.id === inspection.tenantId);
+                              const inspector = users.find(u => u.id === inspection.inspectorId);
+                              return (
+                                <>
+                                  <h4 className="text-white font-semibold mb-1 group-hover:text-blue-400 transition-colors">
+                                    Locataire: {tenant ? (
+                                      <Link 
+                                        href={`/dashboard/tenants?search=${encodeURIComponent(tenant.name)}`}
+                                        className="hover:underline hover:text-blue-400 transition-all"
+                                      >
+                                        {tenant.name}
+                                      </Link>
+                                    ) : 'Non renseigné'}
+                                  </h4>
+                                  <p className="text-slate-500 text-xs italic">
+                                    Inspecteur: {inspector?.name || inspection.inspectorId}
+                                  </p>
+                                </>
+                              );
+                            })()}
                           </div>
                           <div className="flex gap-2">
                              <Link 

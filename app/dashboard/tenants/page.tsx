@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useTenantStore } from '@/store/useTenantStore';
+import { useSearchParams } from 'next/navigation';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useSession } from 'next-auth/react';
 import { 
@@ -162,11 +163,21 @@ export default function TenantsPage() {
   const { data: session } = useSession();
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'Tous' | 'Actuel' | 'Sorti'>('Tous');
+  const [statusFilter, setStatusFilter] = useState<'Tous' | 'Actuel' | 'Sorti'>('Actuel');
   const [sortBy, setSortBy] = useState<'name' | 'lastModified'>('name');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | undefined>();
+  
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get('search');
+
+  // Initialisation de la recherche via URL
+  React.useEffect(() => {
+    if (initialSearch) {
+      setSearchQuery(initialSearch);
+    }
+  }, [initialSearch]);
 
   // 1. Filtrage de Sécurité & Recherche
   const filteredTenants = useMemo(() => {

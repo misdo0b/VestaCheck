@@ -6,14 +6,16 @@ import { Home, MapPin, Maximize, Layers, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 import { useUserStore } from '@/store/useUserStore';
+import { useTenantStore } from '@/store/useTenantStore';
 
 interface PropertyCardProps {
   property: Property;
   lastInspection?: InspectionReport;
 }
 
-export function PropertyCard({ property, lastInspection }: PropertyCardProps) {
-  const isOccupied = lastInspection ? lastInspection.type === 'Entrée' : false;
+export function PropertyCard({ property }: PropertyCardProps) {
+  const { tenants } = useTenantStore();
+  const isOccupied = tenants.some(t => t.propertyIds.includes(property.id) && t.status === 'Actuel');
   const { users } = useUserStore();
   
   const owner = users.find(u => u.id === property.ownerId);

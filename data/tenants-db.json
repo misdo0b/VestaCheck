@@ -56,12 +56,12 @@
     "name": "Bernard",
     "email": "bernard@gmail.com",
     "phone": "5588996677",
-    "status": "Actuel",
+    "status": "Sorti",
     "propertyIds": [
       "prop_1776281991758"
     ],
-    "serverVersion": 1,
-    "lastModified": "2026-04-15T20:37:07.676Z",
+    "serverVersion": 3,
+    "lastModified": "2026-04-15T21:00:34.985Z",
     "syncStatus": "pending"
   },
   {
