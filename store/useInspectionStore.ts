@@ -167,7 +167,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         type: 'UPDATE',
         entity: 'inspection',
         entityId: id,
-        data: { isFinalized: true }
+        data: finalizedReport // Envoi de l'intégralité du rapport
       });
     } catch (err) {
       console.error('Finalization save failed:', err);

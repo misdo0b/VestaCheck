@@ -1,6 +1,6 @@
-import React from 'react';
 import { InspectionFormData } from '@/lib/validations/inspection';
 import { ShieldCheck, Mail, Phone, MapPin, Calendar, ClipboardCheck, Info } from 'lucide-react';
+import { useTenantStore } from '@/store/useTenantStore';
 
 const STYLE = {
   BG_PAPER: 'bg-white',
@@ -33,6 +33,12 @@ interface PDFTemplateProps {
 }
 
 export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection-report-pdf' }) => {
+  const getTenantById = useTenantStore(state => state.getTenantById);
+  const tenant = getTenantById(data.tenantId);
+  const tenantName = tenant?.name || 'Locataire inconnu';
+  const tenantEmail = tenant?.email || '-';
+  const tenantPhone = tenant?.phone || '-';
+
   return (
     <div 
       id={id}
@@ -53,7 +59,7 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">
              {data.type} • {data.date}
            </div>
-           <div className="text-xs font-black text-slate-900">{data.tenantName}</div>
+           <div className="text-xs font-black text-slate-900">{tenantName}</div>
         </div>
       </div>
 
@@ -78,10 +84,10 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
             <h3 className="font-black uppercase text-[10px] tracking-widest">Locataire Concerné</h3>
           </div>
           <div className={`${STYLE.CARD_BG} p-5 rounded-2xl`}>
-            <p className="text-lg font-black text-slate-900 mb-1 leading-tight">{data.tenantName}</p>
+            <p className="text-lg font-black text-slate-900 mb-1 leading-tight">{tenantName}</p>
             <div className="space-y-1">
-              <p className="text-xs text-slate-500 flex items-center gap-2 font-medium tracking-tight"><Mail size={12} className="text-slate-300" /> {data.tenantEmail}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-2 font-medium"><Phone size={12} className="text-slate-300" /> {data.tenantPhone}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-2 font-medium tracking-tight"><Mail size={12} className="text-slate-300" /> {tenantEmail}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-2 font-medium"><Phone size={12} className="text-slate-300" /> {tenantPhone}</p>
             </div>
           </div>
         </div>
@@ -217,7 +223,7 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
                   <span className="text-slate-300 text-[9px] uppercase font-bold tracking-tight">Non signé</span>
                 )}
               </div>
-              <p className="mt-4 text-xs font-bold text-slate-900 uppercase tracking-tight">{data.tenantName}</p>
+              <p className="mt-4 text-xs font-bold text-slate-900 uppercase tracking-tight">{tenantName}</p>
               {data.signatures.tenant.signedAt && (
                 <p className="text-[8px] text-slate-400 mt-1 font-medium">Le {new Date(data.signatures.tenant.signedAt).toLocaleDateString('fr-FR')} ├á {new Date(data.signatures.tenant.signedAt).toLocaleTimeString('fr-FR')}</p>
               )}

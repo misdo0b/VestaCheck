@@ -10,6 +10,15 @@ export const PhotoMetadataSchema = z.object({
   isSynced: z.boolean(),
 });
 
+export const TenantSchema = z.object({
+  id: z.string(),
+  name: z.string().min(2, "Le nom du locataire est requis"),
+  email: z.string().email("L'adresse email est invalide"),
+  phone: z.string().min(10, "Le numéro de téléphone est trop court"),
+  status: z.enum(['Actuel', 'Sorti']).default('Actuel'),
+  propertyIds: z.array(z.string()).default([]),
+});
+
 export const InspectionItemSchema = z.object({
   id: z.string(),
   label: z.string().min(1, "Le nom de l'élément est requis"),
@@ -24,7 +33,8 @@ export const RoomSchema = z.object({
   items: z.array(InspectionItemSchema).min(1, "Chaque pièce doit contenir au moins un élément"),
 });
 
-export const InspectionReportSchema = z.object({
+// Schéma de base pour éviter la duplication et les erreurs cycliques
+const BaseReportSchema = z.object({
   id: z.string(),
   propertyId: z.string(),
   propertyAddress: z.string().min(5, "L'adresse est trop courte"),
@@ -32,10 +42,12 @@ export const InspectionReportSchema = z.object({
   type: z.enum(['Entrée', 'Sortie']),
   ownerId: z.string(),
   inspectorId: z.string(),
-  tenantName: z.string().min(2, "Le nom du locataire est requis"),
-  tenantEmail: z.string().email("L'adresse email est invalide"),
-  tenantPhone: z.string().min(10, "Le numéro de téléphone est trop court"),
-  
+  tenantId: z.string().optional(),
+  manualTenant: z.object({
+    name: z.string().min(2, "Nom requis"),
+    email: z.string().email("Email invalide"),
+    phone: z.string().min(10, "Téléphone requis"),
+  }).optional(),
   signatures: z.object({
     tenant: z.object({
       drawData: z.string().optional(),
@@ -48,8 +60,6 @@ export const InspectionReportSchema = z.object({
       signedAt: z.string().optional(),
     }),
   }),
-
-  // Éléments de conformité
   counters: z.object({
     water: z.number().min(0, "L'index d'eau doit être un nombre positif"),
     electricity: z.number().min(0, "L'index d'électricité doit être un nombre positif"),
@@ -61,21 +71,32 @@ export const InspectionReportSchema = z.object({
     count: z.number().min(0, "Le compte ne peut pas être négatif"),
   })),
   generalObservations: z.string().min(0).default(''),
-
   rooms: z.array(RoomSchema).min(1, "Au moins une pièce est requise"),
   isFinalized: z.boolean().default(false),
 });
 
-// Sch├®ma all├®g├® pour le mode Template (Pas de locataire, pas de compteurs requis)
+// Exportation de l'interface complète
+export type InspectionFormData = z.infer<typeof BaseReportSchema>;
+
+// Schéma avec raffinements pour la validation RUNTIME
+export const InspectionReportSchema = BaseReportSchema.refine((data) => {
+  if (data.type === 'Sortie') {
+    return !!data.tenantId;
+  }
+  return !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
+}, {
+  message: "Le locataire est requis (sélection ou saisie manuelle complète)",
+  path: ['tenantId']
+});
+
+// Schéma de Template
 export const PropertyTemplateSchema = z.object({
   id: z.string(),
   propertyId: z.string(),
-  rooms: z.array(RoomSchema).min(1, "Au moins une pi├¿ce est requise"),
+  rooms: z.array(RoomSchema).min(1, "Au moins une pièce est requise"),
   keyInventories: z.array(z.object({
     id: z.string(),
-    type: z.string().min(1, "Le type de cl├® est requis"),
+    type: z.string().min(1, "Le type de clé est requis"),
     count: z.number().min(0),
   })).optional(),
-}).passthrough(); // Autorise les autres champs sans les valider
-
-export type InspectionFormData = z.infer<typeof InspectionReportSchema>;
+}).passthrough();
