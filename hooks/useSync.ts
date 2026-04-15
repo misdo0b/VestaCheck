@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import { useInspectionStore } from '@/store/useInspectionStore';
@@ -12,6 +13,9 @@ import { useUserStore } from '@/store/useUserStore';
 export function useSync() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  // Observer la file d'attente des mutations
+  const mutationCount = useLiveQuery(() => db.mutationQueue.count()) || 0;
 
   // Pour rafraîchir les stores après synchro
   const { initStore: initInspections } = useInspectionStore();
@@ -32,13 +36,14 @@ export function useSync() {
   }, []);
 
   const processQueue = useCallback(async () => {
+    // Éviter les doubles lancements ou la synchro hors-ligne
     if (isSyncing || !isOnline) return;
 
     const mutations = await db.mutationQueue.orderBy('timestamp').toArray();
     if (mutations.length === 0) return;
 
     setIsSyncing(true);
-    console.log(`Synchronisation de ${mutations.length} changement(s)...`);
+    console.log(`[Sync] Traitement de ${mutations.length} changement(s) en attente...`);
 
     try {
       // On regroupe les mutations par lot pour l'API /api/inspections/sync
@@ -53,9 +58,7 @@ export function useSync() {
         const mutationIds = mutations.map(m => m.id!);
         await db.mutationQueue.bulkDelete(mutationIds);
         
-        // On marque les entités comme synchronisées localement
-        // (En production, on utiliserait le server_version renvoyé par l'API)
-        
+        // Rafraîchir les stores pour obtenir les IDs réels et les versions serveurs
         await Promise.all([
           initInspections(),
           initProperties(),
@@ -64,26 +67,32 @@ export function useSync() {
 
         toast.success("Synchronisation terminée avec succès");
       } else {
-        throw new Error("Erreur serveur lors de la synchronisation");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erreur serveur lors de la synchronisation");
       }
-    } catch (err) {
-      console.error('Sync error:', err);
-      toast.error("Échec de la synchronisation automatique");
+    } catch (err: any) {
+      console.error('[Sync] Error:', err);
+      toast.error(`Échec de la synchronisation : ${err.message || 'Erreur inconnue'}`);
     } finally {
       setIsSyncing(false);
     }
   }, [isOnline, isSyncing, initInspections, initProperties, initUsers]);
 
-  // Vérification périodique ou déclenchée par le retour du réseau
+  // Synchronisation réactive : déclenchée dès que mutationCount > 0
   useEffect(() => {
-    if (isOnline) {
-      processQueue();
+    if (mutationCount > 0 && isOnline) {
+      // On ajoute un petit délai pour regrouper les mutations si plusieurs arrivent vite
+      const timer = setTimeout(() => {
+        processQueue();
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [isOnline, processQueue]);
+  }, [mutationCount, isOnline, processQueue]);
 
   return {
     isOnline,
     isSyncing,
-    processQueue
+    processQueue,
+    mutationCount
   };
 }

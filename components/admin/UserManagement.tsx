@@ -290,7 +290,6 @@ export default function UserManagement() {
         <ResetPasswordModal 
           isOpen={isResetModalOpen}
           user={selectedUser}
-          initialPassword={(selectedUser as any).password}
           onClose={() => { setIsResetModalOpen(false); setSelectedUser(null); }}
           onSubmit={handleResetPassword}
         />

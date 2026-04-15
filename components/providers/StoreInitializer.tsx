@@ -20,7 +20,12 @@ export function StoreInitializer() {
         initInspections()
       ]);
 
-      // 2. Vérifier si on a des données. Si le cache est vide, on fait un bootstrap
+      // 2. Synchronisation descendante : Toujours récupérer les derniers utilisateurs du serveur
+      // Cela permet de voir les utilisateurs ajoutés par d'autres (ex: Amélie)
+      const fetchUsers = useUserStore.getState().fetchUsers;
+      await fetchUsers();
+
+      // 3. Vérifier si on a des données. Si le cache est vide, on fait un bootstrap
       const propertyCount = await db.properties.count();
       if (propertyCount === 0) {
         console.log("Premier lancement ou cache vide : Bootstrap des données...");
