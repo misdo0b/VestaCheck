@@ -94,5 +94,67 @@
     ],
     "serverVersion": 1,
     "lastModified": "2026-04-15T18:54:41.371Z"
+  },
+  {
+    "name": "Appartement Rouen",
+    "address": "13 rue césar franck",
+    "surface": 75,
+    "type": "Appartement",
+    "roomCount": 4,
+    "ownerId": "owner1",
+    "agentId": "user_ne8o13elj",
+    "id": "prop_1776281991758",
+    "templateIds": [],
+    "serverVersion": 1,
+    "lastModified": "2026-04-15T19:39:52.288Z",
+    "syncStatus": "pending"
+  },
+  {
+    "id": "54dfed96-7251-47da-bf71-0415205d1775",
+    "propertyId": "prop_1776281991758",
+    "name": "Template",
+    "rooms": [
+      {
+        "id": "initial_room_1",
+        "name": "Salon",
+        "items": [
+          {
+            "id": "initial_item_1",
+            "label": "Murs",
+            "condition": "Bon",
+            "comment": "",
+            "photos": []
+          },
+          {
+            "id": "initial_item_2",
+            "label": "Sols",
+            "condition": "Bon",
+            "comment": "",
+            "photos": []
+          },
+          {
+            "id": "6b66a093-534e-4623-b2b9-0eecd42f7c1f",
+            "label": "Plafond",
+            "condition": "Bon",
+            "comment": "",
+            "photos": []
+          }
+        ]
+      }
+    ],
+    "keyInventories": [
+      {
+        "id": "34a9e208-b3ab-4783-884a-98ad73bc76a5",
+        "type": "Clés du logement",
+        "count": 2
+      },
+      {
+        "id": "746cb2bc-af8d-4c70-ad1a-c6f9b4f6b86a",
+        "type": "Badge",
+        "count": 1
+      }
+    ],
+    "serverVersion": 1,
+    "lastModified": "2026-04-15T19:41:17.588Z"
   }
 ]

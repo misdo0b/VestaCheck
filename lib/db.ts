@@ -13,7 +13,7 @@ import {
 export interface LocalMutation {
   id?: number;
   type: 'CREATE' | 'UPDATE' | 'DELETE';
-  entity: 'user' | 'property' | 'inspection' | 'room' | 'item' | 'photo';
+  entity: 'user' | 'property' | 'tenant' | 'inspection' | 'room' | 'item' | 'photo';
   entityId: string;
   data: any;
   timestamp: number;
@@ -27,6 +27,7 @@ export class VestaDatabase extends Dexie {
   users!: Table<User>;
   properties!: Table<Property>;
   templates!: Table<PropertyTemplate>;
+  tenants!: Table<Tenant>;
   inspections!: Table<InspectionReport>;
   // Tables normalisées pour une gestion fine
   rooms!: Table<Room & { inspectionId: string }>;
@@ -38,11 +39,12 @@ export class VestaDatabase extends Dexie {
     super('VestaCheckDB');
     
     // Définition du schéma (seuls les index sont listés ici)
-    this.version(1).stores({
+    this.version(2).stores({
       users: 'id, email, role',
       properties: 'id, ownerId, agentId, syncStatus',
       templates: 'id, propertyId, syncStatus',
-      inspections: 'id, propertyId, inspectorId, date, syncStatus',
+      tenants: 'id, *propertyIds, email, status, syncStatus',
+      inspections: 'id, propertyId, inspectorId, tenantId, date, syncStatus',
       rooms: 'id, inspectionId',
       items: 'id, roomId',
       photos: 'id, itemId, isSynced',

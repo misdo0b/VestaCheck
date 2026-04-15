@@ -60,6 +60,20 @@ export interface SignatureMetadata {
   signedAt?: string;
 }
 
+export interface Tenant {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: 'Actuel' | 'Sorti';
+  propertyIds: string[];
+  
+  // Champs de synchronisation
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
+}
+
 export interface InspectionReport {
   id: string;
   propertyId: string; // Lien avec l'entité Property
@@ -70,7 +84,7 @@ export interface InspectionReport {
   // Nouveaux champs d'identification
   ownerId: string;           // ID du propriétaire du logement
   inspectorId: string;       // ID de la personne qui réalise l'état des lieux
-  tenantName: string;        // Nom du locataire concerné
+  tenantId: string;          // Référence à l'entité Tenant
   
   // Éléments de conformité légale
   counters: {
@@ -80,10 +94,6 @@ export interface InspectionReport {
   };
   keyInventories: { id: string; type: string; count: number }[];
   generalObservations: string;
-
-  // Contact locataire
-  tenantEmail: string;
-  tenantPhone: string;
 
   signatures: {
     tenant: SignatureMetadata;

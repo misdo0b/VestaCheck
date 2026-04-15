@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useTenantStore } from '@/store/useTenantStore';
 
 /**
  * useSync - Hook de gestion de la synchronisation en arrière-plan
@@ -21,6 +22,7 @@ export function useSync() {
   const { initStore: initInspections } = useInspectionStore();
   const { initStore: initProperties } = usePropertyStore();
   const { initStore: initUsers } = useUserStore();
+  const { initStore: initTenants } = useTenantStore();
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -62,7 +64,8 @@ export function useSync() {
         await Promise.all([
           initInspections(),
           initProperties(),
-          initUsers()
+          initUsers(),
+          initTenants()
         ]);
 
         toast.success("Synchronisation terminée avec succès");
