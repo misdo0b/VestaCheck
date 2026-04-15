@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
+import { useTenantStore } from '@/store/useTenantStore';
 import { PhotoBlobStorage } from '@/lib/utils/blob-storage';
 import { generatePDF } from '@/lib/utils/generate-pdf';
 import { PDFTemplate } from '../pdf/PDFTemplate';
@@ -37,6 +38,8 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
   const finalizeInspection = useInspectionStore((state) => state.finalizeInspection);
   const addTemplate = usePropertyStore((state) => state.addTemplate);
   const updateTemplate = usePropertyStore((state) => state.updateTemplate);
+  const { addTenant } = useTenantStore();
+  
   const [templateName, setTemplateName] = useState(initialData?.templateName || '');
   const [isExporting, setIsExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -65,13 +68,11 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     resolver: zodResolver(isTemplateMode ? PropertyTemplateSchema : InspectionReportSchema) as any,
     defaultValues: {
       id: initialData?.id || crypto.randomUUID(),
-      propertyId: (initialData as any)?.propertyId || 'prop1',
+      propertyId: initialData?.propertyId || 'prop1',
       date: initialData?.date || new Date().toISOString().split('T')[0],
       type: initialData?.type || 'Entrée',
       propertyAddress: initialData?.propertyAddress || '',
-      tenantName: initialData?.tenantName || '',
-      tenantEmail: initialData?.tenantEmail || '',
-      tenantPhone: initialData?.tenantPhone || '',
+      tenantId: initialData?.tenantId || '',
       ownerId: initialData?.ownerId || 'owner1',
       inspectorId: initialData?.inspectorId || 'agent1',
       counters: initialData?.counters || { water: 0, electricity: 0, gas: 0 },
@@ -83,7 +84,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
         inspector: { type: 'Aucune' }
       },
       generalObservations: initialData?.generalObservations || '',
-      rooms: (initialData?.rooms as any) || [
+      rooms: initialData?.rooms || [
         {
           id: crypto.randomUUID(),
           name: 'Salon',
@@ -108,12 +109,11 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
   const canFinalize = isValid && bothSignaturesPresent && isFinalized;
 
   const nextStep = async () => {
-    // Validation spécifique à l'étape avant de passer à la suivante
     let fieldsToValidate: any[] = [];
     if (isTemplateMode) {
       if (currentStep === 0) fieldsToValidate = ['counters'];
     } else {
-      if (currentStep === 0) fieldsToValidate = ['propertyAddress', 'tenantName', 'tenantEmail', 'tenantPhone', 'counters'];
+      if (currentStep === 0) fieldsToValidate = ['propertyAddress', 'tenantId', 'manualTenant', 'counters'];
       if (currentStep === 1) fieldsToValidate = ['rooms'];
       if (currentStep === 2) fieldsToValidate = ['keyInventories'];
     }
@@ -132,7 +132,27 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const onSubmit = (data: InspectionFormData) => {
+  const onSubmit = async (data: InspectionFormData) => {
+    let finalTenantId = data.tenantId;
+
+    if (!finalTenantId && data.manualTenant?.name && data.manualTenant?.email) {
+      try {
+        const newId = await addTenant({
+          id: `tenant_${crypto.randomUUID().slice(0, 8)}`,
+          name: data.manualTenant.name,
+          email: data.manualTenant.email,
+          phone: data.manualTenant.phone,
+          status: 'Actuel',
+          propertyIds: [data.propertyId]
+        });
+        finalTenantId = newId;
+        toast.success(`Nouveau locataire ${data.manualTenant.name} créé !`);
+      } catch (err) {
+        toast.error("Erreur lors de la création automatique du locataire.");
+        return;
+      }
+    }
+
     if (isTemplateMode) {
       if (templateId) {
         updateTemplate(templateId, {
@@ -149,21 +169,27 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
           rooms: data.rooms,
           keyInventories: data.keyInventories
         };
-        addTemplate(templateData);
+        addTemplate(templateData as any);
         toast.success("Template enregistré avec succès !");
       }
       router.push(`/dashboard/properties/${data.propertyId}`);
       return;
     }
 
-    finalizeInspection(data.id, data as any);
+    const finalData = { 
+      ...data, 
+      tenantId: finalTenantId,
+      manualTenant: undefined 
+    };
+
+    finalizeInspection(data.id, finalData as any);
     toast.success("Rapport finalisé et enregistré avec succès !");
     router.push(`/dashboard/properties/${data.propertyId}`);
   };
 
   const handleExportPDF = async () => {
     const data = methods.getValues();
-    if (!data.signatures.tenant.drawData && !data.signatures.inspector.drawData) {
+    if (!data.signatures?.tenant?.drawData && !data.signatures?.inspector?.drawData) {
       if (!confirm("Le rapport n'est pas encore signé. Souhaitez-vous quand même exporter un brouillon ?")) {
         return;
       }
@@ -173,29 +199,25 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     toast.info("Préparation des photos HD... Veuillez patienter.");
 
     try {
-      // 1. Ré-hydratation des photos HD
-      const enrichedData = JSON.parse(JSON.stringify(data)); // Clone profond
+      const enrichedData = JSON.parse(JSON.stringify(data));
       
-      for (const room of enrichedData.rooms) {
-        for (const item of room.items) {
-          for (const photo of item.photos) {
+      for (const room of enrichedData.rooms || []) {
+        for (const item of room.items || []) {
+          for (const photo of item.photos || []) {
             if (photo.hasFullRes) {
               const hdData = await PhotoBlobStorage.getPhotoHD(photo.id);
               if (hdData) {
-                photo.fullResBase64 = hdData; // Injection temporaire pour le PDF
+                photo.fullResBase64 = hdData;
               }
             }
           }
         }
       }
 
-      // Mettre à jour les données pour le template PDF
       setPdfData(enrichedData);
- 
-      // Un court délai pour laisser React mettre à jour le DOM caché avec les images HD
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      const safeTenantName = data.tenantName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const safeTenantName = data.id.slice(0, 8);
       const fileName = `Rapport_${safeTenantName}_${data.date.replace(/\//g, '-')}.pdf`;
       
       await generatePDF('inspection-report-pdf', fileName);
@@ -205,21 +227,22 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       toast.error("Erreur lors de la génération du PDF.");
     } finally {
       setIsExporting(false);
-      setPdfData(null); // Nettoyage immédiat pour libérer la RAM
+      setPdfData(null);
     }
   };
 
   if (!mounted) {
-    return <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <Loader2 className="animate-spin text-blue-500" size={40} />
-    </div>;
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <Loader2 className="animate-spin text-blue-500" size={40} />
+      </div>
+    );
   }
 
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)} className="max-w-5xl mx-auto pb-32 min-h-screen bg-slate-950">
-        {/* Barre d'Action Supérieure */}
-        <div className="sticky top-4 z-40 flex justify-between items-center bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/5 mb-8 mx-2 transition-all duration-300">
+        <div className="sticky top-4 z-40 flex justify-between items-center bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/5 mb-8 mx-2">
           <div className="flex items-center gap-4">
             <div className={`${isTemplateMode ? 'bg-emerald-600' : 'bg-blue-600'} p-2.5 rounded-xl text-white shadow-lg`}>
               {isTemplateMode ? <LayoutGrid size={20} /> : <Save size={20} />}
@@ -245,7 +268,6 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
               </button>
             )}
             
-            {/* Bouton Sauvegarder/Finaliser (Toujours visible en mode Template, ou à la fin en mode normal) */}
             {(isTemplateMode || currentStep === steps.length - 1) && (
               <button
                 type="submit"
@@ -259,12 +281,9 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
           </div>
         </div>
 
-        {/* Stepper Visuel */}
         <Stepper currentStep={currentStep} steps={steps} />
 
-        {/* Contenu de l'étape */}
         <div className="space-y-4 px-2 relative min-h-[400px]">
-            {/* Étape 0: Général & Compteurs */}
             {currentStep === 0 && (
               <fieldset disabled={isLocked} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {isTemplateMode && (
@@ -287,7 +306,6 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
               </fieldset>
             )}
 
-            {/* Étape 1 (Normal) / Étape 1 (Template): Pièces */}
             {currentStep === 1 && (
               <fieldset disabled={isLocked} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <RoomSection />
@@ -299,14 +317,13 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
               </fieldset>
             )}
 
-            {/* Étape 2 (Normal): Clés & Inventaire */}
             {!isTemplateMode && currentStep === 2 && (
               <fieldset disabled={isLocked} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <KeyInventorySection />
                 <div className="bg-slate-900/40 p-6 rounded-3xl border border-white/5 mx-2">
                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Observations Générales</label>
                    <textarea 
-                     {...methods.register('generalObservations')}
+                     {...methods.register('generalObservations' as any)}
                      rows={6}
                      placeholder="Ajoutez ici des commentaires globaux sur l'état du logement..."
                      className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-4 text-sm text-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
@@ -315,7 +332,6 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
               </fieldset>
             )}
 
-            {/* Étape 3 (Normal): Signatures - JAMAIS DISABLÉ PAR FIELDSET pour permettre la 2ème signature */}
             {!isTemplateMode && currentStep === 3 && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <SignatureSection />
@@ -323,7 +339,6 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
             )}
         </div>
 
-        {/* Navigation Stepper (Footer) */}
         <div className="fixed bottom-0 inset-x-0 bg-slate-950/80 backdrop-blur-xl border-t border-white/5 p-4 z-50">
           <div className="max-w-5xl mx-auto flex justify-between gap-4">
             <button
@@ -346,12 +361,11 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
                 <ArrowRight size={20} />
               </button>
             ) : (
-              <div className="flex-1 max-w-[400px]" /> /* Espaceur pour l'equilibre visuel */
+              <div className="flex-1 max-w-[400px]" />
             )}
           </div>
         </div>
 
-        {/* Erreurs de l'étape actuelle */}
         {Object.keys(formErrors).length > 0 && (
           <div className="mt-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-4 mx-2">
             <AlertCircle className="text-red-400 shrink-0 mt-0.5" size={20} />
@@ -359,9 +373,8 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
           </div>
         )}
 
-        {/* Template PDF (Caché) */}
         <div style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
-           <PDFTemplate data={pdfData || methods.watch()} />
+           <PDFTemplate data={pdfData || methods.getValues()} />
         </div>
       </form>
     </FormProvider>

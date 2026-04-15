@@ -1,0 +1,80 @@
+[
+  {
+    "id": "tenant_sophie_l",
+    "name": "Sophie Locataire",
+    "email": "sophie.l@gmail.com",
+    "phone": "06 12 34 56 78",
+    "status": "Actuel",
+    "propertyIds": [
+      "prop_001"
+    ],
+    "serverVersion": 1,
+    "lastModified": "2026-04-15T22:30:00Z",
+    "syncStatus": "synced"
+  },
+  {
+    "id": "tenant_jean_d",
+    "name": "Jean Dupont",
+    "email": "jean.dupont@email.fr",
+    "phone": "07 88 99 00 11",
+    "status": "Actuel",
+    "propertyIds": [
+      "prop_001",
+      "prop_002"
+    ],
+    "serverVersion": 1,
+    "lastModified": "2026-04-15T22:30:00Z",
+    "syncStatus": "synced"
+  },
+  {
+    "name": "Garance Test",
+    "email": "garance@test.com",
+    "phone": "0102030405",
+    "status": "Actuel",
+    "propertyIds": [
+      "prop_001"
+    ],
+    "id": "tenant_garance_test",
+    "serverVersion": 1,
+    "lastModified": "2026-04-15T20:32:41.231Z"
+  },
+  {
+    "name": "Garance",
+    "email": "garance@gmail.com",
+    "phone": "0699877552",
+    "status": "Actuel",
+    "propertyIds": [
+      "prop_1776281991758"
+    ],
+    "id": "tenant_ff22e9ca",
+    "serverVersion": 2,
+    "lastModified": "2026-04-15T20:36:34.722Z",
+    "syncStatus": "synced"
+  },
+  {
+    "id": "tenant_16b302c4",
+    "name": "Bernard",
+    "email": "bernard@gmail.com",
+    "phone": "5588996677",
+    "status": "Actuel",
+    "propertyIds": [
+      "prop_1776281991758"
+    ],
+    "serverVersion": 1,
+    "lastModified": "2026-04-15T20:37:07.676Z",
+    "syncStatus": "pending"
+  },
+  {
+    "id": "tenant_94e36add",
+    "name": "Eric",
+    "email": "eric@gmail.com",
+    "phone": "4488559966",
+    "status": "Actuel",
+    "propertyIds": [
+      "prop_1776281991758"
+    ],
+    "serverVersion": 1,
+    "lastModified": "2026-04-15T20:38:42.902Z",
+    "syncStatus": "pending"
+  }
+]
