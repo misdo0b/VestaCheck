@@ -7,7 +7,10 @@ import {
   Room, 
   InspectionItem, 
   PhotoMetadata,
-  SyncStatus 
+  SyncStatus,
+  Tenant,
+  Organization,
+  Agency
 } from '@/types';
 
 export interface LocalMutation {
@@ -29,6 +32,8 @@ export class VestaDatabase extends Dexie {
   templates!: Table<PropertyTemplate>;
   tenants!: Table<Tenant>;
   inspections!: Table<InspectionReport>;
+  organizations!: Table<Organization>;
+  agencies!: Table<Agency>;
   // Tables normalisées pour une gestion fine
   rooms!: Table<Room & { inspectionId: string }>;
   items!: Table<InspectionItem & { roomId: string }>;
@@ -39,12 +44,14 @@ export class VestaDatabase extends Dexie {
     super('VestaCheckDB');
     
     // Définition du schéma (seuls les index sont listés ici)
-    this.version(2).stores({
-      users: 'id, email, role',
-      properties: 'id, ownerId, agentId, syncStatus',
+    this.version(3).stores({
+      users: 'id, email, role, organizationId, agencyId',
+      properties: 'id, ownerId, agentId, agencyId, syncStatus',
       templates: 'id, propertyId, syncStatus',
       tenants: 'id, *propertyIds, email, status, syncStatus',
-      inspections: 'id, propertyId, inspectorId, tenantId, date, syncStatus',
+      inspections: 'id, propertyId, inspectorId, tenantId, agencyId, date, syncStatus',
+      organizations: 'id, raisonSociale, siret',
+      agencies: 'id, organizationId, name, type',
       rooms: 'id, inspectionId',
       items: 'id, roomId',
       photos: 'id, itemId, isSynced',

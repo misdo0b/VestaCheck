@@ -157,7 +157,9 @@ const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSu
   );
 };
 
-export default function TenantsPage() {
+import { Suspense } from 'react';
+
+function TenantsPageContent() {
   const { tenants, loading, addTenant, updateTenant, deleteTenant } = useTenantStore();
   const { properties } = usePropertyStore();
   const { data: session } = useSession();
@@ -417,5 +419,13 @@ export default function TenantsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function TenantsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Chargement...</div>}>
+      <TenantsPageContent />
+    </Suspense>
   );
 }

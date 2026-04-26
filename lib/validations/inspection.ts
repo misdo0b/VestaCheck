@@ -42,6 +42,7 @@ const BaseReportSchema = z.object({
   type: z.enum(['Entrée', 'Sortie']),
   ownerId: z.string(),
   inspectorId: z.string(),
+  agencyId: z.string().optional(),
   tenantId: z.string().optional(),
   manualTenant: z.object({
     name: z.string().min(2, "Nom requis"),

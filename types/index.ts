@@ -1,5 +1,25 @@
 export type Condition = 'Neuf' | 'Très Bon' | 'Bon' | 'Usage' | 'Mauvais';
 
+export interface Organization {
+  id: string;
+  raisonSociale: string;
+  siret: string;
+  adressePostale: string;
+  updatedAt: number;
+}
+
+export interface Agency {
+  id: string;
+  organizationId: string;
+  name: string;
+  address: string;
+  email: string;
+  phone: string;
+  type: 'Siège' | 'Établissement';
+  updatedAt: number;
+  isSynced: boolean;
+}
+
 export interface InspectionItem {
   id: string;
   label: string; 
@@ -33,6 +53,7 @@ export interface Property {
   roomCount: number;
   ownerId: string;
   agentId?: string; // ID de l'agent responsable
+  agencyId?: string; // Rattachement à une agence
   templateIds?: string[];
   
   // Champs de synchronisation
@@ -85,6 +106,7 @@ export interface InspectionReport {
   ownerId: string;           // ID du propriétaire du logement
   inspectorId: string;       // ID de la personne qui réalise l'état des lieux
   tenantId: string;          // Référence à l'entité Tenant
+  agencyId?: string;         // Agence responsable du rapport
   
   // Éléments de conformité légale
   counters: {
@@ -117,6 +139,7 @@ export interface User {
   email: string;
   password?: string; // Optionnel pour les transferts client, requis pour l'auth
   role: UserRole;
+  organizationId?: string; // Organisation d'appartenance
   agencyId?: string; // Pour regrouper des agents par agence
   
   // Champs de synchronisation
