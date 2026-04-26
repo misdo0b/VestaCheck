@@ -18,14 +18,21 @@ import {
 import Link from 'next/link';
 import { User, UserRole } from '@/types';
 import { useUserStore } from '@/store/useUserStore';
+import { useAgencyStore } from '@/store/useAgencyStore';
+import { useEffect } from 'react';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationDialog from '@/components/admin/ConfirmationDialog';
 import ResetPasswordModal from '@/components/admin/ResetPasswordModal';
 
 export default function UserManagement() {
   const { users, addUser, updateUser, deleteUser } = useUserStore();
+  const { agencies, initStore: initAgencies } = useAgencyStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'All'>('All');
+  
+  useEffect(() => {
+    initAgencies();
+  }, [initAgencies]);
   
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -220,7 +227,7 @@ export default function UserManagement() {
                     <td className="px-6 py-4 hidden lg:table-cell">
                       <div className="flex items-center gap-2 text-sm text-slate-400 uppercase tracking-tight">
                         <Building className="w-4 h-4 text-slate-600" />
-                        {user.agencyId || 'N/A'}
+                        {agencies.find(a => a.id === user.agencyId)?.name || user.agencyId || 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">

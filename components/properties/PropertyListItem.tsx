@@ -5,15 +5,17 @@ import { Property, InspectionReport } from '@/types';
 import { Home, MapPin, Maximize, Layers, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useUserStore } from '@/store/useUserStore';
+import { useTenantStore } from '@/store/useTenantStore';
 
 interface PropertyListItemProps {
   property: Property;
   lastInspection?: InspectionReport;
 }
 
-export function PropertyListItem({ property, lastInspection }: PropertyListItemProps) {
+export function PropertyListItem({ property }: PropertyListItemProps) {
   const { users } = useUserStore();
-  const isOccupied = lastInspection ? lastInspection.type === 'Entrée' : false;
+  const { tenants } = useTenantStore();
+  const isOccupied = tenants.some(t => t.propertyIds.includes(property.id) && t.status === 'Actuel');
 
   return (
     <Link 

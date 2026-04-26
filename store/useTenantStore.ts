@@ -16,7 +16,7 @@ interface TenantState {
   deleteTenant: (id: string) => Promise<void>;
   
   // Helpers
-  getTenantById: (id: string) => Tenant | undefined;
+  getTenantById: (id: string | undefined) => Tenant | undefined;
   getTenantsByProperty: (propertyId: string) => Tenant[];
 }
 
@@ -136,6 +136,7 @@ export const useTenantStore = create<TenantState>((set, get) => ({
   },
 
   getTenantById: (id) => {
+    if (!id) return undefined;
     return get().tenants.find(t => t.id === id);
   },
 

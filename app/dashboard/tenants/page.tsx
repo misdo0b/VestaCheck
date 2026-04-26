@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useTenantStore } from '@/store/useTenantStore';
+import { useSearchParams } from 'next/navigation';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useSession } from 'next-auth/react';
 import { 
@@ -156,17 +157,29 @@ const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSu
   );
 };
 
-export default function TenantsPage() {
+import { Suspense } from 'react';
+
+function TenantsPageContent() {
   const { tenants, loading, addTenant, updateTenant, deleteTenant } = useTenantStore();
   const { properties } = usePropertyStore();
   const { data: session } = useSession();
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'Tous' | 'Actuel' | 'Sorti'>('Tous');
+  const [statusFilter, setStatusFilter] = useState<'Tous' | 'Actuel' | 'Sorti'>('Actuel');
   const [sortBy, setSortBy] = useState<'name' | 'lastModified'>('name');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | undefined>();
+  
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get('search');
+
+  // Initialisation de la recherche via URL
+  React.useEffect(() => {
+    if (initialSearch) {
+      setSearchQuery(initialSearch);
+    }
+  }, [initialSearch]);
 
   // 1. Filtrage de Sécurité & Recherche
   const filteredTenants = useMemo(() => {
@@ -406,5 +419,13 @@ export default function TenantsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function TenantsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Chargement...</div>}>
+      <TenantsPageContent />
+    </Suspense>
   );
 }

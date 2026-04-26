@@ -8,6 +8,7 @@ import { RoomSection } from './sections/RoomSection';
 import { KeyInventorySection } from './sections/KeyInventorySection';
 import { SignatureSection } from './sections/SignatureSection';
 import { Stepper } from './Stepper';
+import { useSession } from 'next-auth/react';
 import { 
   Save, 
   Send, 
@@ -39,6 +40,8 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
   const addTemplate = usePropertyStore((state) => state.addTemplate);
   const updateTemplate = usePropertyStore((state) => state.updateTemplate);
   const { addTenant } = useTenantStore();
+  const { data: session } = useSession();
+  const currentUser = session?.user as any;
   
   const [templateName, setTemplateName] = useState(initialData?.templateName || '');
   const [isExporting, setIsExporting] = useState(false);
@@ -74,7 +77,8 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       propertyAddress: initialData?.propertyAddress || '',
       tenantId: initialData?.tenantId || '',
       ownerId: initialData?.ownerId || 'owner1',
-      inspectorId: initialData?.inspectorId || 'agent1',
+      inspectorId: initialData?.inspectorId || currentUser?.id || 'agent1',
+      agencyId: initialData?.agencyId || currentUser?.agencyId || '',
       counters: initialData?.counters || { water: 0, electricity: 0, gas: 0 },
       keyInventories: initialData?.keyInventories || [
         { id: crypto.randomUUID(), type: 'Clés du logement', count: 2 }
@@ -155,6 +159,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
 
     if (isTemplateMode) {
       if (templateId) {
+        // Mode Édition
         updateTemplate(templateId, {
           name: templateName || `Template ${new Date().toLocaleDateString()}`,
           rooms: data.rooms,
@@ -162,6 +167,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
         });
         toast.success("Template mis à jour avec succès !");
       } else {
+        // Mode Création
         const templateData = {
           id: crypto.randomUUID(),
           propertyId: data.propertyId,
@@ -179,6 +185,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     const finalData = { 
       ...data, 
       tenantId: finalTenantId,
+      agencyId: data.agencyId || currentUser?.agencyId,
       manualTenant: undefined 
     };
 
@@ -268,7 +275,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
               </button>
             )}
             
-            {(isTemplateMode || currentStep === steps.length - 1) && (
+            {(isTemplateMode || (currentStep === steps.length - 1 && !initialData?.isFinalized)) && (
               <button
                 type="submit"
                 disabled={isTemplateMode ? false : !canFinalize}

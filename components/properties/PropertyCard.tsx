@@ -6,18 +6,23 @@ import { Home, MapPin, Maximize, Layers, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 import { useUserStore } from '@/store/useUserStore';
+import { useTenantStore } from '@/store/useTenantStore';
+import { useAgencyStore } from '@/store/useAgencyStore';
 
 interface PropertyCardProps {
   property: Property;
   lastInspection?: InspectionReport;
 }
 
-export function PropertyCard({ property, lastInspection }: PropertyCardProps) {
-  const isOccupied = lastInspection ? lastInspection.type === 'Entrée' : false;
+export function PropertyCard({ property }: PropertyCardProps) {
+  const { tenants } = useTenantStore();
+  const isOccupied = tenants.some(t => t.propertyIds.includes(property.id) && t.status === 'Actuel');
   const { users } = useUserStore();
+  const { agencies } = useAgencyStore();
   
   const owner = users.find(u => u.id === property.ownerId);
   const agent = users.find(u => u.id === property.agentId);
+  const agency = agencies.find(a => a.id === property.agencyId);
 
   return (
     <Link 
@@ -69,6 +74,12 @@ export function PropertyCard({ property, lastInspection }: PropertyCardProps) {
           <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Agent associé</span>
           <span className="text-xs text-blue-400 font-semibold">{agent?.name || property.agentId || 'Non assigné'}</span>
         </div>
+        {agency && (
+          <div className="flex items-center justify-between border-t border-white/5 pt-1 mt-1">
+            <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Agence</span>
+            <span className="text-[10px] text-slate-400 font-bold">{agency.name}</span>
+          </div>
+        )}
         <div className="flex items-center gap-1 text-blue-400 text-sm font-medium mt-3 self-end">
           Détails <ChevronRight className="w-4 h-4" />
         </div>

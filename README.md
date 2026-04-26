@@ -8,37 +8,35 @@
 
 ---
 
-## 📸 Aperçu de la Plateforme (v2)
+## 📸 Aperçu de la Plateforme
 
 ### Authentification & Sécurité
 Accès sécurisé pour les Administrateurs, Agents et Propriétaires. Les mots de passe sont désormais hachés avec **bcrypt**.
 ![Login](public/assets/screenshots/login_v2.png)
 
-### Dashboard & Connectivité
-Suivi en temps réel des inspections et indicateur de synchronisation intelligent.
-![Dashboard](public/assets/screenshots/dashboard_v2.png)
+### Dashboard & Notifications
+L'interface utilise un système de notifications "Glassmorphism" (Sonner) pour un feedback utilisateur élégant et non intrusif.
+![Notifications](public/assets/screenshots/notifications-demo.png)
 
-### Gestion du Parc Immobilier
-Vue interactive des biens avec filtres dynamiques (Disponibilité, Type) et mode Grille/Liste.
-![Properties](public/assets/screenshots/properties_grid_v2.png)
+### Gestion du Parc & Templates
+Chaque bien dispose de ses propres modèles de configuration (templates) éditables pour accélérer les futurs états des lieux.
+![Détails Bien](public/assets/screenshots/property-details.png)
 
-### Parcours d'Inspection Dynamique
-Interface simplifiée par étapes (Stepper) pour une saisie rapide et sans erreur.
-| Étape 1 : Informations Locataire | Étape 2 : Saisie des Pièces |
-| :---: | :---: |
-| ![Form Step 1](public/assets/screenshots/form_step1_v2.png) | ![Form Rooms](public/assets/screenshots/form_rooms_v2.png) |
+### Rapports PDF Haute Définition
+Génération de documents officiels avec en-têtes répétables, pagination automatique et rendu net (Scale x3).
+![PDF Export](public/assets/screenshots/inspections.png)
 
 ---
 
 ## 🔥 Fonctionnalités Maîtresses
 
 - 📡 **Offline-First (Dexie.js)** : Saisie locale ultra-rapide avec synchronisation automatique lors de la reconnexion.
-- 📋 **Templates de Biens** : Créez et réutilisez des modèles de pièces pour chaque logement afin de gagner du temps.
+- 📋 **Templates de Biens** : Créez, nommez et éditez des modèles par bien (ex: "T2 Standard") pour gagner du temps.
 - 🔐 **Sécurité Avancée** : Authentification NextAuth v5 avec hachage bcrypt des données sensibles.
-- 📄 **Moteur PDF HD** : Génération de rapports officiels avec en-têtes répétables et rendu haute fidélité.
-- ✍️ **Signature Tactile** : Signature électronique intégrée pour le locataire et l'agent.
-- 👥 **Console Admin** : Gestion complète des utilisateurs, rôles et agences partenaires.
-![Admin](public/assets/screenshots/admin_v2.png)
+- 📄 **Moteur PDF HD** : Exportation haute fidélité avec en-têtes répétables et rendu haute résolution.
+- ✍️ **Signature Tactile** : Signature électronique sécurisée pour le locataire et l'agent avec verrouillage du rapport.
+- 🔔 **Notifications Globales** : Système de feedback interactif `Sonner` intégré.
+- 👥 **Console Admin** : Gestion complète des utilisateurs, rôles (Admin, Agent, Proprio) et agences.
 
 ---
 
@@ -47,10 +45,12 @@ Interface simplifiée par étapes (Stepper) pour une saisie rapide et sans erreu
 > [!NOTE]
 > Le projet utilise les toutes dernières versions de React et Next.js pour garantir performance et maintenabilité.
 
-- **Frontend** : React 19, Next.js 15, Tailwind CSS.
-- **Persistance** : Dexie.js (IndexedDB) + LocalStorage.
+- **Frontend** : React 19, Next.js 15 (App Router), Tailwind CSS.
 - **Logique** : Zustand (State Management), React Hook Form, Zod.
+- **Persistance** : Dexie.js (IndexedDB) pour le mode Offline-First.
 - **Auth** : NextAuth.js v5.
+- **Moteur Document** : jsPDF / html2canvas (Rendu HD, gestion dynamique des sauts de page).
+- **Signature** : React Signature Canvas.
 - **Assets** : Lucide React (Icons), Sonner (Toasts).
 
 ---

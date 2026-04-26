@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { InspectionReport, InspectionItem, PhotoMetadata } from '@/types';
+import { useTenantStore } from './useTenantStore';
 import { db } from '@/lib/db';
 import { dataURLToBlob } from '@/lib/utils/image';
 
@@ -17,6 +18,7 @@ interface InspectionState {
   addPhoto: (roomId: string, itemId: string, photoUrl: string) => Promise<void>;
   saveOffline: () => void;
   finalizeInspection: (id: string, fullData?: InspectionReport) => Promise<void>;
+  getInspectionsByAgency: (agencyId: string) => InspectionReport[];
 }
 
 export const useInspectionStore = create<InspectionState>((set, get) => ({
@@ -169,8 +171,19 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         entityId: id,
         data: finalizedReport // Envoi de l'intégralité du rapport
       });
+      
+      // Automatisation du statut locataire si c'est une sortie
+      if (finalizedReport.type === 'Sortie' && finalizedReport.tenantId) {
+        await useTenantStore.getState().updateTenant(finalizedReport.tenantId, { 
+          status: 'Sorti' 
+        });
+      }
     } catch (err) {
       console.error('Finalization save failed:', err);
     }
+  },
+
+  getInspectionsByAgency: (agencyId) => {
+    return get().inspections.filter(i => i.agencyId === agencyId);
   }
 }));
