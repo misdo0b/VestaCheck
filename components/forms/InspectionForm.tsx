@@ -159,6 +159,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
 
     if (isTemplateMode) {
       if (templateId) {
+        // Mode Édition
         updateTemplate(templateId, {
           name: templateName || `Template ${new Date().toLocaleDateString()}`,
           rooms: data.rooms,
@@ -166,6 +167,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
         });
         toast.success("Template mis à jour avec succès !");
       } else {
+        // Mode Création
         const templateData = {
           id: crypto.randomUUID(),
           propertyId: data.propertyId,

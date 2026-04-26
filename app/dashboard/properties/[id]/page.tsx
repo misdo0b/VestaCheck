@@ -16,7 +16,6 @@ import { PDFTemplate } from '@/components/pdf/PDFTemplate';
 import { generatePDF } from '@/lib/utils/generate-pdf';
 import Link from 'next/link';
 import { toast } from 'sonner';
-
 import { useUserStore } from '@/store/useUserStore';
 
 export default function PropertyDetailPage() {
