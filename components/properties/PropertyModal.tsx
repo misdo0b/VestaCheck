@@ -19,6 +19,7 @@ const propertySchema = z.object({
   roomCount: z.number().min(1, "Au moins une pièce"),
   ownerId: z.string().min(1, "Propriétaire requis"),
   agentId: z.string().optional(),
+  agencyId: z.string().optional(),
 });
 
 type PropertyFormData = z.infer<typeof propertySchema>;
@@ -51,6 +52,7 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
       roomCount: 1,
       ownerId: '',
       agentId: isAgent ? currentUser.id : '',
+      agencyId: currentUser?.agencyId || '',
     }
   });
 
@@ -66,6 +68,7 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
         roomCount: 1,
         ownerId: '',
         agentId: isAgent ? currentUser?.id : '',
+        agencyId: currentUser?.agencyId || '',
       });
     }
   }, [property, reset, isOpen, isAgent, currentUser?.id]);
@@ -80,6 +83,7 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
         id: `prop_${Date.now()}`,
         templateIds: [],
         agentId: data.agentId || (isAgent ? currentUser?.id : undefined),
+        agencyId: data.agencyId || currentUser?.agencyId,
         serverVersion: 1,
         lastModified: new Date().toISOString(),
         syncStatus: 'pending', // Marqué comme en attente de synchro initiale

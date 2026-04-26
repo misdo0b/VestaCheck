@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { X, UserPlus, Save, Mail, User as UserIcon, Building } from 'lucide-react';
 import { User, UserRole } from '@/types';
+import { useAgencyStore } from '@/store/useAgencyStore';
+import { useEffect } from 'react';
 
 const userSchema = z.object({
   name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
@@ -25,6 +27,8 @@ interface UserModalProps {
 }
 
 export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModalProps) {
+  const { agencies, initStore } = useAgencyStore();
+
   const {
     register,
     handleSubmit,
@@ -39,6 +43,10 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
       agencyId: user?.agencyId || '',
     },
   });
+
+  useEffect(() => {
+    initStore();
+  }, [initStore]);
 
   if (!isOpen) return null;
 
@@ -133,14 +141,18 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Agence (ID)</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Agence de rattachement</label>
               <div className="relative group">
                 <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input 
+                <select 
                   {...register('agencyId')}
-                  placeholder="ID Agence"
-                  className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                />
+                  className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
+                >
+                  <option value="">Sélectionner une agence...</option>
+                  {agencies.map(agency => (
+                    <option key={agency.id} value={agency.id}>{agency.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

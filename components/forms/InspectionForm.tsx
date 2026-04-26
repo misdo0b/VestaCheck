@@ -78,6 +78,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       tenantId: initialData?.tenantId || '',
       ownerId: initialData?.ownerId || 'owner1',
       inspectorId: initialData?.inspectorId || currentUser?.id || 'agent1',
+      agencyId: initialData?.agencyId || currentUser?.agencyId || '',
       counters: initialData?.counters || { water: 0, electricity: 0, gas: 0 },
       keyInventories: initialData?.keyInventories || [
         { id: crypto.randomUUID(), type: 'Clés du logement', count: 2 }
@@ -182,6 +183,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     const finalData = { 
       ...data, 
       tenantId: finalTenantId,
+      agencyId: data.agencyId || currentUser?.agencyId,
       manualTenant: undefined 
     };
 

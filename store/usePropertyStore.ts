@@ -20,6 +20,7 @@ interface PropertyState {
   addTemplate: (template: PropertyTemplate) => Promise<void>;
   updateTemplate: (id: string, updates: Partial<PropertyTemplate>) => Promise<void>;
   getTemplatesByProperty: (propertyId: string) => PropertyTemplate[];
+  getPropertiesByAgency: (agencyId: string) => Property[];
 }
 
 export const usePropertyStore = create<PropertyState>((set, get) => ({
@@ -156,5 +157,9 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
 
   getTemplatesByProperty: (propertyId) => {
     return get().templates?.filter(t => t.propertyId === propertyId) || [];
+  },
+
+  getPropertiesByAgency: (agencyId) => {
+    return get().properties.filter(p => p.agencyId === agencyId);
   }
 }));

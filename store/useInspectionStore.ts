@@ -18,6 +18,7 @@ interface InspectionState {
   addPhoto: (roomId: string, itemId: string, photoUrl: string) => Promise<void>;
   saveOffline: () => void;
   finalizeInspection: (id: string, fullData?: InspectionReport) => Promise<void>;
+  getInspectionsByAgency: (agencyId: string) => InspectionReport[];
 }
 
 export const useInspectionStore = create<InspectionState>((set, get) => ({
@@ -180,5 +181,9 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     } catch (err) {
       console.error('Finalization save failed:', err);
     }
+  },
+
+  getInspectionsByAgency: (agencyId) => {
+    return get().inspections.filter(i => i.agencyId === agencyId);
   }
 }));
