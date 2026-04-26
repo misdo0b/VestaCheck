@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useAgencyStore } from '@/store/useAgencyStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useOrganizationStore } from '@/store/useOrganizationStore';
 import { Agency, UserRole } from '@/types';
 import { 
   Building2, 
@@ -43,6 +44,7 @@ export default function AgenciesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { agencies, loading, initStore, addAgency, updateAgency, deleteAgency } = useAgencyStore();
+  const { organizations, initStore: initOrgs } = useOrganizationStore();
   const { users } = useUserStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,7 +63,8 @@ export default function AgenciesPage() {
 
   useEffect(() => {
     initStore();
-  }, [initStore]);
+    initOrgs();
+  }, [initStore, initOrgs]);
 
   const filteredAgencies = useMemo(() => {
     return agencies.filter(a => 
@@ -302,13 +305,17 @@ export default function AgenciesPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Téléphone</label>
-                    <input 
-                      {...register('phone')}
-                      className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all"
-                      placeholder="01 23 45 67 89"
-                    />
-                    {errors.phone && <p className="text-red-400 text-xs mt-2 ml-1">{errors.phone.message}</p>}
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Organisation</label>
+                    <select 
+                      {...register('organizationId')}
+                      className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all appearance-none"
+                    >
+                      <option value="">Sélectionner...</option>
+                      {organizations.map(org => (
+                        <option key={org.id} value={org.id}>{org.raisonSociale}</option>
+                      ))}
+                    </select>
+                    {errors.organizationId && <p className="text-red-400 text-xs mt-2 ml-1">{errors.organizationId.message}</p>}
                   </div>
                 </div>
 
