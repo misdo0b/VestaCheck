@@ -6,6 +6,8 @@ import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useTenantStore } from '@/store/useTenantStore';
+import { useAgencyStore } from '@/store/useAgencyStore';
+import { useOrganizationStore } from '@/store/useOrganizationStore';
 
 /**
  * useSync - Hook de gestion de la synchronisation en arrière-plan
@@ -23,6 +25,8 @@ export function useSync() {
   const { initStore: initProperties } = usePropertyStore();
   const { initStore: initUsers } = useUserStore();
   const { initStore: initTenants } = useTenantStore();
+  const { initStore: initAgencies } = useAgencyStore();
+  const { initStore: initOrganizations } = useOrganizationStore();
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -65,7 +69,9 @@ export function useSync() {
           initInspections(),
           initProperties(),
           initUsers(),
-          initTenants()
+          initTenants(),
+          initAgencies(),
+          initOrganizations()
         ]);
 
         toast.success("Synchronisation terminée avec succès");

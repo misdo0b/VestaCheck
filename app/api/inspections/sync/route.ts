@@ -41,19 +41,25 @@ export async function POST(req: Request) {
     const properties = await readDb('properties-db.json');
     const inspections = await readDb('inspections-db.json');
     const tenants = await readDb('tenants-db.json');
+    const agencies = await readDb('agencies-db.json');
+    const organizations = await readDb('organizations-db.json');
 
     const dbMap: Record<string, any[]> = {
       'user': users,
       'property': properties,
       'inspection': inspections,
-      'tenant': tenants
+      'tenant': tenants,
+      'agency': agencies,
+      'organization': organizations
     };
 
     const fileMap: Record<string, string> = {
       'user': 'users-db.json',
       'property': 'properties-db.json',
       'inspection': 'inspections-db.json',
-      'tenant': 'tenants-db.json'
+      'tenant': 'tenants-db.json',
+      'agency': 'agencies-db.json',
+      'organization': 'organizations-db.json'
     };
 
     const affectedEntities = new Set<string>();

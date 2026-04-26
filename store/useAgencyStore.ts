@@ -35,13 +35,18 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
   fetchAgencies: async (organizationId: string) => {
     set({ loading: true });
     try {
-      // In a real app, this would be a fetch to /api/agencies?organizationId=...
-      // For now, we rely on local data or mock
-      const localAgencies = await db.agencies.where('organizationId').equals(organizationId).toArray();
-      set({ agencies: localAgencies, loading: false });
+      const response = await fetch(`/api/agencies?organizationId=${organizationId}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Filtrage serveur simulé ou réel
+        const filtered = Array.isArray(data) ? data.filter((a: any) => a.organizationId === organizationId) : [];
+        await db.agencies.bulkPut(filtered);
+        set({ agencies: filtered, loading: false });
+      }
     } catch (error) {
       console.warn('Fetch agencies failed, using local data:', error);
-      set({ loading: false });
+      const localAgencies = await db.agencies.where('organizationId').equals(organizationId).toArray();
+      set({ agencies: localAgencies, loading: false });
     }
   },
 
@@ -58,7 +63,7 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
       await db.agencies.add(newAgency);
       await db.enqueueMutation({
         type: 'CREATE',
-        entity: 'agency' as any, // On ajoute le type agency aux mutations
+        entity: 'agency',
         entityId: newAgency.id,
         data: newAgency
       });
@@ -86,7 +91,7 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
       
       await db.enqueueMutation({
         type: 'UPDATE',
-        entity: 'agency' as any,
+        entity: 'agency',
         entityId: id,
         data: updates
       });
@@ -104,7 +109,7 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
       await db.agencies.delete(id);
       await db.enqueueMutation({
         type: 'DELETE',
-        entity: 'agency' as any,
+        entity: 'agency',
         entityId: id,
         data: { id }
       });

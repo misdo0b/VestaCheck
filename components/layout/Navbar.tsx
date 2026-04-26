@@ -53,16 +53,6 @@ export const Navbar = () => {
           >
             Locataires
           </Link>
-          {(session?.user as any)?.role === 'Administrateur' && (
-            <Link 
-              href="/admin/agencies" 
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                pathname.startsWith('/admin/agencies') ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              Agences
-            </Link>
-          )}
         </div>
 
         {/* User Actions */}
