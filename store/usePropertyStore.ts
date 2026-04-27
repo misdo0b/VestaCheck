@@ -32,12 +32,25 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
   initStore: async () => {
     set({ loading: true });
     try {
-      const [localProps, localTemplates] = await Promise.all([
+      const [allLocalProps, localTemplates] = await Promise.all([
         db.properties.toArray(),
         db.templates.toArray()
       ]);
+
+      // Filtrer les vrais biens vs les templates pollués (ceux ayant propertyId)
+      const realProps = allLocalProps.filter(p => !('propertyId' in p));
+      const pollutedIds = allLocalProps
+        .filter(p => 'propertyId' in p)
+        .map(p => p.id);
+
+      // Assainissement asynchrone de la base locale si pollution détectée
+      if (pollutedIds.length > 0) {
+        console.warn(`[PropertyStore] Nettoyage de ${pollutedIds.length} templates pollués dans la table properties.`);
+        await db.properties.bulkDelete(pollutedIds);
+      }
+
       set({ 
-        properties: localProps, 
+        properties: realProps, 
         templates: localTemplates, 
         loading: false 
       });

@@ -40,13 +40,13 @@ export default function PropertiesPage() {
   };
 
   const filteredProperties = useMemo(() => {
-    // 1. Isolation par rôle
-    let baseProperties = properties;
+    // 1. Isolation par rôle et type (exclusion des templates)
+    let baseProperties = properties.filter(p => !('propertyId' in (p as any)));
 
     if (userRole === 'Agent') {
-      baseProperties = properties.filter(p => p.agentId === userId);
+      baseProperties = baseProperties.filter(p => p.agentId === userId);
     } else if (userRole === 'Propriétaire') {
-      baseProperties = properties.filter(p => p.ownerId === userId);
+      baseProperties = baseProperties.filter(p => p.ownerId === userId);
     }
     // Administrateur voit tout (pas de filtre)
 
