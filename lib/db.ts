@@ -16,7 +16,7 @@ import {
 export interface LocalMutation {
   id?: number;
   type: 'CREATE' | 'UPDATE' | 'DELETE';
-  entity: 'user' | 'property' | 'tenant' | 'inspection' | 'room' | 'item' | 'photo' | 'agency' | 'organization';
+  entity: 'user' | 'property' | 'template' | 'tenant' | 'inspection' | 'room' | 'item' | 'photo' | 'agency' | 'organization';
   entityId: string;
   data: any;
   timestamp: number;

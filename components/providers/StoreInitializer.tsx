@@ -44,14 +44,15 @@ export function StoreInitializer() {
         try {
           const res = await fetch('/api/bootstrap');
           if (res.ok) {
-            const { properties, users, inspections, tenants } = await res.json();
+            const { properties, users, inspections, tenants, templates } = await res.json();
             
             // On écrit en masse dans Dexie (transaction sécurisée)
-            await db.transaction('rw', [db.properties, db.users, db.inspections, db.tenants], async () => {
+            await db.transaction('rw', [db.properties, db.users, db.inspections, db.tenants, db.templates], async () => {
               if (properties?.length > 0) await db.properties.bulkPut(properties);
               if (users?.length > 0) await db.users.bulkPut(users);
               if (inspections?.length > 0) await db.inspections.bulkPut(inspections);
               if (tenants?.length > 0) await db.tenants.bulkPut(tenants);
+              if (templates?.length > 0) await db.templates.bulkPut(templates);
             });
 
             console.log("[StoreInitializer] Bootstrap terminé. Rafraîchissement des stores locaux...");

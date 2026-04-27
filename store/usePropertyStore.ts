@@ -118,7 +118,7 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
       await db.templates.add(template);
       await db.enqueueMutation({
         type: 'CREATE',
-        entity: 'property', // On utilise le type property pour englober les templates côté mutation? 
+        entity: 'template', 
         entityId: template.id,
         data: template
       });
@@ -146,7 +146,7 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
       
       await db.enqueueMutation({
         type: 'UPDATE',
-        entity: 'property', 
+        entity: 'template', 
         entityId: id,
         data: updates
       });
