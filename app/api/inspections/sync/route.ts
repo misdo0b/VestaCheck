@@ -50,7 +50,8 @@ export async function POST(req: Request) {
       'inspection': inspections,
       'tenant': tenants,
       'agency': agencies,
-      'organization': organizations
+      'organization': organizations,
+      'template': await readDb('templates-db.json')
     };
 
     const fileMap: Record<string, string> = {
@@ -59,7 +60,8 @@ export async function POST(req: Request) {
       'inspection': 'inspections-db.json',
       'tenant': 'tenants-db.json',
       'agency': 'agencies-db.json',
-      'organization': 'organizations-db.json'
+      'organization': 'organizations-db.json',
+      'template': 'templates-db.json'
     };
 
     const affectedEntities = new Set<string>();
