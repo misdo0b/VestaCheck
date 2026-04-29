@@ -79,16 +79,7 @@ export default function DashboardPage() {
                 </div>
               </Link>
 
-              <Link href="/admin/organizations" className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 hover:border-purple-500/30 transition-all group">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-6 h-6 text-purple-500" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-1">Organisations</h3>
-                <p className="text-slate-400 text-sm mb-4">Gestion des entités juridiques parentes.</p>
-                <div className="text-purple-400 text-sm font-medium hover:underline flex items-center gap-1">
-                  Accéder <span>→</span>
-                </div>
-              </Link>
+
             </>
           )}
         </div>
