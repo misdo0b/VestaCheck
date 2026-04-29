@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useForm } from 'react-hook-form';
+import { useSession } from 'next-auth/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { X, UserPlus, Save, Mail, User as UserIcon, Building } from 'lucide-react';
@@ -27,6 +28,7 @@ interface UserModalProps {
 }
 
 export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModalProps) {
+  const { data: session } = useSession();
   const { agencies, initStore } = useAgencyStore();
 
   const {
@@ -45,8 +47,10 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
   });
 
   useEffect(() => {
-    initStore();
-  }, [initStore]);
+    if (session?.user) {
+      initStore(session.user as any);
+    }
+  }, [initStore, session]);
 
   if (!isOpen) return null;
 

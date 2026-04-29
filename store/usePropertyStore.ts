@@ -9,7 +9,7 @@ interface PropertyState {
   error: string | null;
 
   // Actions
-  initStore: () => Promise<void>;
+  initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
   setProperties: (properties: Property[]) => void;
   addProperty: (property: Property) => Promise<void>;
   updateProperty: (id: string, updates: Partial<Property>) => Promise<void>;
@@ -29,7 +29,7 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
   loading: false,
   error: null,
 
-  initStore: async () => {
+  initStore: async (user) => {
     set({ loading: true });
     try {
       const [allLocalProps, localTemplates] = await Promise.all([
@@ -37,8 +37,17 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
         db.templates.toArray()
       ]);
 
-      // Filtrer les vrais biens vs les templates pollués (ceux ayant propertyId)
-      const realProps = allLocalProps.filter(p => !('propertyId' in p));
+      // Segmentation des données
+      const filteredProps = allLocalProps.filter(property => {
+        // Filtrer les templates pollués
+        if ('propertyId' in property) return false;
+
+        if (user.role === 'Administrateur') {
+          return (property as any).organizationId === user.organizationId;
+        }
+        return property.agencyId === user.agencyId;
+      });
+
       const pollutedIds = allLocalProps
         .filter(p => 'propertyId' in p)
         .map(p => p.id);
@@ -50,7 +59,7 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
       }
 
       set({ 
-        properties: realProps, 
+        properties: filteredProps, 
         templates: localTemplates, 
         loading: false 
       });

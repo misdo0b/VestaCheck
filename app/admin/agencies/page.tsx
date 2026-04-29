@@ -62,9 +62,11 @@ export default function AgenciesPage() {
   }, [status, isAdmin, router]);
 
   useEffect(() => {
-    initStore();
-    initOrgs();
-  }, [initStore, initOrgs]);
+    if (currentUser) {
+      initStore(currentUser);
+      initOrgs(currentUser);
+    }
+  }, [initStore, initOrgs, currentUser]);
 
   const filteredAgencies = useMemo(() => {
     return agencies.filter(a => 
@@ -77,7 +79,7 @@ export default function AgenciesPage() {
     resolver: zodResolver(agencySchema),
     defaultValues: {
       type: 'Établissement',
-      organizationId: currentUser?.organizationId || 'org_1' // Fallback for demo
+      organizationId: currentUser?.organizationId || ''
     }
   });
 
@@ -140,7 +142,10 @@ export default function AgenciesPage() {
           <button 
             onClick={() => {
               setEditingAgency(null);
-              reset();
+              reset({
+                type: 'Établissement',
+                organizationId: currentUser?.organizationId || ''
+              });
               setIsModalOpen(true);
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-2xl shadow-blue-600/30 active:scale-95 group"

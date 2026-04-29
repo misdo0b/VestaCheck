@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -109,6 +110,21 @@ function LoginForm() {
               </>
             )}
           </button>
+
+          <div className="pt-4 flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-px flex-1 bg-white/5"></div>
+              <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Ou</span>
+              <div className="h-px flex-1 bg-white/5"></div>
+            </div>
+
+            <Link 
+              href="/register"
+              className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold py-3.5 rounded-xl transition-all text-center backdrop-blur-md active:scale-[0.98]"
+            >
+              Créer un compte entreprise
+            </Link>
+          </div>
         </form>
 
         <div className="mt-8 pt-8 border-t border-white/5 text-center">

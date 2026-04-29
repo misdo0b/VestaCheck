@@ -8,7 +8,8 @@
     "agencyId": "agency_1777212796076",
     "serverVersion": 6,
     "lastModified": "2026-04-26T14:42:33.278Z",
-    "syncStatus": "synced"
+    "syncStatus": "synced",
+    "organizationId": "org_d1e17a7a"
   },
   {
     "id": "user_v6zr8bcsp",
@@ -19,28 +20,43 @@
     "agencyId": "agency_1777212796076",
     "serverVersion": 6,
     "lastModified": "2026-04-29T12:34:22.150Z",
-    "syncStatus": "pending"
+    "syncStatus": "pending",
+    "organizationId": "org_d1e17a7a"
   },
   {
     "id": "user_a9vj3dxap",
     "name": "Mehdi ADMIN",
     "email": "sdougamehdi@gmail.com",
-    "password": "$2b$10$LJJJpL6LREMUMqLRkJRB0eLKR4ucNJlb7hdcOXN0gM/WPm9F6F8oG",
+    "password": "$2b$10$MqfehDDIvXGyrDFFQiXDC.1xwUHtIRBEafDcGXNyTbDZUfsCg2f9S",
     "role": "Administrateur",
     "agencyId": "agency_1777212796076",
-    "serverVersion": 4,
-    "lastModified": "2026-04-26T14:42:36.707Z",
-    "syncStatus": "pending"
+    "serverVersion": 6,
+    "lastModified": "2026-04-29T15:43:11.837Z",
+    "syncStatus": "pending",
+    "organizationId": "org_d1e17a7a"
   },
   {
     "id": "user_ne8o13elj",
     "name": "Martin",
-    "email": "martin@gmail.com",
-    "password": "$2b$10$j7tr.FTb6md.hxO0YHiYOulJ.ZVZeGot4JKaenKSXshJoa7DYCvc2",
+    "email": "martin@agence.fr",
+    "password": "$2b$10$MqfehDDIvXGyrDFFQiXDC.1xwUHtIRBEafDcGXNyTbDZUfsCg2f9S",
     "role": "Agent",
     "agencyId": "agency_1777212796076",
-    "serverVersion": 2,
-    "lastModified": "2026-04-26T14:42:39.977Z",
-    "syncStatus": "pending"
+    "serverVersion": 7,
+    "lastModified": "2026-04-29T18:46:15.274Z",
+    "syncStatus": "pending",
+    "organizationId": "org_d1e17a7a"
+  },
+  {
+    "id": "user_2b7m2a86l",
+    "name": "TestInscription MAN",
+    "email": "inscrip@gmail.com",
+    "password": "$2b$10$FoiT/xH.X3PtEo4FtgYHUODMHX8usEiN8Sgzzab52ftKRDaUFmzxC",
+    "role": "Administrateur",
+    "organizationId": "org_4scf3jobz",
+    "agencyId": "agency_1777467430672",
+    "serverVersion": 1,
+    "lastModified": "2026-04-29T12:57:10.732Z",
+    "syncStatus": "synced"
   }
 ]

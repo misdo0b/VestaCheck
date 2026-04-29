@@ -79,6 +79,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       ownerId: initialData?.ownerId || 'owner1',
       inspectorId: initialData?.inspectorId || currentUser?.id || 'agent1',
       agencyId: initialData?.agencyId || currentUser?.agencyId || '',
+      organizationId: initialData?.organizationId || currentUser?.organizationId || '',
       counters: initialData?.counters || { water: 0, electricity: 0, gas: 0 },
       keyInventories: initialData?.keyInventories || [
         { id: crypto.randomUUID(), type: 'Clés du logement', count: 2 }
@@ -124,7 +125,10 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
 
     const isStepValid = await methods.trigger(fieldsToValidate);
     if (isStepValid) {
-      setCurrentStep(s => Math.min(s + 1, steps.length - 1));
+      setCurrentStep(s => {
+        const next = Math.min(s + 1, steps.length - 1);
+        return isNaN(next) ? 0 : next;
+      });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       toast.error("Veuillez corriger les erreurs avant de continuer.");
@@ -132,7 +136,10 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
   };
 
   const prevStep = () => {
-    setCurrentStep(s => Math.max(s - 1, 0));
+    setCurrentStep(s => {
+      const prev = Math.max(s - 1, 0);
+      return isNaN(prev) ? 0 : prev;
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -147,7 +154,9 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
           email: data.manualTenant.email,
           phone: data.manualTenant.phone,
           status: 'Actuel',
-          propertyIds: [data.propertyId]
+          propertyIds: [data.propertyId],
+          agencyId: data.agencyId,
+          organizationId: data.organizationId
         });
         finalTenantId = newId;
         toast.success(`Nouveau locataire ${data.manualTenant.name} créé !`);
@@ -171,6 +180,8 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
         const templateData = {
           id: crypto.randomUUID(),
           propertyId: data.propertyId,
+          agencyId: data.agencyId || currentUser?.agencyId,
+          organizationId: data.organizationId || currentUser?.organizationId,
           name: templateName || `Template ${new Date().toLocaleDateString()}`,
           rooms: data.rooms,
           keyInventories: data.keyInventories
@@ -186,12 +197,18 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       ...data, 
       tenantId: finalTenantId,
       agencyId: data.agencyId || currentUser?.agencyId,
+      organizationId: data.organizationId || currentUser?.organizationId,
       manualTenant: undefined 
     };
 
-    finalizeInspection(data.id, finalData as any);
-    toast.success("Rapport finalisé et enregistré avec succès !");
-    router.push(`/dashboard/properties/${data.propertyId}`);
+    try {
+      await finalizeInspection(data.id, finalData as any);
+      toast.success("Rapport finalisé et enregistré avec succès !");
+      router.push(`/dashboard/properties/${data.propertyId}`);
+    } catch (err) {
+      console.error("Finalization error:", err);
+      toast.error("Erreur lors de la finalisation du rapport.");
+    }
   };
 
   const handleExportPDF = async () => {

@@ -150,14 +150,15 @@ export function useSync() {
           const mutationIds = remainingMutations.map(m => m.id!);
           await db.mutationQueue.bulkDelete(mutationIds);
           
-          // Rafraîchir les stores pour obtenir l'état final du serveur
+          // Rafraîchir les stores pour obtenir l'état final du serveur en respectant la segmentation
+          const user = session.user as any;
           await Promise.all([
-            initInspections(),
-            initProperties(),
-            initUsers(),
-            initTenants(),
-            initAgencies(),
-            initOrganizations()
+            initInspections(user),
+            initProperties(user),
+            initUsers(user),
+            initTenants(user),
+            initAgencies(user),
+            initOrganizations(user)
           ]);
 
           toast.success("Données synchronisées avec succès");

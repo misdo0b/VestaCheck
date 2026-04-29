@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { useUserStore } from '@/store/useUserStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
@@ -11,6 +12,8 @@ import { runTenantMigration } from '@/lib/utils/TenantMigration';
 import { db } from '@/lib/db';
 
 export function StoreInitializer() {
+  const { data: session } = useSession();
+  
   const initUsers = useUserStore((state) => state.initStore);
   const initProperties = usePropertyStore((state) => state.initStore);
   const initInspections = useInspectionStore((state) => state.initStore);
@@ -20,28 +23,23 @@ export function StoreInitializer() {
 
   useEffect(() => {
     async function performInitialization() {
-      // 1. Initialiser les stores depuis le stockage local (Dexie)
-      const initUsers = useUserStore.getState().initStore;
-      const initProperties = usePropertyStore.getState().initStore;
-      const initInspections = useInspectionStore.getState().initStore;
-      const initTenants = useTenantStore.getState().initStore;
-      const initOrganizations = useOrganizationStore.getState().initStore;
-      const initAgencies = useAgencyStore.getState().initStore;
+      if (!session?.user) return;
+      const user = session.user as any;
 
+      // 1. Initialiser les stores depuis le stockage local (Dexie)
       await Promise.all([
-        initUsers(),
-        initProperties(),
-        initInspections(),
-        initTenants(),
-        initOrganizations(),
-        initAgencies()
+        initUsers(user),
+        initProperties(user),
+        initInspections(user),
+        initTenants(user),
+        initOrganizations(user),
+        initAgencies(user)
       ]);
 
       // 1.5 Lancer la migration des locataires si nécessaire
       await runTenantMigration();
 
       // 2. Synchronisation descendante : Toujours récupérer les derniers utilisateurs, organisations et agences du serveur
-      // Cela permet de voir les enregistrements ajoutés par d'autres
       const fetchUsers = useUserStore.getState().fetchUsers;
       const fetchOrganizations = useOrganizationStore.getState().fetchOrganizations;
       const fetchAgencies = useAgencyStore.getState().fetchAgencies;
@@ -52,10 +50,14 @@ export function StoreInitializer() {
         fetchAgencies()
       ]);
 
-      // 3. Vérifier si on a des données. Si le cache est vide, on fait un bootstrap complet.
+      // 3. Vérifier si on a des données. Si le cache est vide ou incomplet (migration), on fait un bootstrap complet.
+      const firstProperty = await db.properties.toCollection().first();
       const propertyCount = await db.properties.count();
-      if (propertyCount === 0) {
-        console.log("[StoreInitializer] Premier lancement ou cache vide : Bootstrap complet des données...");
+      
+      const isLegacyData = propertyCount > 0 && !(firstProperty as any)?.organizationId;
+
+      if (propertyCount === 0 || isLegacyData) {
+        console.log(`[StoreInitializer] ${isLegacyData ? 'Données obsolètes détectées' : 'Cache vide'} : Bootstrap complet des données...`);
         try {
           const res = await fetch('/api/bootstrap');
           if (res.ok) {
@@ -63,6 +65,19 @@ export function StoreInitializer() {
             
             // On écrit en masse dans Dexie (transaction sécurisée)
             await db.transaction('rw', [db.properties, db.users, db.inspections, db.tenants, db.templates, db.organizations, db.agencies], async () => {
+              // Si données obsolètes, on nettoie d'abord
+              if (isLegacyData) {
+                await Promise.all([
+                  db.properties.clear(),
+                  db.users.clear(),
+                  db.inspections.clear(),
+                  db.tenants.clear(),
+                  db.templates.clear(),
+                  db.organizations.clear(),
+                  db.agencies.clear()
+                ]);
+              }
+
               if (properties?.length > 0) await db.properties.bulkPut(properties);
               if (users?.length > 0) await db.users.bulkPut(users);
               if (inspections?.length > 0) await db.inspections.bulkPut(inspections);
@@ -75,12 +90,12 @@ export function StoreInitializer() {
             console.log("[StoreInitializer] Bootstrap terminé. Rafraîchissement des stores locaux...");
 
             // On rafraîchit les stores après l'écriture en masse
-            initUsers();
-            initProperties();
-            initInspections();
-            initTenants();
-            initOrganizations();
-            initAgencies();
+            initUsers(user);
+            initProperties(user);
+            initInspections(user);
+            initTenants(user);
+            initOrganizations(user);
+            initAgencies(user);
           }
         } catch (err) {
           console.error('[StoreInitializer] Bootstrap failed:', err);
@@ -89,7 +104,7 @@ export function StoreInitializer() {
     }
 
     performInitialization();
-  }, [initUsers, initProperties, initInspections, initTenants]);
+  }, [session, initUsers, initProperties, initInspections, initTenants, initOrganizations, initAgencies]);
 
   return null;
 }
