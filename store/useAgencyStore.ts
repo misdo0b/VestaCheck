@@ -8,7 +8,7 @@ interface AgencyStore {
   error: string | null;
 
   // Actions
-  initStore: () => Promise<void>;
+  initStore: (user: { role: string; organizationId: string }) => Promise<void>;
   fetchAgencies: (organizationId?: string) => Promise<void>;
   addAgency: (agencyData: Omit<Agency, 'updatedAt' | 'isSynced'>) => Promise<void>;
   updateAgency: (id: string, updates: Partial<Agency>) => Promise<void>;
@@ -21,11 +21,17 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
   loading: false,
   error: null,
 
-  initStore: async () => {
+  initStore: async (user) => {
     set({ loading: true });
     try {
-      const localAgencies = await db.agencies.toArray();
-      set({ agencies: localAgencies, loading: false });
+      const allLocalAgencies = await db.agencies.toArray();
+      
+      // Segmentation par organisation pour les admins
+      const filteredAgencies = allLocalAgencies.filter(agency => {
+        return agency.organizationId === user.organizationId;
+      });
+
+      set({ agencies: filteredAgencies, loading: false });
     } catch (err) {
       console.error('Failed to init AgencyStore:', err);
       set({ loading: false, error: 'Erreur lors du chargement local des agences' });

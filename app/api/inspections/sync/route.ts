@@ -87,9 +87,9 @@ export async function POST(req: Request) {
 
       // 1. Password Hash pour les utilisateurs
       if (entity === 'user' && data?.password) {
-        if (data.password.trim() !== '') {
+        if (data.password.trim() !== '' && !data.password.startsWith('$2')) {
           data.password = await hashPassword(data.password);
-        } else {
+        } else if (data.password.trim() === '') {
           delete data.password;
         }
       }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 import { 
   Users, 
   UserPlus, 
@@ -23,16 +24,23 @@ import { useEffect } from 'react';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationDialog from '@/components/admin/ConfirmationDialog';
 import ResetPasswordModal from '@/components/admin/ResetPasswordModal';
+import { hashPassword } from '@/lib/utils/password';
 
 export default function UserManagement() {
-  const { users, addUser, updateUser, deleteUser } = useUserStore();
+  const { data: session } = useSession();
+  const currentUser = session?.user as any;
+
+  const { users, initStore: initUsers, addUser, updateUser, deleteUser } = useUserStore();
   const { agencies, initStore: initAgencies } = useAgencyStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'All'>('All');
   
   useEffect(() => {
-    initAgencies();
-  }, [initAgencies]);
+    if (currentUser) {
+      initUsers(currentUser);
+      initAgencies(currentUser);
+    }
+  }, [initUsers, initAgencies, currentUser]);
   
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,20 +64,27 @@ export default function UserManagement() {
   const handleCreateOrUpdate = async (data: any) => {
     const normalizedData = {
       ...data,
-      email: data.email?.trim().toLowerCase()
+      email: data.email?.trim().toLowerCase(),
+      organizationId: currentUser?.organizationId // Force organization
     };
 
     if (selectedUser) {
+      // If password was provided in normalizedData (edit mode)
+      if (normalizedData.password) {
+        normalizedData.password = await hashPassword(normalizedData.password);
+      }
       await updateUser(selectedUser.id, normalizedData);
     } else {
       // Create
+      const hashedPassword = await hashPassword(normalizedData.password || 'password123');
       const newUser: User = {
         id: `user_${Math.random().toString(36).substr(2, 9)}`,
         name: normalizedData.name!,
         email: normalizedData.email!,
-        password: normalizedData.password || 'password123',
+        password: hashedPassword,
         role: normalizedData.role as UserRole,
         agencyId: normalizedData.agencyId || 'N/A',
+        organizationId: currentUser?.organizationId || '',
         serverVersion: 1,
         lastModified: new Date().toISOString(),
         syncStatus: 'pending'
@@ -88,10 +103,11 @@ export default function UserManagement() {
     }
   };
 
-  const handleResetPassword = (newPassword: string) => {
+  const handleResetPassword = async (newPassword: string) => {
     if (selectedUser) {
-      updateUser(selectedUser.id, { password: newPassword } as any);
-      console.log(`Password updated for ${selectedUser.email}: ${newPassword}`);
+      const hashedPassword = await hashPassword(newPassword);
+      await updateUser(selectedUser.id, { password: hashedPassword } as any);
+      console.log(`Password updated (hashed) for ${selectedUser.email}`);
     }
   };
 

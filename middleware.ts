@@ -6,15 +6,16 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   const isLoginPage = pathname === "/login";
+  const isRegisterPage = pathname === "/register";
   const isApiRoute = pathname.startsWith("/api");
   const isPublicAsset = pathname.startsWith("/_next") || 
                         pathname.startsWith("/assets") || 
                         pathname.includes("favicon.ico");
 
-  // On laisse passer les routes publiques (login, api, assets)
-  if (isLoginPage || isApiRoute || isPublicAsset) {
-    // Si on est déjà connecté et qu'on va sur le login, redirection dashboard
-    if (isLoggedIn && isLoginPage) {
+  // On laisse passer les routes publiques (login, register, api, assets)
+  if (isLoginPage || isRegisterPage || isApiRoute || isPublicAsset) {
+    // Si on est déjà connecté et qu'on va sur le login ou register, redirection dashboard
+    if (isLoggedIn && (isLoginPage || isRegisterPage)) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
@@ -23,9 +24,15 @@ export default auth((req) => {
   // 1. Redirection si non connecté pour TOUT le reste
   if (!isLoggedIn) {
      const loginUrl = new URL("/login", req.url);
-     // Optionnel : ajouter callbackUrl pour revenir après login
      loginUrl.searchParams.set("callbackUrl", pathname);
      return NextResponse.redirect(loginUrl);
+  }
+
+  // 1.bis Vérification du rattachement à une agence (Sécurité Pivot)
+  const sessionUser = req.auth?.user as any;
+  if (!sessionUser?.agencyId && !isLoginPage && !isRegisterPage) {
+    console.error("Accès refusé : utilisateur sans agence rattachée.");
+    return NextResponse.redirect(new URL("/login?error=NoAgency", req.url));
   }
 
   // 2. Gestion des accès par rôle (basé sur l'existant)

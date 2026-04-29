@@ -12,7 +12,7 @@ interface InspectionState {
   error: string | null;
   
   // Actions
-  initStore: () => Promise<void>;
+  initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
   setInspections: (inspections: InspectionReport[]) => void;
   setCurrentInspection: (report: InspectionReport | null) => Promise<void>;
   updateItem: (roomId: string, itemId: string, updates: Partial<InspectionItem>) => Promise<void>;
@@ -28,11 +28,22 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
   loading: false,
   error: null,
 
-  initStore: async () => {
+  initStore: async (user) => {
     set({ loading: true });
     try {
-      const localInspections = await db.inspections.toArray();
-      set({ inspections: localInspections, loading: false });
+      const allLocalInspections = await db.inspections.toArray();
+      
+      // Segmentation des données
+      const filteredInspections = allLocalInspections.filter(inspection => {
+        if (user.role === 'Administrateur') {
+          // L'admin voit tout son organisation
+          return (inspection as any).organizationId === user.organizationId;
+        }
+        // L'agent ne voit que son agence
+        return inspection.agencyId === user.agencyId;
+      });
+
+      set({ inspections: filteredInspections, loading: false });
     } catch (err) {
       console.error('Failed to init InspectionStore:', err);
       set({ loading: false, error: 'Erreur lors du chargement des états des lieux' });

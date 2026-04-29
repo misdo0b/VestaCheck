@@ -12,7 +12,7 @@ interface StepperProps {
 }
 
 export const Stepper: React.FC<StepperProps> = ({ currentStep, steps }) => {
-  const progress = (currentStep / (steps.length - 1)) * 100;
+  const progress = steps.length > 1 ? (currentStep / (steps.length - 1)) * 100 : 0;
 
   return (
     <div className="mb-8 px-4">

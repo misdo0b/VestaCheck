@@ -7,7 +7,7 @@ interface OrganizationStore {
   loading: boolean;
   error: string | null;
 
-  initStore: () => Promise<void>;
+  initStore: (user: { organizationId: string }) => Promise<void>;
   fetchOrganizations: () => Promise<void>;
   addOrganization: (org: Organization) => Promise<void>;
   updateOrganization: (id: string, updates: Partial<Organization>) => Promise<void>;
@@ -18,11 +18,17 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
   loading: false,
   error: null,
 
-  initStore: async () => {
+  initStore: async (user) => {
     set({ loading: true });
     try {
-      const localOrgs = await db.organizations.toArray();
-      set({ organizations: localOrgs, loading: false });
+      const allLocalOrgs = await db.organizations.toArray();
+      
+      // Segmentation par organisation
+      const filteredOrgs = allLocalOrgs.filter(org => {
+        return org.id === user.organizationId;
+      });
+
+      set({ organizations: filteredOrgs, loading: false });
     } catch (err) {
       console.error('Failed to init OrganizationStore:', err);
       set({ loading: false, error: 'Erreur chargement organisations' });

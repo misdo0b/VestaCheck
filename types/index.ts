@@ -53,7 +53,8 @@ export interface Property {
   roomCount: number;
   ownerId: string;
   agentId?: string; // ID de l'agent responsable
-  agencyId?: string; // Rattachement à une agence
+  agencyId: string; // Rattachement obligatoire à une agence
+  organizationId: string; // Rattachement à l'organisation
   templateIds?: string[];
   
   // Champs de synchronisation
@@ -66,6 +67,8 @@ export interface PropertyTemplate {
   id: string;
   name: string;
   propertyId: string;
+  agencyId: string;
+  organizationId: string;
   rooms: Room[];
   keyInventories?: { id: string; type: string; count: number }[];
   
@@ -88,6 +91,8 @@ export interface Tenant {
   phone: string;
   status: 'Actuel' | 'Sorti';
   propertyIds: string[];
+  agencyId: string;
+  organizationId: string;
   
   // Champs de synchronisation
   serverVersion: number;
@@ -105,8 +110,9 @@ export interface InspectionReport {
   // Nouveaux champs d'identification
   ownerId: string;           // ID du propriétaire du logement
   inspectorId: string;       // ID de la personne qui réalise l'état des lieux
-  tenantId: string;          // Référence à l'entité Tenant
-  agencyId?: string;         // Agence responsable du rapport
+  tenantId?: string;          // Référence à l'entité Tenant (optionnel si manualTenant est utilisé)
+  agencyId: string;         // Agence responsable du rapport (obligatoire)
+  organizationId: string;   // Organisation responsable du rapport
   
   // Éléments de conformité légale
   counters: {
@@ -139,8 +145,8 @@ export interface User {
   email: string;
   password?: string; // Optionnel pour les transferts client, requis pour l'auth
   role: UserRole;
-  organizationId?: string; // Organisation d'appartenance
-  agencyId?: string; // Pour regrouper des agents par agence
+  organizationId: string; // Organisation d'appartenance
+  agencyId: string; // Agence obligatoire pour Agent/Admin
   
   // Champs de synchronisation
   serverVersion: number;

@@ -19,7 +19,8 @@ const propertySchema = z.object({
   roomCount: z.number().min(1, "Au moins une pièce"),
   ownerId: z.string().min(1, "Propriétaire requis"),
   agentId: z.string().optional(),
-  agencyId: z.string().optional(),
+  agencyId: z.string().min(1, "Agence requise"),
+  organizationId: z.string().min(1, "Organisation requise"),
 });
 
 type PropertyFormData = z.infer<typeof propertySchema>;
@@ -53,6 +54,7 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
       ownerId: '',
       agentId: isAgent ? currentUser.id : '',
       agencyId: currentUser?.agencyId || '',
+      organizationId: currentUser?.organizationId || '',
     }
   });
 
@@ -69,6 +71,7 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
         ownerId: '',
         agentId: isAgent ? currentUser?.id : '',
         agencyId: currentUser?.agencyId || '',
+        organizationId: currentUser?.organizationId || '',
       });
     }
   }, [property, reset, isOpen, isAgent, currentUser?.id]);
@@ -84,9 +87,10 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
         templateIds: [],
         agentId: data.agentId || (isAgent ? currentUser?.id : undefined),
         agencyId: data.agencyId || currentUser?.agencyId,
+        organizationId: data.organizationId || currentUser?.organizationId,
         serverVersion: 1,
         lastModified: new Date().toISOString(),
-        syncStatus: 'pending', // Marqué comme en attente de synchro initiale
+        syncStatus: 'pending', 
       });
       toast.success("Nouveau bien immobilier ajouté !");
     }

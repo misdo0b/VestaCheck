@@ -1,15 +1,27 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { auth } from '@/lib/auth';
 
 const DB_PATH = path.join(process.cwd(), 'data', 'users-db.json');
 
 // GET: Récupère tous les utilisateurs depuis le fichier JSON
 export async function GET() {
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  }
+
+  const currentUser = session.user as any;
+
   try {
     const data = await fs.readFile(DB_PATH, 'utf8');
     const users = JSON.parse(data);
-    return NextResponse.json(users);
+    
+    // Segmentation : filtrer par organizationId
+    const filteredUsers = users.filter((u: any) => u.organizationId === currentUser.organizationId);
+    
+    return NextResponse.json(filteredUsers);
   } catch (error) {
     console.error('Erreur lecture DB:', error);
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
