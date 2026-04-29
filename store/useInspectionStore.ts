@@ -3,6 +3,7 @@ import { InspectionReport, InspectionItem, PhotoMetadata } from '@/types';
 import { useTenantStore } from './useTenantStore';
 import { db } from '@/lib/db';
 import { dataURLToBlob } from '@/lib/utils/image';
+import { InspectionReportSchema } from '@/lib/validations/inspection';
 
 interface InspectionState {
   inspections: InspectionReport[];
@@ -69,6 +70,13 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       lastModified: new Date().toISOString()
     };
 
+    // Validation Zod avant mise en file d'attente
+    const validation = InspectionReportSchema.safeParse(updatedInspection);
+    if (!validation.success) {
+      console.error('Validation échouée (updateItem):', validation.error);
+      return;
+    }
+
     set({ currentInspection: updatedInspection });
 
     try {
@@ -113,6 +121,13 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       lastModified: new Date().toISOString()
     };
 
+    // Validation Zod avant mise en file d'attente
+    const validation = InspectionReportSchema.safeParse(updatedInspection);
+    if (!validation.success) {
+      console.error('Validation échouée (addPhoto):', validation.error);
+      return;
+    }
+
     set({ currentInspection: updatedInspection });
 
     try {
@@ -155,6 +170,14 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       syncStatus: 'pending',
       lastModified: new Date().toISOString()
     };
+
+    // Validation Zod avant mise en file d'attente
+    const validation = InspectionReportSchema.safeParse(finalizedReport);
+    if (!validation.success) {
+      console.error('Validation échouée (finalizeInspection):', validation.error);
+      set({ error: "Le rapport ne respecte pas les critères légaux pour être finalisé." });
+      return;
+    }
 
     set((state) => ({
       currentInspection: state.currentInspection?.id === id ? finalizedReport : state.currentInspection,

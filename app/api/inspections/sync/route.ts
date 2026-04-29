@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
+import { auth } from '@/lib/auth';
 import path from 'path';
 import { hashPassword } from '@/lib/utils/password';
 
@@ -27,6 +28,12 @@ async function writeDb(filename: string, data: any) {
  * Endpoint de synchronisation atomique pour les changements hors-ligne.
  */
 export async function POST(req: Request) {
+  const session = await auth();
+
+  if (!session) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  }
+
   try {
     const { mutations } = await req.json();
 
