@@ -6,15 +6,16 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   const isLoginPage = pathname === "/login";
+  const isRegisterPage = pathname === "/register";
   const isApiRoute = pathname.startsWith("/api");
   const isPublicAsset = pathname.startsWith("/_next") || 
                         pathname.startsWith("/assets") || 
                         pathname.includes("favicon.ico");
 
-  // On laisse passer les routes publiques (login, api, assets)
-  if (isLoginPage || isApiRoute || isPublicAsset) {
-    // Si on est déjà connecté et qu'on va sur le login, redirection dashboard
-    if (isLoggedIn && isLoginPage) {
+  // On laisse passer les routes publiques (login, register, api, assets)
+  if (isLoginPage || isRegisterPage || isApiRoute || isPublicAsset) {
+    // Si on est déjà connecté et qu'on va sur le login ou register, redirection dashboard
+    if (isLoggedIn && (isLoginPage || isRegisterPage)) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
