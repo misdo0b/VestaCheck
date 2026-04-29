@@ -9,7 +9,7 @@ interface AgencyStore {
 
   // Actions
   initStore: () => Promise<void>;
-  fetchAgencies: (organizationId: string) => Promise<void>;
+  fetchAgencies: (organizationId?: string) => Promise<void>;
   addAgency: (agencyData: Omit<Agency, 'updatedAt' | 'isSynced'>) => Promise<void>;
   updateAgency: (id: string, updates: Partial<Agency>) => Promise<void>;
   deleteAgency: (id: string) => Promise<void>;
@@ -32,20 +32,21 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
     }
   },
 
-  fetchAgencies: async (organizationId: string) => {
+  fetchAgencies: async (organizationId?: string) => {
     set({ loading: true });
     try {
-      const response = await fetch(`/api/agencies?organizationId=${organizationId}`);
+      const url = organizationId ? `/api/agencies?organizationId=${organizationId}` : '/api/agencies';
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         // Filtrage serveur simulé ou réel
-        const filtered = Array.isArray(data) ? data.filter((a: any) => a.organizationId === organizationId) : [];
+        const filtered = Array.isArray(data) ? (organizationId ? data.filter((a: any) => a.organizationId === organizationId) : data) : [];
         await db.agencies.bulkPut(filtered);
         set({ agencies: filtered, loading: false });
       }
     } catch (error) {
       console.warn('Fetch agencies failed, using local data:', error);
-      const localAgencies = await db.agencies.where('organizationId').equals(organizationId).toArray();
+      const localAgencies = organizationId ? await db.agencies.where('organizationId').equals(organizationId).toArray() : await db.agencies.toArray();
       set({ agencies: localAgencies, loading: false });
     }
   },
