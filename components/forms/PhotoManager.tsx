@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
 import { InspectionFormData } from '@/lib/validations/inspection';
-import { Camera, X, Cloud, CloudOff, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Camera, X, Cloud, CloudOff, Loader2, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { compressImage } from '@/lib/utils/image';
 import { PhotoBlobStorage } from '@/lib/utils/blob-storage';
+import { useInspectionStore } from '@/store/useInspectionStore';
 
 interface PhotoManagerProps {
   roomIndex: number;
@@ -11,8 +12,9 @@ interface PhotoManagerProps {
 }
 
 export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex }) => {
-  const { control, watch } = useFormContext<InspectionFormData>();
+    const { control, watch, getValues } = useFormContext<InspectionFormData>();
   const [isUploading, setIsUploading] = useState(false);
+  const { setCurrentInspection, syncPendingPhotos } = useInspectionStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const tenantSig = watch('signatures.tenant.drawData');
@@ -47,9 +49,16 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
           id: photoId,
           compressedBase64: thumb,
           hasFullRes: true,
-          isSynced: false
+          isSynced: false,
+          status: 'PENDING'
         });
       }
+
+      // 3. IMPORTANT : Synchroniser le store avec le formulaire pour que le worker voie les photos
+      await setCurrentInspection(getValues() as any);
+
+      // 4. Déclenchement de la synchro cloud en arrière-plan
+      setTimeout(() => syncPendingPhotos(), 1000);
     } catch (err) {
       console.error("Erreur capture photo:", err);
     } finally {
@@ -75,25 +84,46 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
       {fields.map((photo, pIndex) => (
         <div key={photo.id} className="relative group w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-50">
           <img 
-            src={(photo as any).compressedBase64} 
+            src={(photo as any).compressedBase64 || (photo as any).cloudUrl} 
             alt="Capture" 
             className="w-full h-full object-cover transition-transform group-hover:scale-110"
           />
           
           {/* Indicateur de synchro */}
           <div className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/40 text-white backdrop-blur-[1px]">
-            {(photo as any).isSynced ? (
+            {(photo as any).status === 'UPLOADED' ? (
               <Cloud size={8} className="text-green-400" />
+            ) : (photo as any).status === 'SYNCING' ? (
+              <Loader2 size={8} className="text-white animate-spin" />
+            ) : (photo as any).status === 'ERROR' ? (
+              <CloudOff size={8} className="text-red-400" />
             ) : (
               <CloudOff size={8} className="text-orange-400" />
             )}
           </div>
+          
+          {/* Bouton de Retry en cas d'erreur */}
+          {(photo as any).status === 'ERROR' && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                syncPendingPhotos();
+              }}
+              className="absolute inset-0 flex items-center justify-center bg-black/60 text-white rounded-lg group-hover:bg-blue-500/80 transition-colors"
+              title="Réessayer la synchronisation"
+            >
+              <RefreshCw size={16} className="animate-spin-hover" />
+            </button>
+          )}
 
-          {/* Bouton supprimer */}
+          {/* Bouton supprimer (caché si retry affiché par défaut, mais accessible au hover) */}
           <button
             type="button"
             onClick={() => handleRemove(pIndex, (photo as any).id)}
-            className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+            className={`absolute inset-0 bg-red-500/80 text-white flex items-center justify-center transition-opacity ${
+              (photo as any).status === 'ERROR' ? 'opacity-0 group-hover:opacity-100 z-10' : 'opacity-0 group-hover:opacity-100'
+            }`}
           >
             <X size={14} />
           </button>

@@ -8,6 +8,7 @@ export const PhotoMetadataSchema = z.object({
   hasFullRes: z.boolean().optional(), // Présent dans IndexedDB
   cloudUrl: z.string().optional(),
   isSynced: z.boolean(),
+  status: z.enum(['PENDING', 'SYNCING', 'UPLOADED', 'ERROR']),
 });
 
 export const TenantSchema = z.object({
