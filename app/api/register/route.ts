@@ -1,104 +1,94 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
 import { hashPassword } from '@/lib/utils/password';
-import { z } from 'zod';
-
-const registerSchema = z.object({
-  organization: z.object({
-    raisonSociale: z.string().min(2),
-    siret: z.string().length(14),
-    adressePostale: z.string().min(5),
-  }),
-  agency: z.object({
-    name: z.string().min(2),
-    address: z.string().min(5),
-    phone: z.string().min(10),
-  }),
-  admin: z.object({
-    firstName: z.string().min(2),
-    lastName: z.string().min(2),
-    email: z.string().email(),
-    password: z.string().min(8),
-  }),
-});
+import { getSupabase } from '@/lib/supabase';
+import { camelToSnake } from '@/lib/utils/mapping';
+import { registerSchema } from '@/lib/validations/auth';
+import { verifyTurnstileToken } from '@/lib/utils/security';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    
+    // 1. Validation Honeypot & Turnstile côté serveur
     const validatedData = registerSchema.parse(body);
 
-    const USERS_PATH = path.join(process.cwd(), 'data', 'users-db.json');
-    const ORGS_PATH = path.join(process.cwd(), 'data', 'organizations-db.json');
-    const AGENCIES_PATH = path.join(process.cwd(), 'data', 'agencies-db.json');
+    if (validatedData.fax_number) {
+      return NextResponse.json({ error: 'Échec de la validation de sécurité.' }, { status: 400 });
+    }
 
-    // Load DBs
-    const [usersData, orgsData, agenciesData] = await Promise.all([
-      fs.readFile(USERS_PATH, 'utf8'),
-      fs.readFile(ORGS_PATH, 'utf8'),
-      fs.readFile(AGENCIES_PATH, 'utf8'),
-    ]);
+    const ip = request.headers.get('x-forwarded-for') || '';
+    const isHuman = await verifyTurnstileToken(validatedData.turnstileToken, ip);
 
-    const users = JSON.parse(usersData);
-    const organizations = JSON.parse(orgsData);
-    const agencies = JSON.parse(agenciesData);
+    if (!isHuman) {
+      return NextResponse.json({ error: 'Échec de la validation de sécurité (Captcha).' }, { status: 400 });
+    }
 
-    // Check if user already exists
-    if (users.find((u: any) => u.email.toLowerCase() === validatedData.admin.email.toLowerCase())) {
+    const supabase = await getSupabase(true);
+
+    // 2. Vérification si l'utilisateur existe
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', validatedData.admin.email.toLowerCase())
+      .single();
+
+    if (existingUser) {
       return NextResponse.json({ error: 'Un utilisateur avec cet email existe déjà.' }, { status: 400 });
     }
 
-    // 1. Create Organization
-    const organizationId = `org_${Math.random().toString(36).substring(2, 11)}`;
-    const newOrg = {
-      id: organizationId,
-      ...validatedData.organization,
-      updatedAt: Date.now(),
-      serverVersion: 1,
-      lastModified: new Date().toISOString()
-    };
-    organizations.push(newOrg);
+    // 3. Création de l'Organisation
+    const { data: org, error: orgError } = await supabase
+      .from('organizations')
+      .insert(camelToSnake({
+        raisonSociale: validatedData.organization.raisonSociale,
+        siret: validatedData.organization.siret,
+        adressePostale: validatedData.organization.adressePostale,
+        serverVersion: 1,
+        lastModified: new Date().toISOString()
+      }))
+      .select()
+      .single();
 
-    // 2. Create Agency
-    const agencyId = `agency_${Date.now()}`;
-    const newAgency = {
-      id: agencyId,
-      organizationId,
-      name: validatedData.agency.name,
-      address: validatedData.agency.address,
-      phone: validatedData.agency.phone,
-      type: 'Siège',
-      serverVersion: 1,
-      lastModified: new Date().toISOString()
-    };
-    agencies.push(newAgency);
+    if (orgError) throw orgError;
 
-    // 3. Create Admin User
+    // 4. Création de l'Agence
+    const { data: agency, error: agencyError } = await supabase
+      .from('agencies')
+      .insert(camelToSnake({
+        organizationId: org.id,
+        name: validatedData.agency.name,
+        address: validatedData.agency.address,
+        phone: validatedData.agency.phone,
+        type: 'Siège',
+        serverVersion: 1,
+        lastModified: new Date().toISOString()
+      }))
+      .select()
+      .single();
+
+    if (agencyError) throw agencyError;
+
+    // 5. Création de l'Utilisateur Admin
     const hashedPassword = await hashPassword(validatedData.admin.password);
-    const newUser = {
-      id: `user_${Math.random().toString(36).substring(2, 11)}`,
-      name: `${validatedData.admin.firstName} ${validatedData.admin.lastName}`,
-      email: validatedData.admin.email,
-      password: hashedPassword,
-      role: 'Administrateur',
-      organizationId,
-      agencyId,
-      serverVersion: 1,
-      lastModified: new Date().toISOString(),
-      syncStatus: 'synced'
-    };
-    users.push(newUser);
+    const { error: userError } = await supabase
+      .from('users')
+      .insert(camelToSnake({
+        name: `${validatedData.admin.firstName} ${validatedData.admin.lastName}`,
+        email: validatedData.admin.email.toLowerCase(),
+        password: hashedPassword,
+        role: 'Administrateur',
+        organizationId: org.id,
+        agencyId: agency.id,
+        serverVersion: 1,
+        lastModified: new Date().toISOString(),
+        syncStatus: 'synced'
+      }));
 
-    // Save all
-    await Promise.all([
-      fs.writeFile(ORGS_PATH, JSON.stringify(organizations, null, 2)),
-      fs.writeFile(AGENCIES_PATH, JSON.stringify(agencies, null, 2)),
-      fs.writeFile(USERS_PATH, JSON.stringify(users, null, 2)),
-    ]);
+    if (userError) throw userError;
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
       return NextResponse.json({ error: 'Données invalides', details: error.errors }, { status: 400 });
     }
     console.error('Register error:', error);

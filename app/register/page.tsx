@@ -29,25 +29,13 @@ import { useOrganizationStore } from '@/store/useOrganizationStore';
 import { useAgencyStore } from '@/store/useAgencyStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 
-// Schemas for each step
-const step1Schema = z.object({
-  raisonSociale: z.string().min(2, 'Le nom doit faire au moins 2 caractères'),
-  siret: z.string().length(14, 'Le SIRET doit faire exactement 14 chiffres'),
-  adressePostale: z.string().min(5, 'L\'adresse est trop courte'),
-});
-
-const step2Schema = z.object({
-  agencyName: z.string().min(2, 'Le nom de l\'agence est requis'),
-  agencyAddress: z.string().min(5, 'L\'adresse de l\'agence est trop courte'),
-  agencyPhone: z.string().min(10, 'Le numéro de téléphone est invalide'),
-});
-
-const step3Schema = z.object({
-  firstName: z.string().min(2, 'Le prénom est requis'),
-  lastName: z.string().min(2, 'Le nom est requis'),
-  email: z.string().email('Email invalide'),
-  password: z.string().min(8, 'Le mot de passe doit faire au moins 8 caractères'),
-});
+import { 
+  step1Schema, 
+  step2Schema, 
+  step3Schema,
+  registerSchema as finalRegisterSchema 
+} from '@/lib/validations/auth';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -63,17 +51,14 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Initialize form with values from store
-  const { 
-    register, 
-    handleSubmit, 
-    trigger, 
-    getValues,
-    formState: { errors } 
-  } = useForm({
+  const useFormReturn = useForm({
     resolver: zodResolver(
-      step === 1 ? step1Schema : step === 2 ? step2Schema : step3Schema
+      step === 1 ? step1Schema : step === 2 ? step2Schema : step3Schema.extend({
+        fax_number: z.string().max(0, 'Échec de la validation de sécurité').optional(),
+        turnstileToken: z.string().min(1, 'Veuillez valider le captcha'),
+      })
     ),
-    shouldUnregister: false, // Important: garde les données des étapes précédentes
+    shouldUnregister: false,
     defaultValues: {
       raisonSociale: organization.raisonSociale,
       siret: organization.siret,
@@ -85,8 +70,21 @@ export default function RegisterPage() {
       lastName: admin.lastName,
       email: admin.email,
       password: admin.password,
+      fax_number: '',
+      turnstileToken: '',
     }
   });
+
+  const { 
+    register, 
+    handleSubmit, 
+    trigger, 
+    getValues,
+    setValue,
+    watch,
+    formState: { errors } 
+  } = useFormReturn;
+  const turnstileToken = watch('turnstileToken');
 
   const steps = [
     { id: 1, title: 'Organisation', icon: Building },
@@ -99,7 +97,7 @@ export default function RegisterPage() {
       ? ['raisonSociale', 'siret', 'adressePostale'] 
       : step === 2 
         ? ['agencyName', 'agencyAddress', 'agencyPhone']
-        : ['firstName', 'lastName', 'email', 'password'];
+        : ['firstName', 'lastName', 'email', 'password', 'turnstileToken'];
 
     const isValid = await trigger(fieldsToValidate as any);
     
@@ -154,7 +152,9 @@ export default function RegisterPage() {
             lastName: data.lastName, 
             email: data.email, 
             password: data.password 
-          } 
+          },
+          fax_number: data.fax_number,
+          turnstileToken: data.turnstileToken
         }),
       });
 
@@ -420,6 +420,28 @@ export default function RegisterPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Honeypot Field - Invisible for humans, trap for bots */}
+                <div className="absolute opacity-0 -z-50 pointer-events-none" aria-hidden="true">
+                  <input
+                    {...register('fax_number')}
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </div>
+
+                {/* Cloudflare Turnstile */}
+                <div className="flex justify-center py-2">
+                  <Turnstile
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+                    onSuccess={(token) => setValue('turnstileToken', token)}
+                    options={{
+                      theme: 'dark',
+                    }}
+                  />
+                </div>
+                {errors.turnstileToken && <p className="text-xs text-red-400 text-center">{errors.turnstileToken.message as string}</p>}
               </div>
             )}
 
