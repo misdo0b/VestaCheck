@@ -4,6 +4,8 @@ import { AuthProvider } from "@/components/providers/AuthProvider";
 import { StoreInitializer } from "@/components/providers/StoreInitializer";
 import { Navbar } from "@/components/layout/Navbar";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "VestaCheck - État des Lieux Numérique",
@@ -22,6 +24,8 @@ export default function RootLayout({
           <StoreInitializer />
           <Navbar />
           {children}
+          <Analytics />
+          <SpeedInsights />
           <Toaster 
             theme="dark" 
             position="top-right" 
