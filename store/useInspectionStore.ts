@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { InspectionReport, InspectionItem, PhotoMetadata } from '@/types';
+import { uploadInspectionPhoto } from '@/app/actions/media';
 import { useTenantStore } from './useTenantStore';
 import { db } from '@/lib/db';
 import { dataURLToBlob } from '@/lib/utils/image';
@@ -20,6 +21,7 @@ interface InspectionState {
   saveOffline: () => void;
   finalizeInspection: (id: string, fullData?: InspectionReport) => Promise<void>;
   getInspectionsByAgency: (agencyId: string) => InspectionReport[];
+  syncPendingPhotos: () => Promise<void>;
 }
 
 export const useInspectionStore = create<InspectionState>((set, get) => ({
@@ -111,7 +113,8 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     const newPhoto: PhotoMetadata = {
       id: photoId,
       compressedBase64: photoUrl, // Version UI
-      isSynced: false
+      isSynced: false,
+      status: 'PENDING'
     };
 
     const newRooms = currentInspection.rooms.map(room => {
@@ -219,5 +222,55 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
 
   getInspectionsByAgency: (agencyId) => {
     return get().inspections.filter(i => i.agencyId === agencyId);
+  },
+
+  syncPendingPhotos: async () => {
+    const { currentInspection, updateItem } = get();
+    if (!currentInspection) return;
+
+    // On parcourt toutes les pièces et tous les éléments pour trouver les photos PENDING
+    for (const room of currentInspection.rooms) {
+      for (const item of room.items) {
+        // On synchronise les photos en attente OU en erreur (retry)
+        const pendingPhotos = item.photos.filter(p => p.status === 'PENDING' || p.status === 'ERROR');
+        
+        if (pendingPhotos.length === 0) continue;
+
+        for (const photo of pendingPhotos) {
+          // 1. Marquer comme SYNCING dans l'UI (Optimistic)
+          const updatedPhotos = item.photos.map(p => 
+            p.id === photo.id ? { ...p, status: 'SYNCING' as const } : p
+          );
+          await updateItem(room.id, item.id, { photos: updatedPhotos });
+
+          // 2. Appel de la Server Action
+          const result = await uploadInspectionPhoto(photo.compressedBase64, {
+            propertyId: currentInspection.propertyId,
+            organizationId: currentInspection.organizationId,
+            agencyId: currentInspection.agencyId,
+          });
+
+          if (result.success && result.url) {
+            // 3. Succès : UPLOADED + remoteUrl + nettoyage Base64
+            const finalPhotos = item.photos.map(p => 
+              p.id === photo.id ? { 
+                ...p, 
+                status: 'UPLOADED' as const, 
+                cloudUrl: result.url,
+                isSynced: true,
+                compressedBase64: '' // Libère la mémoire comme demandé
+              } : p
+            );
+            await updateItem(room.id, item.id, { photos: finalPhotos });
+          } else {
+            // 4. Échec : ERROR
+            const errorPhotos = item.photos.map(p => 
+              p.id === photo.id ? { ...p, status: 'ERROR' as const } : p
+            );
+            await updateItem(room.id, item.id, { photos: errorPhotos });
+          }
+        }
+      }
+    }
   }
 }));

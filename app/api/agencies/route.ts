@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
 import { auth } from '@/lib/auth';
-
-const DB_PATH = path.join(process.cwd(), 'data', 'agencies-db.json');
+import { getSupabase } from '@/lib/supabase';
+import { snakeToCamel, camelToSnake } from '@/lib/utils/mapping';
 
 export async function GET() {
   const session = await auth();
@@ -14,15 +12,17 @@ export async function GET() {
   const currentUser = session.user as any;
 
   try {
-    const data = await fs.readFile(DB_PATH, 'utf8');
-    const agencies = JSON.parse(data);
+    const supabase = await getSupabase(true);
+    const { data: agencies, error } = await supabase
+      .from('agencies')
+      .select('*')
+      .eq('organization_id', currentUser.organizationId);
+
+    if (error) throw error;
     
-    // Segmentation : filtrer par organizationId
-    const filteredAgencies = agencies.filter((a: any) => a.organizationId === currentUser.organizationId);
-    
-    return NextResponse.json(filteredAgencies);
+    return NextResponse.json(snakeToCamel(agencies) || []);
   } catch (error) {
-    console.error('Erreur lecture DB Agences:', error);
+    console.error('Erreur lecture Supabase Agences:', error);
     return NextResponse.json({ error: 'Failed to fetch agencies' }, { status: 500 });
   }
 }
@@ -30,10 +30,14 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const agencies = await request.json();
-    await fs.writeFile(DB_PATH, JSON.stringify(agencies, null, 2), 'utf8');
+    const supabase = await getSupabase(true);
+    
+    const { error } = await supabase.from('agencies').upsert(camelToSnake(agencies));
+    if (error) throw error;
+    
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Erreur écriture DB Agences:', error);
+    console.error('Erreur écriture Supabase Agences:', error);
     return NextResponse.json({ error: 'Failed to sync agencies' }, { status: 500 });
   }
 }

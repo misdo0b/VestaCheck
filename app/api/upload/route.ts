@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { writeFile } from 'fs/promises';
+import { getSupabase } from '@/lib/supabase';
 import path from 'path';
 
 export async function POST(req: Request) {
   const session = await auth();
 
-  // 1. Vérification de l'authentification
   if (!session) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   }
@@ -22,21 +21,30 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // 2. Génération d'un nom de fichier unique
     const fileExtension = path.extname(file.name) || '.jpg';
-    const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const fileName = `${uniqueId}${fileExtension}`;
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}${fileExtension}`;
     
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-    const filePath = path.join(uploadDir, fileName);
+    const supabase = await getSupabase(true); // Service role pour l'écriture dans le storage
 
-    // 3. Écriture physique sur le disque
-    await writeFile(filePath, buffer);
-    
-    // 4. Retour de l'URL publique
-    const publicUrl = `/uploads/${fileName}`;
+    // Upload vers Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('vestacheck-media')
+      .upload(fileName, buffer, {
+        contentType: file.type,
+        upsert: true
+      });
 
-    console.log(`[Upload] Fichier sauvegardé : ${publicUrl}`);
+    if (error) {
+      console.error('[Upload] Supabase Storage Error:', error);
+      throw error;
+    }
+
+    // Récupération de l'URL publique
+    const { data: { publicUrl } } = supabase.storage
+      .from('vestacheck-media')
+      .getPublicUrl(fileName);
+
+    console.log(`[Upload] Fichier sauvegardé sur Supabase : ${publicUrl}`);
 
     return NextResponse.json({ 
       success: true, 
@@ -45,6 +53,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('[Upload] Error:', error);
-    return NextResponse.json({ error: 'Échec de l\'upload' }, { status: 500 });
+    return NextResponse.json({ error: 'Échec de l\'upload vers le cloud' }, { status: 500 });
   }
 }

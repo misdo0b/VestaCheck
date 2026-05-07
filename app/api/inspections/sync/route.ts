@@ -1,31 +1,12 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
 import { auth } from '@/lib/auth';
-import path from 'path';
+import { getSupabase } from '@/lib/supabase';
 import { hashPassword } from '@/lib/utils/password';
-
-const DATA_DIR = path.join(process.cwd(), 'data');
-
-async function readDb(filename: string) {
-  try {
-    const data = await fs.readFile(path.join(DATA_DIR, filename), 'utf8');
-    if (!data || data.trim() === '') return [];
-    return JSON.parse(data);
-  } catch (err) {
-    console.error(`[Sync] Failed to read ${filename}:`, err);
-    return []; // Fallback pour éviter de bloquer toute la synchro
-  }
-}
-
-async function writeDb(filename: string, data: any) {
-  const filePath = path.join(DATA_DIR, filename);
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-  console.log(`[Sync] Successful write to ${filename} (${data.length} items)`);
-}
+import { camelToSnake } from '@/lib/utils/mapping';
 
 /**
  * POST /api/inspections/sync
- * Endpoint de synchronisation atomique pour les changements hors-ligne.
+ * Endpoint de synchronisation atomique pour Supabase.
  */
 export async function POST(req: Request) {
   const session = await auth();
@@ -41,49 +22,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Format invalide' }, { status: 400 });
     }
 
-    console.log(`[Sync] Début du traitement de ${mutations.length} mutations...`);
-
-    // Chargement des données actuelles
-    const users = await readDb('users-db.json');
-    const properties = await readDb('properties-db.json');
-    const inspections = await readDb('inspections-db.json');
-    const tenants = await readDb('tenants-db.json');
-    const agencies = await readDb('agencies-db.json');
-    const organizations = await readDb('organizations-db.json');
-
-    const dbMap: Record<string, any[]> = {
-      'user': users,
-      'property': properties,
-      'inspection': inspections,
-      'tenant': tenants,
-      'agency': agencies,
-      'organization': organizations,
-      'template': await readDb('templates-db.json')
-    };
-
-    const fileMap: Record<string, string> = {
-      'user': 'users-db.json',
-      'property': 'properties-db.json',
-      'inspection': 'inspections-db.json',
-      'tenant': 'tenants-db.json',
-      'agency': 'agencies-db.json',
-      'organization': 'organizations-db.json',
-      'template': 'templates-db.json'
-    };
-
-    const affectedEntities = new Set<string>();
+    console.log(`[Sync] Début de la synchronisation Supabase (${mutations.length} mutations)`);
+    const supabase = await getSupabase(true); // Service role pour bypass RLS et gestion batch
 
     for (const mutation of mutations) {
       const { type, entity, entityId, data } = mutation;
-      const table = dbMap[entity];
-      
-      if (!table) {
-        console.warn(`[Sync] Entité inconnue sautée : ${entity}`);
+      const table = entityToTable(entity);
+
+      if (type === 'DELETE') {
+        await supabase.from(table).delete().eq('id', entityId);
         continue;
       }
-
-      affectedEntities.add(entity);
-      console.log(`[Sync] Traitement ${type} sur ${entity} (${entityId})`);
 
       // 1. Password Hash pour les utilisateurs
       if (entity === 'user' && data?.password) {
@@ -94,57 +43,78 @@ export async function POST(req: Request) {
         }
       }
 
-      // 2. Traitement CRUD
-      if (type === 'CREATE') {
-        const existingIndex = table.findIndex((item: any) => item.id === entityId);
-        if (existingIndex === -1) {
-          table.push({ ...data, id: entityId, serverVersion: 1, lastModified: new Date().toISOString() });
-        } else {
-          // Si déjà présent, on fait un UPDATE silencieux pour gérer les reprises de synchro
-          table[existingIndex] = { 
-            ...table[existingIndex], 
-            ...data, 
-            serverVersion: (table[existingIndex].serverVersion || 1) + 1,
-            lastModified: new Date().toISOString()
-          };
-        }
-      } else if (type === 'UPDATE') {
-        const index = table.findIndex((item: any) => item.id === entityId);
-        if (index !== -1) {
-          table[index] = { 
-            ...table[index], 
-            ...data, 
-            serverVersion: (table[index].serverVersion || 1) + 1,
-            lastModified: new Date().toISOString()
-          };
-        } else {
-          // Si UPDATE d'un élément absent, on le crée (cas limite de synchro désordonnée)
-          table.push({ ...data, id: entityId, serverVersion: 1, lastModified: new Date().toISOString() });
-        }
-      } else if (type === 'DELETE') {
-        dbMap[entity] = table.filter((item: any) => item.id !== entityId);
-      }
+      // 2. Normalisation et Upsert
+      if (entity === 'inspection') {
+        const { rooms, ...inspectionData } = data;
+        
+        // Mapping camelCase -> snake_case
+        const mappedData = camelToSnake(inspectionData);
+        
+        const { error: insError } = await supabase.from('inspections').upsert({
+          ...mappedData,
+          id: entityId,
+          last_modified: new Date().toISOString(),
+          server_version: (data.serverVersion || 0) + 1
+        });
 
-      // 3. Logique métier transversale (Statut locataire)
-      if (entity === 'inspection' && mutations.some(m => m.entityId === entityId && (m.type === 'CREATE' || m.type === 'UPDATE'))) {
-        // On récupère la version mise à jour du rapport dans la table
-        const ins = table.find((item: any) => item.id === entityId);
-        if (ins && ins.isFinalized && ins.type === 'Sortie' && ins.tenantId) {
-          const tenantIndex = tenants.findIndex((t: any) => t.id === ins.tenantId);
-          if (tenantIndex !== -1 && tenants[tenantIndex].status !== 'Sorti') {
-            tenants[tenantIndex].status = 'Sorti';
-            tenants[tenantIndex].lastModified = new Date().toISOString();
-            tenants[tenantIndex].serverVersion = (tenants[tenantIndex].serverVersion || 1) + 1;
-            affectedEntities.add('tenant');
-            console.log(`[Sync] Locataire ${ins.tenantId} marqué comme 'Sorti' suite à finalisation.`);
+        if (insError) throw insError;
+
+        // Gestion des pièces si présentes dans la mutation
+        if (rooms && Array.isArray(rooms)) {
+          for (const room of rooms) {
+            const { items, ...roomData } = room;
+            await supabase.from('rooms').upsert({
+              id: room.id,
+              inspection_id: entityId,
+              name: room.name,
+              display_order: room.display_order || 0
+            });
+
+            if (items && Array.isArray(items)) {
+              for (const item of items) {
+                const { photos, ...itemData } = item;
+                await supabase.from('inspection_items').upsert({
+                  id: item.id,
+                  room_id: room.id,
+                  label: item.label,
+                  condition: item.condition,
+                  comment: item.comment || ''
+                });
+
+                if (photos && Array.isArray(photos)) {
+                  for (const photo of photos) {
+                    await supabase.from('photos').upsert({
+                      id: photo.id,
+                      item_id: item.id,
+                      compressed_base64: photo.compressedBase64,
+                      cloud_url: photo.cloudUrl,
+                      is_synced: photo.isSynced
+                    });
+                  }
+                }
+              }
+            }
           }
         }
+      } else {
+        // Upsert générique pour les autres entités
+        const mappedData = camelToSnake(data);
+        const { error } = await supabase.from(table).upsert({
+          ...mappedData,
+          id: entityId,
+          last_modified: new Date().toISOString(),
+          server_version: (data.serverVersion || 0) + 1
+        });
+        if (error) throw error;
       }
-    }
 
-    // Sauvegarde atomique des fichiers modifiés
-    for (const entity of affectedEntities) {
-      await writeDb(fileMap[entity], dbMap[entity]);
+      // 3. Logique métier : Statut locataire automatique
+      if (entity === 'inspection' && data.isFinalized && data.type === 'Sortie' && data.tenantId) {
+        await supabase.from('tenants')
+          .update({ status: 'Sorti', last_modified: new Date().toISOString() })
+          .eq('id', data.tenantId);
+        console.log(`[Sync] Locataire ${data.tenantId} marqué comme 'Sorti'.`);
+      }
     }
 
     return NextResponse.json({ 
@@ -154,10 +124,24 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
-    console.error('[Sync] Serveur Crash:', error);
+    console.error('[Sync] Erreur critique:', error);
     return NextResponse.json(
-      { error: 'Erreur critique lors de la synchronisation' }, 
+      { error: 'Erreur lors de la synchronisation Supabase' }, 
       { status: 500 }
     );
   }
 }
+
+function entityToTable(entity: string): string {
+  const map: Record<string, string> = {
+    'user': 'users',
+    'property': 'properties',
+    'inspection': 'inspections',
+    'tenant': 'tenants',
+    'agency': 'agencies',
+    'organization': 'organizations',
+    'template': 'property_templates'
+  };
+  return map[entity] || entity;
+}
+

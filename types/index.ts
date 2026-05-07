@@ -34,6 +34,7 @@ export interface PhotoMetadata {
   hasFullRes?: boolean;      // Indique si la version HD est dans IndexedDB
   cloudUrl?: string;        // URL distante après synchro
   isSynced: boolean;
+  status: 'PENDING' | 'SYNCING' | 'UPLOADED' | 'ERROR'; // Cycle de vie Cloudinary
 }
 
 export interface Room {
