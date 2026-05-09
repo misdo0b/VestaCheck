@@ -96,9 +96,37 @@ export async function POST(req: Request) {
             }
           }
         }
+      } else if (entity === 'tenant') {
+        const { propertyIds, ...tenantData } = data;
+        const mappedData = camelToSnake(tenantData);
+        
+        const { error } = await supabase.from('tenants').upsert({
+          ...mappedData,
+          id: entityId,
+          last_modified: new Date().toISOString(),
+          server_version: (data.serverVersion || 0) + 1
+        });
+        
+        if (error) throw error;
+
+        // Synchronisation de la table de jointure property_tenants
+        if (propertyIds && Array.isArray(propertyIds)) {
+          await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
+          if (propertyIds.length > 0) {
+            const relations = propertyIds.map((pId: string) => ({
+              property_id: pId,
+              tenant_id: entityId
+            }));
+            const { error: relError } = await supabase.from('property_tenants').insert(relations);
+            if (relError) throw relError;
+          }
+        }
       } else {
         // Upsert générique pour les autres entités
-        const mappedData = camelToSnake(data);
+        // On retire les champs qui ne sont pas des colonnes (ex: templateIds)
+        const { templateIds, ...cleanData } = data;
+        const mappedData = camelToSnake(cleanData);
+        
         const { error } = await supabase.from(table).upsert({
           ...mappedData,
           id: entityId,

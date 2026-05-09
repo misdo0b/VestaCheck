@@ -11,6 +11,7 @@ interface PropertyState {
   // Actions
   initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
   setProperties: (properties: Property[]) => void;
+  fetchProperties: (agencyId?: string) => Promise<void>;
   addProperty: (property: Property) => Promise<void>;
   updateProperty: (id: string, updates: Partial<Property>) => Promise<void>;
   deleteProperty: (id: string) => Promise<void>;
@@ -66,6 +67,23 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     } catch (err) {
       console.error('Failed to init PropertyStore:', err);
       set({ loading: false, error: 'Erreur lors du chargement local des biens' });
+    }
+  },
+
+  fetchProperties: async (agencyId?: string) => {
+    set({ loading: true });
+    try {
+      const url = agencyId ? `/api/properties?agencyId=${agencyId}` : '/api/properties';
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        await db.properties.bulkPut(data);
+        set({ properties: data, loading: false });
+      }
+    } catch (err) {
+      console.error('Fetch properties failed:', err);
+      const localProps = agencyId ? await db.properties.where('agencyId').equals(agencyId).toArray() : await db.properties.toArray();
+      set({ properties: localProps, loading: false });
     }
   },
 

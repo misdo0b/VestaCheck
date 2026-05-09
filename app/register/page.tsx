@@ -37,6 +37,21 @@ import {
 } from '@/lib/validations/auth';
 import { Turnstile } from '@marsidev/react-turnstile';
 
+interface RegisterFormValues {
+  raisonSociale: string;
+  siret: string;
+  adressePostale: string;
+  agencyName: string;
+  agencyAddress: string;
+  agencyPhone: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  fax_number?: string;
+  turnstileToken: string;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const { 
@@ -51,13 +66,13 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Initialize form with values from store
-  const useFormReturn = useForm({
+  const useFormReturn = useForm<RegisterFormValues>({
     resolver: zodResolver(
       step === 1 ? step1Schema : step === 2 ? step2Schema : step3Schema.extend({
         fax_number: z.string().max(0, 'Échec de la validation de sécurité').optional(),
         turnstileToken: z.string().min(1, 'Veuillez valider le captcha'),
       })
-    ),
+    ) as any,
     shouldUnregister: false,
     defaultValues: {
       raisonSociale: organization.raisonSociale,
@@ -84,6 +99,9 @@ export default function RegisterPage() {
     watch,
     formState: { errors } 
   } = useFormReturn;
+
+  const formValues = getValues();
+  const formErrors = errors as any; // Bypass union type issues for error display
   const turnstileToken = watch('turnstileToken');
 
   const steps = [
@@ -106,15 +124,15 @@ export default function RegisterPage() {
       const currentValues = getValues();
       if (step === 1) {
         updateOrganization({
-          raisonSociale: currentValues.raisonSociale,
-          siret: currentValues.siret,
-          adressePostale: currentValues.adressePostale
+          raisonSociale: (currentValues as any).raisonSociale,
+          siret: (currentValues as any).siret,
+          adressePostale: (currentValues as any).adressePostale
         });
       } else if (step === 2) {
         updateAgency({
-          name: currentValues.agencyName,
-          address: currentValues.agencyAddress,
-          phone: currentValues.agencyPhone
+          name: (currentValues as any).agencyName,
+          address: (currentValues as any).agencyAddress,
+          phone: (currentValues as any).agencyPhone
         });
       }
       if (step < 3) setStep(step + 1);
@@ -253,47 +271,47 @@ export default function RegisterPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Nom de l'entreprise</label>
                     <div className="relative group">
-                      <Building className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${errors.raisonSociale ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
+                      <Building className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${formErrors.raisonSociale ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
                       <input
                         {...register('raisonSociale')}
                         placeholder="VestaCheck SARL"
                         className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
-                          errors.raisonSociale ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                          formErrors.raisonSociale ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                         }`}
                       />
                     </div>
-                    {errors.raisonSociale && <p className="text-xs text-red-400 ml-1 mt-1">{errors.raisonSociale.message as string}</p>}
+                    {formErrors.raisonSociale && <p className="text-xs text-red-400 ml-1 mt-1">{formErrors.raisonSociale.message as string}</p>}
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Numéro SIRET (14 chiffres)</label>
                     <div className="relative group">
-                      <CreditCard className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${errors.siret ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
+                      <CreditCard className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${formErrors.siret ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
                       <input
                         {...register('siret')}
                         maxLength={14}
                         placeholder="12345678901234"
                         className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
-                          errors.siret ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                          formErrors.siret ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                         }`}
                       />
                     </div>
-                    {errors.siret && <p className="text-xs text-red-400 ml-1 mt-1">{errors.siret.message as string}</p>}
+                    {formErrors.siret && <p className="text-xs text-red-400 ml-1 mt-1">{formErrors.siret.message as string}</p>}
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Adresse Sociale</label>
                     <div className="relative group">
-                      <MapPin className={`absolute left-3 top-4 w-5 h-5 transition-colors ${errors.adressePostale ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
+                      <MapPin className={`absolute left-3 top-4 w-5 h-5 transition-colors ${formErrors.adressePostale ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
                       <textarea
                         {...register('adressePostale')}
                         placeholder="123 rue de Paris, 75000 Paris"
                         className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all h-24 resize-none ${
-                          errors.adressePostale ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                          formErrors.adressePostale ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                         }`}
                       />
                     </div>
-                    {errors.adressePostale && <p className="text-xs text-red-400 ml-1 mt-1">{errors.adressePostale.message as string}</p>}
+                    {formErrors.adressePostale && <p className="text-xs text-red-400 ml-1 mt-1">{formErrors.adressePostale.message as string}</p>}
                   </div>
                 </div>
               </div>
@@ -309,46 +327,46 @@ export default function RegisterPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Nom de l'agence</label>
                     <div className="relative group">
-                      <Building className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${errors.agencyName ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
+                      <Building className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${formErrors.agencyName ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
                       <input
                         {...register('agencyName')}
                         placeholder="Agence Siège"
                         className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
-                          errors.agencyName ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                          formErrors.agencyName ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                         }`}
                       />
                     </div>
-                    {errors.agencyName && <p className="text-xs text-red-400 ml-1 mt-1">{errors.agencyName.message as string}</p>}
+                    {formErrors.agencyName && <p className="text-xs text-red-400 ml-1 mt-1">{formErrors.agencyName.message as string}</p>}
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Adresse de l'agence</label>
                     <div className="relative group">
-                      <MapPin className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${errors.agencyAddress ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
+                      <MapPin className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${formErrors.agencyAddress ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
                       <input
                         {...register('agencyAddress')}
                         placeholder="45 avenue des Champs-Élysées"
                         className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
-                          errors.agencyAddress ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                          formErrors.agencyAddress ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                         }`}
                       />
                     </div>
-                    {errors.agencyAddress && <p className="text-xs text-red-400 ml-1 mt-1">{errors.agencyAddress.message as string}</p>}
+                    {formErrors.agencyAddress && <p className="text-xs text-red-400 ml-1 mt-1">{formErrors.agencyAddress.message as string}</p>}
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Téléphone</label>
                     <div className="relative group">
-                      <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${errors.agencyPhone ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
+                      <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${formErrors.agencyPhone ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
                       <input
                         {...register('agencyPhone')}
                         placeholder="01 23 45 67 89"
                         className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
-                          errors.agencyPhone ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                          formErrors.agencyPhone ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                         }`}
                       />
                     </div>
-                    {errors.agencyPhone && <p className="text-xs text-red-400 ml-1 mt-1">{errors.agencyPhone.message as string}</p>}
+                    {formErrors.agencyPhone && <p className="text-xs text-red-400 ml-1 mt-1">{formErrors.agencyPhone.message as string}</p>}
                   </div>
                 </div>
               </div>
@@ -367,10 +385,10 @@ export default function RegisterPage() {
                       {...register('firstName')}
                       placeholder="Jean"
                       className={`w-full bg-slate-800/50 border rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-2 transition-all ${
-                        errors.firstName ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                        formErrors.firstName ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                       }`}
                     />
-                    {errors.firstName && <p className="text-[10px] text-red-400 ml-1 mt-1">{errors.firstName.message as string}</p>}
+                    {formErrors.firstName && <p className="text-[10px] text-red-400 ml-1 mt-1">{formErrors.firstName.message as string}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Nom</label>
@@ -378,43 +396,43 @@ export default function RegisterPage() {
                       {...register('lastName')}
                       placeholder="Dupont"
                       className={`w-full bg-slate-800/50 border rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-2 transition-all ${
-                        errors.lastName ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                        formErrors.lastName ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                       }`}
                     />
-                    {errors.lastName && <p className="text-[10px] text-red-400 ml-1 mt-1">{errors.lastName.message as string}</p>}
+                    {formErrors.lastName && <p className="text-[10px] text-red-400 ml-1 mt-1">{formErrors.lastName.message as string}</p>}
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Email professionnel</label>
                     <div className="relative group">
-                      <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${errors.email ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
+                      <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${formErrors.email ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
                       <input
                         {...register('email')}
                         type="email"
                         placeholder="jean.dupont@entreprise.com"
                         className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
-                          errors.email ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                          formErrors.email ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                         }`}
                       />
                     </div>
-                    {errors.email && <p className="text-xs text-red-400 ml-1 mt-1">{errors.email.message as string}</p>}
+                    {formErrors.email && <p className="text-xs text-red-400 ml-1 mt-1">{formErrors.email.message as string}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 ml-1">Mot de passe</label>
                     <div className="relative group">
-                      <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${errors.password ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
+                      <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${formErrors.password ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
                       <input
                         {...register('password')}
                         type="password"
                         placeholder="••••••••"
                         className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
-                          errors.password ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                          formErrors.password ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
                         }`}
                       />
                     </div>
-                    {errors.password ? (
-                      <p className="text-xs text-red-400 ml-1 mt-1">{errors.password.message as string}</p>
+                    {formErrors.password ? (
+                      <p className="text-xs text-red-400 ml-1 mt-1">{formErrors.password.message as string}</p>
                     ) : (
                       <p className="text-[10px] text-slate-500 ml-1 mt-1">Minimum 8 caractères</p>
                     )}
