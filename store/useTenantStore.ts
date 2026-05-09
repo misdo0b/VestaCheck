@@ -150,6 +150,6 @@ export const useTenantStore = create<TenantState>((set, get) => ({
   },
 
   getTenantsByProperty: (propertyId) => {
-    return get().tenants.filter(t => t.propertyIds.includes(propertyId));
+    return get().tenants.filter(t => (t.propertyIds || []).includes(propertyId));
   }
 }));

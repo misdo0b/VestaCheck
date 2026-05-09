@@ -199,7 +199,8 @@ function TenantsPageContent() {
     return tenants
       .filter(t => {
         // Sécurité : au moins un bien rattaché accessible (ou Admin)
-        const isAccessible = userRole === 'Administrateur' || t.propertyIds.some(pid => accessiblePropertyIds.includes(pid));
+        const pIds = t.propertyIds || [];
+        const isAccessible = userRole === 'Administrateur' || pIds.some(pid => accessiblePropertyIds.includes(pid));
         
         const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                              t.email.toLowerCase().includes(searchQuery.toLowerCase());
@@ -382,7 +383,7 @@ function TenantsPageContent() {
                     <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Biens Rattachés</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {tenant.propertyIds.map(propId => {
+                    {(tenant.propertyIds || []).map(propId => {
                       const prop = properties.find(p => p.id === propId);
                       return (
                         <span 
