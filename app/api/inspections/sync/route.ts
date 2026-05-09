@@ -44,8 +44,9 @@ export async function POST(req: Request) {
         }
 
         if (entity === 'user') {
-          if (!data.email) {
-            results.push({ id: mutation.id, status: 'error', error: 'Email is required' });
+          // L'email n'est requis que si on tente de créer ou si on l'a fourni
+          if (!data.email && type === 'CREATE') {
+            results.push({ id: mutation.id, status: 'error', error: 'Email is required for creation' });
             continue;
           }
           
@@ -111,12 +112,26 @@ export async function POST(req: Request) {
           const { propertyIds, ...tenantData } = data;
           const mappedData = camelToSnake(tenantData);
           
-          const { error } = await supabase.from('tenants').upsert({
+          const payload = {
             ...mappedData,
             id: entityId,
             last_modified: new Date().toISOString(),
             server_version: (data.serverVersion || 0) + 1
-          });
+          };
+
+          let error;
+          if (type === 'UPDATE') {
+            const { error: updateError } = await supabase
+              .from('tenants')
+              .update(payload)
+              .eq('id', entityId);
+            error = updateError;
+          } else {
+            const { error: upsertError } = await supabase
+              .from('tenants')
+              .upsert(payload);
+            error = upsertError;
+          }
           
           if (error) throw error;
 
@@ -135,12 +150,27 @@ export async function POST(req: Request) {
           const { templateIds, ...cleanData } = data;
           const mappedData = camelToSnake(cleanData);
           
-          const { error } = await supabase.from(table).upsert({
+          const payload = {
             ...mappedData,
             id: entityId,
             last_modified: new Date().toISOString(),
             server_version: (data.serverVersion || 0) + 1
-          });
+          };
+
+          let error;
+          if (type === 'UPDATE') {
+            const { error: updateError } = await supabase
+              .from(table)
+              .update(payload)
+              .eq('id', entityId);
+            error = updateError;
+          } else {
+            const { error: upsertError } = await supabase
+              .from(table)
+              .upsert(payload);
+            error = upsertError;
+          }
+          
           if (error) throw error;
         }
 

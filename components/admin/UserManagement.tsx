@@ -109,7 +109,10 @@ export default function UserManagement() {
   const handleResetPassword = async (newPassword: string) => {
     if (selectedUser) {
       const hashedPassword = await hashPassword(newPassword);
-      await updateUser(selectedUser.id, { password: hashedPassword } as any);
+      await updateUser(selectedUser.id, { 
+        email: selectedUser.email, 
+        password: hashedPassword 
+      } as any);
       console.log(`Password updated (hashed) for ${selectedUser.email}`);
     }
   };
