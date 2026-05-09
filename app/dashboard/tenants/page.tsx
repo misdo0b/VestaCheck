@@ -395,7 +395,7 @@ function TenantsPageContent() {
                         </span>
                       );
                     })}
-                    {tenant.propertyIds.length === 0 && (
+                    {(!tenant.propertyIds || tenant.propertyIds.length === 0) && (
                       <span className="text-xs italic text-slate-600">Aucun bien rattaché</span>
                     )}
                   </div>
