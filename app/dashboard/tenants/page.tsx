@@ -113,7 +113,7 @@ const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSu
           <div className="space-y-4">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
               Biens Immobilier Rattachés
-              <span className="text-blue-500">{formData.propertyIds.length} sélectionné(s)</span>
+              <span className="text-blue-500">{(formData.propertyIds || []).length} sélectionné(s)</span>
             </label>
             <div className="grid grid-cols-1 gap-2">
               {properties.map(prop => (
