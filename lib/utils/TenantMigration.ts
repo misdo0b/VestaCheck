@@ -54,6 +54,8 @@ export const runTenantMigration = async () => {
         phone,
         status: 'Actuel',
         propertyIds: [propertyId],
+        agencyId: oldInspection.agencyId || '', // Récupération depuis l'inspection
+        organizationId: oldInspection.organizationId || '',
         serverVersion: 1,
         lastModified: new Date().toISOString(),
         syncStatus: 'synced' // On considère que les données historiques sont synchro
