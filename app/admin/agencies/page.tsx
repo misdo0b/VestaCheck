@@ -91,7 +91,7 @@ export default function AgenciesPage() {
       } else {
         await addAgency({
           ...data,
-          id: `agency_${Date.now()}`
+          id: crypto.randomUUID()
         });
         toast.success("Nouvelle agence créée !");
       }

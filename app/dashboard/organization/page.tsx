@@ -57,8 +57,7 @@ export default function OrganizationPage() {
       await updateOrganization(currentOrg.id, {
         raisonSociale: formData.raisonSociale,
         siret: formData.siret,
-        adressePostale: formData.adressePostale,
-        updatedAt: Date.now()
+        adressePostale: formData.adressePostale
       });
       toast.success("Organisation mise à jour avec succès");
     } catch (err) {

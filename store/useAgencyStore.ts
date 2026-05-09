@@ -10,7 +10,7 @@ interface AgencyStore {
   // Actions
   initStore: (user: { role: string; organizationId: string }) => Promise<void>;
   fetchAgencies: (organizationId?: string) => Promise<void>;
-  addAgency: (agencyData: Omit<Agency, 'updatedAt' | 'isSynced'>) => Promise<void>;
+  addAgency: (agencyData: Omit<Agency, 'serverVersion' | 'lastModified' | 'syncStatus'>) => Promise<void>;
   updateAgency: (id: string, updates: Partial<Agency>) => Promise<void>;
   deleteAgency: (id: string) => Promise<void>;
   getAgenciesByOrg: (organizationId: string) => Agency[];
@@ -60,8 +60,9 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
   addAgency: async (agencyData) => {
     const newAgency: Agency = {
       ...agencyData,
-      updatedAt: Date.now(),
-      isSynced: false
+      serverVersion: 1,
+      lastModified: new Date().toISOString(),
+      syncStatus: 'pending'
     };
 
     set((state) => ({ agencies: [...state.agencies, newAgency] }));
@@ -84,16 +85,16 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
       agencies: state.agencies.map(a => a.id === id ? { 
         ...a, 
         ...updates, 
-        isSynced: false,
-        updatedAt: Date.now() 
+        syncStatus: 'pending',
+        lastModified: new Date().toISOString() 
       } : a)
     }));
 
     try {
       await db.agencies.update(id, { 
         ...updates, 
-        isSynced: false,
-        updatedAt: Date.now() 
+        syncStatus: 'pending',
+        lastModified: new Date().toISOString() 
       });
       
       await db.enqueueMutation({
