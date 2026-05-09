@@ -50,7 +50,7 @@ export default function PropertiesPage() {
 
     // 2. Filtres UI
     return baseProperties.filter(p => {
-      const isOccupied = tenants.some(t => t.propertyIds.includes(p.id) && t.status === 'Actuel');
+      const isOccupied = tenants.some(t => (t.propertyIds || []).includes(p.id) && t.status === 'Actuel');
       
       // Text Search
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
