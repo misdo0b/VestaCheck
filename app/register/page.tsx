@@ -37,6 +37,21 @@ import {
 } from '@/lib/validations/auth';
 import { Turnstile } from '@marsidev/react-turnstile';
 
+interface RegisterFormValues {
+  raisonSociale: string;
+  siret: string;
+  adressePostale: string;
+  agencyName: string;
+  agencyAddress: string;
+  agencyPhone: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  fax_number?: string;
+  turnstileToken: string;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const { 
@@ -51,13 +66,13 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Initialize form with values from store
-  const useFormReturn = useForm({
+  const useFormReturn = useForm<RegisterFormValues>({
     resolver: zodResolver(
-      step === 1 ? step1Schema : step === 2 ? step2Schema : step3Schema.extend({
+      (step === 1 ? step1Schema : step === 2 ? step2Schema : step3Schema.extend({
         fax_number: z.string().max(0, 'Échec de la validation de sécurité').optional(),
         turnstileToken: z.string().min(1, 'Veuillez valider le captcha'),
-      })
-    ),
+      })).passthrough()
+    ) as any,
     shouldUnregister: false,
     defaultValues: {
       raisonSociale: organization.raisonSociale,
@@ -93,13 +108,13 @@ export default function RegisterPage() {
   ];
 
   const handleNext = async () => {
-    const fieldsToValidate = step === 1 
+    const fieldsToValidate = (step === 1 
       ? ['raisonSociale', 'siret', 'adressePostale'] 
       : step === 2 
         ? ['agencyName', 'agencyAddress', 'agencyPhone']
-        : ['firstName', 'lastName', 'email', 'password', 'turnstileToken'];
+        : ['firstName', 'lastName', 'email', 'password', 'turnstileToken']) as Array<keyof RegisterFormValues>;
 
-    const isValid = await trigger(fieldsToValidate as any);
+    const isValid = await trigger(fieldsToValidate);
     
     if (isValid) {
       // Sauvegarde intermédiaire dans le store
