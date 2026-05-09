@@ -36,7 +36,7 @@ export const HeaderSection: React.FC = () => {
 
   // Filtrer les locataires par propriété
   const filteredTenants = tenants.filter(t => {
-    const isLinked = t.propertyIds.includes(selectedPropertyId);
+    const isLinked = (t.propertyIds || []).includes(selectedPropertyId);
     if (type === 'Sortie') {
       return isLinked && t.status === 'Actuel';
     }

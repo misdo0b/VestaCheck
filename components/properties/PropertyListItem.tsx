@@ -15,7 +15,7 @@ interface PropertyListItemProps {
 export function PropertyListItem({ property }: PropertyListItemProps) {
   const { users } = useUserStore();
   const { tenants } = useTenantStore();
-  const isOccupied = tenants.some(t => t.propertyIds.includes(property.id) && t.status === 'Actuel');
+  const isOccupied = tenants.some(t => (t.propertyIds || []).includes(property.id) && t.status === 'Actuel');
 
   return (
     <Link 

@@ -16,7 +16,7 @@ interface PropertyCardProps {
 
 export function PropertyCard({ property }: PropertyCardProps) {
   const { tenants } = useTenantStore();
-  const isOccupied = tenants.some(t => t.propertyIds.includes(property.id) && t.status === 'Actuel');
+  const isOccupied = tenants.some(t => (t.propertyIds || []).includes(property.id) && t.status === 'Actuel');
   const { users } = useUserStore();
   const { agencies } = useAgencyStore();
   

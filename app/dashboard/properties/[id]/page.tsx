@@ -57,7 +57,7 @@ export default function PropertyDetailPage() {
   }
 
   const lastInspection = propertyInspections[0];
-  const isOccupied = tenants.some(t => t.propertyIds.includes(property.id) && t.status === 'Actuel');
+  const isOccupied = tenants.some(t => (t.propertyIds || []).includes(property.id) && t.status === 'Actuel');
 
   const handleExportPDF = async (inspection: any) => {
     setExportingId(inspection.id);
