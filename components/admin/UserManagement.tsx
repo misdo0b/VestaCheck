@@ -51,10 +51,13 @@ export default function UserManagement() {
 
   // Filtering
   const filteredUsers = useMemo(() => {
-    return users.filter(user => {
+    return (users || []).filter(user => {
+      if (!user) return false;
+      const name = user.name || '';
+      const email = user.email || '';
       const matchesSearch = 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        user.email.toLowerCase().includes(searchTerm.toLowerCase());
+        name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        email.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesRole = roleFilter === 'All' || user.role === roleFilter;
       return matchesSearch && matchesRole;
     });
@@ -78,7 +81,7 @@ export default function UserManagement() {
       // Create
       const hashedPassword = await hashPassword(normalizedData.password || 'password123');
       const newUser: User = {
-        id: `user_${Math.random().toString(36).substr(2, 9)}`,
+        id: crypto.randomUUID(),
         name: normalizedData.name!,
         email: normalizedData.email!,
         password: hashedPassword,

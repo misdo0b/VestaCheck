@@ -25,136 +25,154 @@ export async function POST(req: Request) {
     console.log(`[Sync] Début de la synchronisation Supabase (${mutations.length} mutations)`);
     const supabase = await getSupabase(true); // Service role pour bypass RLS et gestion batch
 
+    const results = [];
     for (const mutation of mutations) {
-      const { type, entity, entityId, data } = mutation;
-      const table = entityToTable(entity);
+      try {
+        const { type, entity, entityId, data } = mutation;
+        const table = entityToTable(entity);
 
-      if (type === 'DELETE') {
-        await supabase.from(table).delete().eq('id', entityId);
-        continue;
-      }
-
-      // 1. Password Hash pour les utilisateurs
-      if (entity === 'user' && data?.password) {
-        if (data.password.trim() !== '' && !data.password.startsWith('$2')) {
-          data.password = await hashPassword(data.password);
-        } else if (data.password.trim() === '') {
-          delete data.password;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(entityId)) {
+          results.push({ id: mutation.id, status: 'error', error: 'Invalid UUID' });
+          continue;
         }
-      }
 
-      // 2. Normalisation et Upsert
-      if (entity === 'inspection') {
-        const { rooms, ...inspectionData } = data;
-        
-        // Mapping camelCase -> snake_case
-        const mappedData = camelToSnake(inspectionData);
-        
-        const { error: insError } = await supabase.from('inspections').upsert({
-          ...mappedData,
-          id: entityId,
-          last_modified: new Date().toISOString(),
-          server_version: (data.serverVersion || 0) + 1
-        });
+        if (type === 'DELETE') {
+          await supabase.from(table).delete().eq('id', entityId);
+          results.push({ id: mutation.id, status: 'success' });
+          continue;
+        }
 
-        if (insError) throw insError;
+        if (entity === 'user') {
+          if (!data.email) {
+            results.push({ id: mutation.id, status: 'error', error: 'Email is required' });
+            continue;
+          }
+          
+          if (data.password) {
+            if (data.password.trim() !== '' && !data.password.startsWith('$2')) {
+              data.password = await hashPassword(data.password);
+            } else if (data.password.trim() === '') {
+              delete data.password;
+            }
+          }
+        }
 
-        // Gestion des pièces si présentes dans la mutation
-        if (rooms && Array.isArray(rooms)) {
-          for (const room of rooms) {
-            const { items, ...roomData } = room;
-            await supabase.from('rooms').upsert({
-              id: room.id,
-              inspection_id: entityId,
-              name: room.name,
-              display_order: room.display_order || 0
-            });
+        if (entity === 'inspection') {
+          const { rooms, ...inspectionData } = data;
+          const mappedData = camelToSnake(inspectionData);
+          
+          const { error: insError } = await supabase.from('inspections').upsert({
+            ...mappedData,
+            id: entityId,
+            last_modified: new Date().toISOString(),
+            server_version: (data.serverVersion || 0) + 1
+          });
 
-            if (items && Array.isArray(items)) {
-              for (const item of items) {
-                const { photos, ...itemData } = item;
-                await supabase.from('inspection_items').upsert({
-                  id: item.id,
-                  room_id: room.id,
-                  label: item.label,
-                  condition: item.condition,
-                  comment: item.comment || ''
-                });
+          if (insError) throw insError;
 
-                if (photos && Array.isArray(photos)) {
-                  for (const photo of photos) {
-                    await supabase.from('photos').upsert({
-                      id: photo.id,
-                      item_id: item.id,
-                      compressed_base64: photo.compressedBase64,
-                      cloud_url: photo.cloudUrl,
-                      is_synced: photo.isSynced
-                    });
+          if (rooms && Array.isArray(rooms)) {
+            for (const room of rooms) {
+              const { items, ...roomData } = room;
+              await supabase.from('rooms').upsert({
+                id: room.id,
+                inspection_id: entityId,
+                name: room.name,
+                display_order: room.display_order || 0
+              });
+
+              if (items && Array.isArray(items)) {
+                for (const item of items) {
+                  const { photos, ...itemData } = item;
+                  await supabase.from('inspection_items').upsert({
+                    id: item.id,
+                    room_id: room.id,
+                    label: item.label,
+                    condition: item.condition,
+                    comment: item.comment || ''
+                  });
+
+                  if (photos && Array.isArray(photos)) {
+                    for (const photo of photos) {
+                      await supabase.from('photos').upsert({
+                        id: photo.id,
+                        item_id: item.id,
+                        compressed_base64: photo.compressedBase64,
+                        cloud_url: photo.cloudUrl,
+                        is_synced: photo.isSynced
+                      });
+                    }
                   }
                 }
               }
             }
           }
-        }
-      } else if (entity === 'tenant') {
-        const { propertyIds, ...tenantData } = data;
-        const mappedData = camelToSnake(tenantData);
-        
-        const { error } = await supabase.from('tenants').upsert({
-          ...mappedData,
-          id: entityId,
-          last_modified: new Date().toISOString(),
-          server_version: (data.serverVersion || 0) + 1
-        });
-        
-        if (error) throw error;
+        } else if (entity === 'tenant') {
+          const { propertyIds, ...tenantData } = data;
+          const mappedData = camelToSnake(tenantData);
+          
+          const { error } = await supabase.from('tenants').upsert({
+            ...mappedData,
+            id: entityId,
+            last_modified: new Date().toISOString(),
+            server_version: (data.serverVersion || 0) + 1
+          });
+          
+          if (error) throw error;
 
-        // Synchronisation de la table de jointure property_tenants
-        if (propertyIds && Array.isArray(propertyIds)) {
-          await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
-          if (propertyIds.length > 0) {
-            const relations = propertyIds.map((pId: string) => ({
-              property_id: pId,
-              tenant_id: entityId
-            }));
-            const { error: relError } = await supabase.from('property_tenants').insert(relations);
-            if (relError) throw relError;
+          if (propertyIds && Array.isArray(propertyIds)) {
+            await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
+            if (propertyIds.length > 0) {
+              const relations = propertyIds.map((pId: string) => ({
+                property_id: pId,
+                tenant_id: entityId
+              }));
+              const { error: relError } = await supabase.from('property_tenants').insert(relations);
+              if (relError) throw relError;
+            }
           }
+        } else {
+          const { templateIds, ...cleanData } = data;
+          const mappedData = camelToSnake(cleanData);
+          
+          const { error } = await supabase.from(table).upsert({
+            ...mappedData,
+            id: entityId,
+            last_modified: new Date().toISOString(),
+            server_version: (data.serverVersion || 0) + 1
+          });
+          if (error) throw error;
         }
-      } else {
-        // Upsert générique pour les autres entités
-        // On retire les champs qui ne sont pas des colonnes (ex: templateIds)
-        const { templateIds, ...cleanData } = data;
-        const mappedData = camelToSnake(cleanData);
-        
-        const { error } = await supabase.from(table).upsert({
-          ...mappedData,
-          id: entityId,
-          last_modified: new Date().toISOString(),
-          server_version: (data.serverVersion || 0) + 1
-        });
-        if (error) throw error;
-      }
 
-      // 3. Logique métier : Statut locataire automatique
-      if (entity === 'inspection' && data.isFinalized && data.type === 'Sortie' && data.tenantId) {
-        await supabase.from('tenants')
-          .update({ status: 'Sorti', last_modified: new Date().toISOString() })
-          .eq('id', data.tenantId);
-        console.log(`[Sync] Locataire ${data.tenantId} marqué comme 'Sorti'.`);
+        if (entity === 'inspection' && data.isFinalized && data.type === 'Sortie' && data.tenantId) {
+          await supabase.from('tenants')
+            .update({ status: 'Sorti', last_modified: new Date().toISOString() })
+            .eq('id', data.tenantId);
+        }
+
+        results.push({ id: mutation.id, status: 'success' });
+      } catch (mutationError: any) {
+        console.error(`[Sync] Mutation error (${mutation.entity}:${mutation.entityId}):`, mutationError);
+        results.push({ 
+          id: mutation.id, 
+          status: 'error', 
+          error: mutationError.message || 'Unknown error',
+          code: mutationError.code
+        });
       }
     }
 
     return NextResponse.json({ 
       success: true, 
       processed: mutations.length,
+      results,
       syncedAt: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error('[Sync] Erreur critique:', error);
+  } catch (error: any) {
+    console.error('[Sync] Critical global error:', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la synchronisation Supabase' }, 
+      { error: 'Critical sync error', message: error.message }, 
       { status: 500 }
     );
   }
