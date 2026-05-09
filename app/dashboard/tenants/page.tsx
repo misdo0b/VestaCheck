@@ -221,7 +221,7 @@ function TenantsPageContent() {
       } else {
         const currentUser = session?.user as any;
         await addTenant({
-          id: `tenant_${crypto.randomUUID().slice(0, 8)}`,
+          id: crypto.randomUUID(),
           name: data.name!,
           email: data.email!,
           phone: data.phone!,
