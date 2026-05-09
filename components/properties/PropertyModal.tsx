@@ -40,7 +40,7 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
   const isAdmin = currentUser?.role === 'Administrateur';
   const isAgent = currentUser?.role === 'Agent';
 
-  const owners = users.filter(u => u.role === 'Propriétaire');
+  const owners = users.filter(u => u.role === 'Propriétaire' || u.role === 'Administrateur');
   const availableAgents = users.filter(u => u.role === 'Agent' || u.role === 'Administrateur');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PropertyFormData>({
@@ -83,7 +83,7 @@ export function PropertyModal({ isOpen, onClose, property }: PropertyModalProps)
     } else {
       addProperty({
         ...data,
-        id: `prop_${Date.now()}`,
+        id: crypto.randomUUID(),
         templateIds: [],
         agentId: data.agentId || (isAgent ? currentUser?.id : undefined),
         agencyId: data.agencyId || currentUser?.agencyId,

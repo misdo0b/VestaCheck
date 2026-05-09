@@ -147,10 +147,28 @@ export function useSync() {
         });
 
         if (response.ok) {
-          const mutationIds = remainingMutations.map(m => m.id!);
-          await db.mutationQueue.bulkDelete(mutationIds);
+          const syncResult = await response.json();
+          const results = syncResult.results || [];
           
-          // Rafraîchir les stores pour obtenir l'état final du serveur en respectant la segmentation
+          // On ne supprime que les mutations qui ont réussi côté serveur
+          const successfulMutationIds = results
+            .filter((r: any) => r.status === 'success')
+            .map((r: any) => r.id);
+            
+          const failedCount = results.length - successfulMutationIds.length;
+          
+          if (successfulMutationIds.length > 0) {
+            await db.mutationQueue.bulkDelete(successfulMutationIds);
+          }
+
+          if (failedCount > 0) {
+            console.warn(`[Sync] ${failedCount} mutations ont échoué et restent en file d'attente.`);
+            toast.warning(`${failedCount} éléments n'ont pas pu être synchronisés. Vérifiez vos données.`);
+          } else {
+            toast.success("Données synchronisées avec succès");
+          }
+          
+          // Rafraîchir les stores pour obtenir l'état final du serveur
           const user = session.user as any;
           await Promise.all([
             initInspections(user),
@@ -160,8 +178,6 @@ export function useSync() {
             initAgencies(user),
             initOrganizations(user)
           ]);
-
-          toast.success("Données synchronisées avec succès");
         } else {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || "Erreur serveur lors de la synchronisation");

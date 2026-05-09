@@ -149,7 +149,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     if (!finalTenantId && data.manualTenant?.name && data.manualTenant?.email) {
       try {
         const newId = await addTenant({
-          id: `tenant_${crypto.randomUUID().slice(0, 8)}`,
+          id: crypto.randomUUID(),
           name: data.manualTenant.name,
           email: data.manualTenant.email,
           phone: data.manualTenant.phone,

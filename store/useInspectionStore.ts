@@ -109,7 +109,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     const { currentInspection } = get();
     if (!currentInspection) return;
 
-    const photoId = `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const photoId = crypto.randomUUID();
     const newPhoto: PhotoMetadata = {
       id: photoId,
       compressedBase64: photoUrl, // Version UI

@@ -72,7 +72,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
       syncStatus: 'pending'
     };
 
-    set((state) => ({ users: [...state.users, newUser] }));
+    set((state) => {
+      const exists = state.users.some(u => u.id === newUser.id);
+      if (exists) {
+        return { users: state.users.map(u => u.id === newUser.id ? newUser : u) };
+      }
+      return { users: [...state.users, newUser] };
+    });
 
     try {
       await db.users.add(newUser);
