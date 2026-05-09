@@ -1,8 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import fs from 'fs/promises';
-import path from 'path';
 import { UserRole } from "@/types";
+import { getSupabase } from "@/lib/supabase";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -16,22 +15,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          // Lecture dynamique de la "Base de données" JSON
-          const DB_PATH = path.join(process.cwd(), 'data', 'users-db.json');
-          const data = await fs.readFile(DB_PATH, 'utf8');
-          const users = JSON.parse(data);
+          const supabase = await getSupabase(true); // Service role pour bypass RLS lors du login
+          
+          const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', (credentials.email as string).toLowerCase())
+            .single();
 
-          const loginEmail = (credentials.email as string).toLowerCase();
-          const user = users.find((u: any) => u.email.toLowerCase() === loginEmail);
+          if (error || !user) {
+            console.warn("Auth: Utilisateur non trouvé");
+            return null;
+          }
+
           const { comparePassword } = await import('@/lib/utils/password');
 
-          if (user && await comparePassword(credentials.password as string, user.password)) {
+          if (await comparePassword(credentials.password as string, user.password)) {
             // On ne renvoie pas le mot de passe vers le client
             const { password, ...userWithoutPassword } = user;
             return userWithoutPassword;
           }
         } catch (error) {
-          console.error("Auth DB Error:", error);
+          console.error("Auth Supabase Error:", error);
         }
 
         return null;
@@ -43,6 +48,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.role = (user as any).role;
         token.id = user.id;
+        token.organizationId = (user as any).organizationId || (user as any).organization_id;
+        token.agencyId = (user as any).agencyId || (user as any).agency_id;
       }
       return token;
     },
@@ -50,6 +57,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         (session.user as any).role = token.role as UserRole;
         (session.user as any).id = token.id as string;
+        (session.user as any).organizationId = token.organizationId as string;
+        (session.user as any).agencyId = token.agencyId as string;
       }
       return session;
     }

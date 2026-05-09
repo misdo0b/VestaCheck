@@ -16,7 +16,7 @@ import {
 export interface LocalMutation {
   id?: number;
   type: 'CREATE' | 'UPDATE' | 'DELETE';
-  entity: 'user' | 'property' | 'tenant' | 'inspection' | 'room' | 'item' | 'photo' | 'agency' | 'organization';
+  entity: 'user' | 'property' | 'template' | 'tenant' | 'inspection' | 'room' | 'item' | 'photo' | 'agency' | 'organization';
   entityId: string;
   data: any;
   timestamp: number;
@@ -44,14 +44,14 @@ export class VestaDatabase extends Dexie {
     super('VestaCheckDB');
     
     // Définition du schéma (seuls les index sont listés ici)
-    this.version(3).stores({
+    this.version(5).stores({
       users: 'id, email, role, organizationId, agencyId',
-      properties: 'id, ownerId, agentId, agencyId, syncStatus',
-      templates: 'id, propertyId, syncStatus',
-      tenants: 'id, *propertyIds, email, status, syncStatus',
-      inspections: 'id, propertyId, inspectorId, tenantId, agencyId, date, syncStatus',
-      organizations: 'id, raisonSociale, siret',
-      agencies: 'id, organizationId, name, type',
+      properties: 'id, ownerId, agentId, agencyId, organizationId, syncStatus',
+      templates: 'id, propertyId, organizationId, syncStatus',
+      tenants: 'id, *propertyIds, email, status, organizationId, agencyId, syncStatus',
+      inspections: 'id, propertyId, inspectorId, tenantId, agencyId, organizationId, date, syncStatus',
+      organizations: 'id, raisonSociale, siret, syncStatus',
+      agencies: 'id, organizationId, name, type, syncStatus',
       rooms: 'id, inspectionId',
       items: 'id, roomId',
       photos: 'id, itemId, isSynced',

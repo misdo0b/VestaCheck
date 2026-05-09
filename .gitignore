@@ -6,6 +6,7 @@ node_modules/
 out/
 dist/
 build/
+tsconfig.tsbuildinfo
 
 # misc
 .DS_Store
@@ -25,3 +26,12 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# scratch
+scratch/

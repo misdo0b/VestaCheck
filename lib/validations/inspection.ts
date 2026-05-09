@@ -8,6 +8,7 @@ export const PhotoMetadataSchema = z.object({
   hasFullRes: z.boolean().optional(), // Présent dans IndexedDB
   cloudUrl: z.string().optional(),
   isSynced: z.boolean(),
+  status: z.enum(['PENDING', 'SYNCING', 'UPLOADED', 'ERROR']),
 });
 
 export const TenantSchema = z.object({
@@ -42,7 +43,8 @@ const BaseReportSchema = z.object({
   type: z.enum(['Entrée', 'Sortie']),
   ownerId: z.string(),
   inspectorId: z.string(),
-  agencyId: z.string().optional(),
+  agencyId: z.string().min(1, "L'identifiant de l'agence est requis"),
+  organizationId: z.string().min(1, "L'identifiant de l'organisation est requis"),
   tenantId: z.string().optional(),
   manualTenant: z.object({
     name: z.string().min(2, "Nom requis"),
@@ -94,6 +96,8 @@ export const InspectionReportSchema = BaseReportSchema.refine((data) => {
 export const PropertyTemplateSchema = z.object({
   id: z.string(),
   propertyId: z.string(),
+  agencyId: z.string().min(1, "Agence requise"),
+  organizationId: z.string().min(1, "Organisation requise"),
   rooms: z.array(RoomSchema).min(1, "Au moins une pièce est requise"),
   keyInventories: z.array(z.object({
     id: z.string(),

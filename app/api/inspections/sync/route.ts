@@ -1,32 +1,20 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { auth } from '@/lib/auth';
+import { getSupabase } from '@/lib/supabase';
 import { hashPassword } from '@/lib/utils/password';
-
-const DATA_DIR = path.join(process.cwd(), 'data');
-
-async function readDb(filename: string) {
-  try {
-    const data = await fs.readFile(path.join(DATA_DIR, filename), 'utf8');
-    if (!data || data.trim() === '') return [];
-    return JSON.parse(data);
-  } catch (err) {
-    console.error(`[Sync] Failed to read ${filename}:`, err);
-    return []; // Fallback pour éviter de bloquer toute la synchro
-  }
-}
-
-async function writeDb(filename: string, data: any) {
-  const filePath = path.join(DATA_DIR, filename);
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-  console.log(`[Sync] Successful write to ${filename} (${data.length} items)`);
-}
+import { camelToSnake } from '@/lib/utils/mapping';
 
 /**
  * POST /api/inspections/sync
- * Endpoint de synchronisation atomique pour les changements hors-ligne.
+ * Endpoint de synchronisation atomique pour Supabase.
  */
 export async function POST(req: Request) {
+  const session = await auth();
+
+  if (!session) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  }
+
   try {
     const { mutations } = await req.json();
 
@@ -34,121 +22,203 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Format invalide' }, { status: 400 });
     }
 
-    console.log(`[Sync] Début du traitement de ${mutations.length} mutations...`);
+    console.log(`[Sync] Début de la synchronisation Supabase (${mutations.length} mutations)`);
+    const supabase = await getSupabase(true); // Service role pour bypass RLS et gestion batch
 
-    // Chargement des données actuelles
-    const users = await readDb('users-db.json');
-    const properties = await readDb('properties-db.json');
-    const inspections = await readDb('inspections-db.json');
-    const tenants = await readDb('tenants-db.json');
-    const agencies = await readDb('agencies-db.json');
-    const organizations = await readDb('organizations-db.json');
-
-    const dbMap: Record<string, any[]> = {
-      'user': users,
-      'property': properties,
-      'inspection': inspections,
-      'tenant': tenants,
-      'agency': agencies,
-      'organization': organizations
-    };
-
-    const fileMap: Record<string, string> = {
-      'user': 'users-db.json',
-      'property': 'properties-db.json',
-      'inspection': 'inspections-db.json',
-      'tenant': 'tenants-db.json',
-      'agency': 'agencies-db.json',
-      'organization': 'organizations-db.json'
-    };
-
-    const affectedEntities = new Set<string>();
-
+    const results = [];
     for (const mutation of mutations) {
-      const { type, entity, entityId, data } = mutation;
-      const table = dbMap[entity];
-      
-      if (!table) {
-        console.warn(`[Sync] Entité inconnue sautée : ${entity}`);
-        continue;
-      }
+      try {
+        const { type, entity, entityId, data } = mutation;
+        const table = entityToTable(entity);
 
-      affectedEntities.add(entity);
-      console.log(`[Sync] Traitement ${type} sur ${entity} (${entityId})`);
-
-      // 1. Password Hash pour les utilisateurs
-      if (entity === 'user' && data?.password) {
-        if (data.password.trim() !== '') {
-          data.password = await hashPassword(data.password);
-        } else {
-          delete data.password;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(entityId)) {
+          console.warn(`[Sync] Rejet mutation : ID non-UUID détecté (${entity}:${entityId})`);
+          results.push({ id: mutation.id, status: 'error', error: 'Invalid UUID format. Expected standard UUID.' });
+          continue;
         }
-      }
 
-      // 2. Traitement CRUD
-      if (type === 'CREATE') {
-        const existingIndex = table.findIndex((item: any) => item.id === entityId);
-        if (existingIndex === -1) {
-          table.push({ ...data, id: entityId, serverVersion: 1, lastModified: new Date().toISOString() });
-        } else {
-          // Si déjà présent, on fait un UPDATE silencieux pour gérer les reprises de synchro
-          table[existingIndex] = { 
-            ...table[existingIndex], 
-            ...data, 
-            serverVersion: (table[existingIndex].serverVersion || 1) + 1,
-            lastModified: new Date().toISOString()
-          };
+        if (type === 'DELETE') {
+          await supabase.from(table).delete().eq('id', entityId);
+          results.push({ id: mutation.id, status: 'success' });
+          continue;
         }
-      } else if (type === 'UPDATE') {
-        const index = table.findIndex((item: any) => item.id === entityId);
-        if (index !== -1) {
-          table[index] = { 
-            ...table[index], 
-            ...data, 
-            serverVersion: (table[index].serverVersion || 1) + 1,
-            lastModified: new Date().toISOString()
-          };
-        } else {
-          // Si UPDATE d'un élément absent, on le crée (cas limite de synchro désordonnée)
-          table.push({ ...data, id: entityId, serverVersion: 1, lastModified: new Date().toISOString() });
-        }
-      } else if (type === 'DELETE') {
-        dbMap[entity] = table.filter((item: any) => item.id !== entityId);
-      }
 
-      // 3. Logique métier transversale (Statut locataire)
-      if (entity === 'inspection' && mutations.some(m => m.entityId === entityId && (m.type === 'CREATE' || m.type === 'UPDATE'))) {
-        // On récupère la version mise à jour du rapport dans la table
-        const ins = table.find((item: any) => item.id === entityId);
-        if (ins && ins.isFinalized && ins.type === 'Sortie' && ins.tenantId) {
-          const tenantIndex = tenants.findIndex((t: any) => t.id === ins.tenantId);
-          if (tenantIndex !== -1 && tenants[tenantIndex].status !== 'Sorti') {
-            tenants[tenantIndex].status = 'Sorti';
-            tenants[tenantIndex].lastModified = new Date().toISOString();
-            tenants[tenantIndex].serverVersion = (tenants[tenantIndex].serverVersion || 1) + 1;
-            affectedEntities.add('tenant');
-            console.log(`[Sync] Locataire ${ins.tenantId} marqué comme 'Sorti' suite à finalisation.`);
+        if (entity === 'user') {
+          // L'email n'est requis que si on tente de créer ou si on l'a fourni
+          if (!data.email && type === 'CREATE') {
+            results.push({ id: mutation.id, status: 'error', error: 'Email is required for creation' });
+            continue;
+          }
+
+          if (data.password) {
+            if (data.password.trim() !== '' && !data.password.startsWith('$2')) {
+              data.password = await hashPassword(data.password);
+            } else if (data.password.trim() === '') {
+              delete data.password;
+            }
           }
         }
+
+        if (entity === 'inspection') {
+          const { rooms, ...inspectionData } = data;
+          const mappedData = camelToSnake(inspectionData);
+
+          const { error: insError } = await supabase.from('inspections').upsert({
+            ...mappedData,
+            id: entityId,
+            last_modified: new Date().toISOString(),
+            server_version: (data.serverVersion || 0) + 1
+          });
+
+          if (insError) throw insError;
+
+          if (rooms && Array.isArray(rooms)) {
+            for (const room of rooms) {
+              const { items, ...roomData } = room;
+              await supabase.from('rooms').upsert({
+                id: room.id,
+                inspection_id: entityId,
+                name: room.name,
+                display_order: room.display_order || 0
+              });
+
+              if (items && Array.isArray(items)) {
+                for (const item of items) {
+                  const { photos, ...itemData } = item;
+                  await supabase.from('inspection_items').upsert({
+                    id: item.id,
+                    room_id: room.id,
+                    label: item.label,
+                    condition: item.condition,
+                    comment: item.comment || ''
+                  });
+
+                  if (photos && Array.isArray(photos)) {
+                    for (const photo of photos) {
+                      await supabase.from('photos').upsert({
+                        id: photo.id,
+                        item_id: item.id,
+                        compressed_base64: photo.compressedBase64,
+                        cloud_url: photo.cloudUrl,
+                        is_synced: photo.isSynced
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } else if (entity === 'tenant') {
+          const { propertyIds, ...tenantData } = data;
+          const mappedData = camelToSnake(tenantData);
+
+          const payload = {
+            ...mappedData,
+            id: entityId,
+            last_modified: new Date().toISOString(),
+            server_version: (data.serverVersion || 0) + 1
+          };
+
+          let error;
+          if (type === 'UPDATE') {
+            const { error: updateError } = await supabase
+              .from('tenants')
+              .update(payload)
+              .eq('id', entityId);
+            error = updateError;
+          } else {
+            const { error: upsertError } = await supabase
+              .from('tenants')
+              .upsert(payload);
+            error = upsertError;
+          }
+
+          if (error) throw error;
+
+          if (propertyIds && Array.isArray(propertyIds)) {
+            await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
+            if (propertyIds.length > 0) {
+              const relations = propertyIds.map((pId: string) => ({
+                property_id: pId,
+                tenant_id: entityId
+              }));
+              const { error: relError } = await supabase.from('property_tenants').insert(relations);
+              if (relError) throw relError;
+            }
+          }
+        } else {
+          const { templateIds, ...cleanData } = data;
+          const mappedData = camelToSnake(cleanData);
+
+          const payload = {
+            ...mappedData,
+            id: entityId,
+            last_modified: new Date().toISOString(),
+            server_version: (data.serverVersion || 0) + 1
+          };
+
+          let error;
+          if (type === 'UPDATE') {
+            const { error: updateError } = await supabase
+              .from(table)
+              .update(payload)
+              .eq('id', entityId);
+            error = updateError;
+          } else {
+            const { error: upsertError } = await supabase
+              .from(table)
+              .upsert(payload);
+            error = upsertError;
+          }
+
+          if (error) throw error;
+        }
+
+        if (entity === 'inspection' && data.isFinalized && data.type === 'Sortie' && data.tenantId) {
+          await supabase.from('tenants')
+            .update({ status: 'Sorti', last_modified: new Date().toISOString() })
+            .eq('id', data.tenantId);
+        }
+
+        results.push({ id: mutation.id, status: 'success' });
+      } catch (mutationError: any) {
+        console.error(`[Sync] Mutation error (${mutation.entity}:${mutation.entityId}):`, mutationError);
+        results.push({
+          id: mutation.id,
+          status: 'error',
+          error: mutationError.message || 'Unknown error',
+          code: mutationError.code
+        });
       }
     }
 
-    // Sauvegarde atomique des fichiers modifiés
-    for (const entity of affectedEntities) {
-      await writeDb(fileMap[entity], dbMap[entity]);
-    }
-
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       processed: mutations.length,
+      results,
       syncedAt: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error('[Sync] Serveur Crash:', error);
+  } catch (error: any) {
+    console.error('[Sync] Critical global error:', error);
     return NextResponse.json(
-      { error: 'Erreur critique lors de la synchronisation' }, 
+      { error: 'Critical sync error', message: error.message },
       { status: 500 }
     );
   }
 }
+
+function entityToTable(entity: string): string {
+  const map: Record<string, string> = {
+    'user': 'users',
+    'property': 'properties',
+    'inspection': 'inspections',
+    'tenant': 'tenants',
+    'agency': 'agencies',
+    'organization': 'organizations',
+    'template': 'property_templates'
+  };
+  return map[entity] || entity;
+}
+

@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { InspectionReport, InspectionItem, PhotoMetadata } from '@/types';
+import { uploadInspectionPhoto } from '@/app/actions/media';
 import { useTenantStore } from './useTenantStore';
 import { db } from '@/lib/db';
 import { dataURLToBlob } from '@/lib/utils/image';
+import { InspectionReportSchema } from '@/lib/validations/inspection';
 
 interface InspectionState {
   inspections: InspectionReport[];
@@ -11,7 +13,7 @@ interface InspectionState {
   error: string | null;
   
   // Actions
-  initStore: () => Promise<void>;
+  initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
   setInspections: (inspections: InspectionReport[]) => void;
   setCurrentInspection: (report: InspectionReport | null) => Promise<void>;
   updateItem: (roomId: string, itemId: string, updates: Partial<InspectionItem>) => Promise<void>;
@@ -19,6 +21,7 @@ interface InspectionState {
   saveOffline: () => void;
   finalizeInspection: (id: string, fullData?: InspectionReport) => Promise<void>;
   getInspectionsByAgency: (agencyId: string) => InspectionReport[];
+  syncPendingPhotos: () => Promise<void>;
 }
 
 export const useInspectionStore = create<InspectionState>((set, get) => ({
@@ -27,11 +30,22 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
   loading: false,
   error: null,
 
-  initStore: async () => {
+  initStore: async (user) => {
     set({ loading: true });
     try {
-      const localInspections = await db.inspections.toArray();
-      set({ inspections: localInspections, loading: false });
+      const allLocalInspections = await db.inspections.toArray();
+      
+      // Segmentation des données
+      const filteredInspections = allLocalInspections.filter(inspection => {
+        if (user.role === 'Administrateur') {
+          // L'admin voit tout son organisation
+          return (inspection as any).organizationId === user.organizationId;
+        }
+        // L'agent ne voit que son agence
+        return inspection.agencyId === user.agencyId;
+      });
+
+      set({ inspections: filteredInspections, loading: false });
     } catch (err) {
       console.error('Failed to init InspectionStore:', err);
       set({ loading: false, error: 'Erreur lors du chargement des états des lieux' });
@@ -69,6 +83,13 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       lastModified: new Date().toISOString()
     };
 
+    // Validation Zod avant mise en file d'attente
+    const validation = InspectionReportSchema.safeParse(updatedInspection);
+    if (!validation.success) {
+      console.error('Validation échouée (updateItem):', validation.error);
+      return;
+    }
+
     set({ currentInspection: updatedInspection });
 
     try {
@@ -88,11 +109,12 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     const { currentInspection } = get();
     if (!currentInspection) return;
 
-    const photoId = `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const photoId = crypto.randomUUID();
     const newPhoto: PhotoMetadata = {
       id: photoId,
       compressedBase64: photoUrl, // Version UI
-      isSynced: false
+      isSynced: false,
+      status: 'PENDING'
     };
 
     const newRooms = currentInspection.rooms.map(room => {
@@ -112,6 +134,13 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       syncStatus: 'pending',
       lastModified: new Date().toISOString()
     };
+
+    // Validation Zod avant mise en file d'attente
+    const validation = InspectionReportSchema.safeParse(updatedInspection);
+    if (!validation.success) {
+      console.error('Validation échouée (addPhoto):', validation.error);
+      return;
+    }
 
     set({ currentInspection: updatedInspection });
 
@@ -156,6 +185,14 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       lastModified: new Date().toISOString()
     };
 
+    // Validation Zod avant mise en file d'attente
+    const validation = InspectionReportSchema.safeParse(finalizedReport);
+    if (!validation.success) {
+      console.error('Validation échouée (finalizeInspection):', validation.error);
+      set({ error: "Le rapport ne respecte pas les critères légaux pour être finalisé." });
+      return;
+    }
+
     set((state) => ({
       currentInspection: state.currentInspection?.id === id ? finalizedReport : state.currentInspection,
       inspections: state.inspections.some(r => r.id === id)
@@ -185,5 +222,55 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
 
   getInspectionsByAgency: (agencyId) => {
     return get().inspections.filter(i => i.agencyId === agencyId);
+  },
+
+  syncPendingPhotos: async () => {
+    const { currentInspection, updateItem } = get();
+    if (!currentInspection) return;
+
+    // On parcourt toutes les pièces et tous les éléments pour trouver les photos PENDING
+    for (const room of currentInspection.rooms) {
+      for (const item of room.items) {
+        // On synchronise les photos en attente OU en erreur (retry)
+        const pendingPhotos = item.photos.filter(p => p.status === 'PENDING' || p.status === 'ERROR');
+        
+        if (pendingPhotos.length === 0) continue;
+
+        for (const photo of pendingPhotos) {
+          // 1. Marquer comme SYNCING dans l'UI (Optimistic)
+          const updatedPhotos = item.photos.map(p => 
+            p.id === photo.id ? { ...p, status: 'SYNCING' as const } : p
+          );
+          await updateItem(room.id, item.id, { photos: updatedPhotos });
+
+          // 2. Appel de la Server Action
+          const result = await uploadInspectionPhoto(photo.compressedBase64, {
+            propertyId: currentInspection.propertyId,
+            organizationId: currentInspection.organizationId,
+            agencyId: currentInspection.agencyId,
+          });
+
+          if (result.success && result.url) {
+            // 3. Succès : UPLOADED + remoteUrl + nettoyage Base64
+            const finalPhotos = item.photos.map(p => 
+              p.id === photo.id ? { 
+                ...p, 
+                status: 'UPLOADED' as const, 
+                cloudUrl: result.url,
+                isSynced: true,
+                compressedBase64: '' // Libère la mémoire comme demandé
+              } : p
+            );
+            await updateItem(room.id, item.id, { photos: finalPhotos });
+          } else {
+            // 4. Échec : ERROR
+            const errorPhotos = item.photos.map(p => 
+              p.id === photo.id ? { ...p, status: 'ERROR' as const } : p
+            );
+            await updateItem(room.id, item.id, { photos: errorPhotos });
+          }
+        }
+      }
+    }
   }
 }));

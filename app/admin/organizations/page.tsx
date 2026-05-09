@@ -44,11 +44,10 @@ export default function OrganizationsPage() {
         await updateOrganization(selectedOrg.id, formData);
         toast.success("Organisation mise à jour");
       } else {
-        const newId = `org_${crypto.randomUUID().slice(0, 8)}`;
+        const newId = crypto.randomUUID();
         await addOrganization({
-          ...formData as Organization,
-          id: newId,
-          updatedAt: Date.now()
+          ...formData as any,
+          id: newId
         });
         toast.success("Organisation créée");
       }

@@ -1,40 +1,74 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { auth } from '@/lib/auth';
+import { getSupabase } from '@/lib/supabase';
 
 /**
  * GET /api/bootstrap
- * Renvoie les Biens, les Utilisateurs, les Inspections et les Locataires pour l'initialisation du cache local.
+ * Renvoie les Biens, les Utilisateurs, les Inspections et les Locataires depuis Supabase.
  */
 export async function GET() {
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  }
+
+  const currentUser = session.user as any;
+  const orgId = currentUser.organizationId;
+
   try {
-    const DATA_DIR = path.join(process.cwd(), 'data');
-    
-    // Lecture des fichiers JSON (Base de données réelle)
-    const [usersData, propertiesData, inspectionsData, tenantsData] = await Promise.all([
-      fs.readFile(path.join(DATA_DIR, 'users-db.json'), 'utf8'),
-      fs.readFile(path.join(DATA_DIR, 'properties-db.json'), 'utf8'),
-      fs.readFile(path.join(DATA_DIR, 'inspections-db.json'), 'utf8'),
-      fs.readFile(path.join(DATA_DIR, 'tenants-db.json'), 'utf8').catch(() => '[]') // Fallback si absent
+    const supabase = await getSupabase(true); // Utilisation du service_role pour le bootstrap complet
+
+    // Récupération parallèle de toutes les entités
+    const [
+      { data: users },
+      { data: properties },
+      { data: tenants },
+      { data: templates },
+      { data: organizations },
+      { data: agencies },
+      { data: inspections }
+    ] = await Promise.all([
+      supabase.from('users').select('*').eq('organization_id', orgId),
+      supabase.from('properties').select('*').eq('organization_id', orgId),
+      supabase.from('tenants').select('*').eq('organization_id', orgId),
+      supabase.from('property_templates').select('*').eq('organization_id', orgId),
+      supabase.from('organizations').select('*').eq('id', orgId),
+      supabase.from('agencies').select('*').eq('organization_id', orgId),
+      // Pour les inspections, on récupère la structure imbriquée normalisée
+      supabase.from('inspections')
+        .select(`
+          *,
+          rooms (
+            *,
+            inspection_items (
+              *,
+              photos (*)
+            )
+          )
+        `)
+        .eq('organization_id', orgId)
     ]);
 
-    const users = JSON.parse(usersData);
-    const properties = JSON.parse(propertiesData);
-    const inspections = JSON.parse(inspectionsData);
-    const tenants = JSON.parse(tenantsData);
+    // Formatage des données pour correspondre aux types attendus par le client (camelCase vs snake_case)
+    // Note: Idéalement, on utiliserait un mapper, mais ici on va garder la structure plate si possible
+    // ou s'assurer que les champs correspondent.
 
-    // On retire les mots de passe pour la sécurité avant l'envoi au client
-    const safeUsers = users.map(({ password, ...user }: any) => user);
+    console.log(`[Bootstrap] Fetched data for Org: ${orgId}`);
+
+    const { snakeToCamel } = await import('@/lib/utils/mapping');
 
     return NextResponse.json({
-      properties: properties,
-      users: safeUsers,
-      inspections: inspections,
-      tenants: tenants,
+      properties: snakeToCamel(properties) || [],
+      templates: snakeToCamel(templates) || [],
+      users: (snakeToCamel(users) || []).map(({ password, ...u }: any) => u),
+      inspections: snakeToCamel(inspections) || [],
+      tenants: snakeToCamel(tenants) || [],
+      organizations: snakeToCamel(organizations) || [],
+      agencies: snakeToCamel(agencies) || [],
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Bootstrap error:', error);
-    return NextResponse.json({ error: 'Erreur lors du bootstrap des données réelles' }, { status: 500 });
+    return NextResponse.json({ error: 'Erreur lors du bootstrap des données Supabase' }, { status: 500 });
   }
 }

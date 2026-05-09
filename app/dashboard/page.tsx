@@ -4,11 +4,15 @@ import React from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogOut, User as UserIcon, ShieldCheck, Building2, Users } from 'lucide-react';
+import { LogOut, User as UserIcon, ShieldCheck, Building2, Users, MapPin, Briefcase } from 'lucide-react';
+import { useAgencyStore } from '@/store/useAgencyStore';
+import { useOrganizationStore } from '@/store/useOrganizationStore';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { agencies } = useAgencyStore();
+  const { organizations } = useOrganizationStore();
 
   if (status === 'loading') {
     return (
@@ -20,13 +24,35 @@ export default function DashboardPage() {
 
   const user = session?.user as any;
   const role = user?.role || 'Utilisateur';
+  
+  const userAgency = agencies.find(a => a.id === user?.agencyId);
+  const userOrg = organizations.find(o => o.id === user?.organizationId);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 pt-16">
       <main className="max-w-7xl mx-auto px-4 py-12">
-        <header className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-2">Bienvenue, {user?.name || 'Utilisateur'}</h1>
-          <p className="text-slate-400">Connecté en tant que <span className="text-blue-400 font-medium">{role}</span></p>
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">Bienvenue, {user?.name || 'Utilisateur'}</h1>
+            <div className="flex flex-wrap gap-3">
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-wider">
+                <ShieldCheck size={14} />
+                {role}
+              </span>
+              {userAgency && (
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                  <MapPin size={14} />
+                  {userAgency.name}
+                </span>
+              )}
+              {userOrg && (
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold uppercase tracking-wider">
+                  <Briefcase size={14} />
+                  {userOrg.raisonSociale}
+                </span>
+              )}
+            </div>
+          </div>
         </header>
 
         {/* Dashboard Grid */}
@@ -75,17 +101,6 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold text-white mb-1">Agences</h3>
                 <p className="text-slate-400 text-sm mb-4">Gestion des agences et succursales.</p>
                 <div className="text-amber-400 text-sm font-medium hover:underline flex items-center gap-1">
-                  Accéder <span>→</span>
-                </div>
-              </Link>
-
-              <Link href="/admin/organizations" className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 hover:border-purple-500/30 transition-all group">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-6 h-6 text-purple-500" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-1">Organisations</h3>
-                <p className="text-slate-400 text-sm mb-4">Gestion des entités juridiques parentes.</p>
-                <div className="text-purple-400 text-sm font-medium hover:underline flex items-center gap-1">
                   Accéder <span>→</span>
                 </div>
               </Link>

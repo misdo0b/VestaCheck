@@ -189,10 +189,9 @@ function TenantsPageContent() {
 
     let accessiblePropertyIds: string[] = [];
     
-    if (userRole === 'Administrateur') {
+    if (userRole === 'Administrateur' || userRole === 'Agent') {
+      // Pour Admin et Agent, tous les biens déjà chargés par le store sont accessibles
       accessiblePropertyIds = properties.map(p => p.id);
-    } else if (userRole === 'Agent') {
-      accessiblePropertyIds = properties.filter(p => p.agentId === userId).map(p => p.id);
     } else if (userRole === 'Propriétaire') {
       accessiblePropertyIds = properties.filter(p => p.ownerId === userId).map(p => p.id);
     }
@@ -220,13 +219,16 @@ function TenantsPageContent() {
         await updateTenant(selectedTenant.id, data);
         toast.success("Locataire mis à jour avec succès");
       } else {
+        const currentUser = session?.user as any;
         await addTenant({
-          id: `tenant_${crypto.randomUUID().slice(0, 8)}`,
+          id: crypto.randomUUID(),
           name: data.name!,
           email: data.email!,
           phone: data.phone!,
           status: data.status as any,
-          propertyIds: data.propertyIds || []
+          propertyIds: data.propertyIds || [],
+          agencyId: currentUser?.agencyId,
+          organizationId: currentUser?.organizationId
         });
         toast.success("Locataire créé avec succès");
       }

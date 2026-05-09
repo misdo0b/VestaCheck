@@ -48,7 +48,7 @@ export const runTenantMigration = async () => {
     } else {
       // Nouveau locataire
       tenantMap.set(key, {
-        id: `tenant_${crypto.randomUUID().slice(0, 8)}`,
+        id: crypto.randomUUID(),
         name,
         email: key,
         phone,

@@ -5,10 +5,13 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, LoginInput } from '@/lib/validations/auth';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -16,21 +19,45 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors }
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      fax_number: '',
+      turnstileToken: '',
+    }
+  });
+  
+  const onSubmit = async (data: LoginInput) => {
     setIsLoading(true);
     setError(null);
 
     try {
+      // Note: On passe les données de sécurité au signIn si nécessaire, 
+      // mais ici le signIn gère surtout l'email/password. 
+      // La validation Turnstile + Honeypot côté serveur se fera dans la route API callback ou un middleware si on utilise Auth.js
+      // CEPENDANT, ici on fait un fetch personnalisé si on veut valider AVANT le signIn.
+      
+      // On simule une validation Turnstile côté serveur via une action ou une route API dédiée
+      // Pour ce projet, on va valider le token Turnstile directement dans l'action de connexion ou via un proxy.
+      
       const result = await signIn('credentials', {
-        email,
-        password,
+        email: data.email,
+        password: data.password,
+        fax_number: data.fax_number,
+        turnstileToken: data.turnstileToken,
         redirect: false,
         callbackUrl,
       });
 
       if (result?.error) {
-        setError('Identifiants incorrects. Veuillez réessayer.');
+        setError('Échec de la validation de sécurité ou identifiants incorrects.');
       } else {
         router.push(callbackUrl);
         router.refresh();
@@ -57,36 +84,60 @@ function LoginForm() {
           <p className="text-slate-400 text-sm tracking-wide">Le futur de la gestion immobilière</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
             <label className="text-sm font-medium text-slate-300 mb-2 block ml-1">Email professionnel</label>
             <div className="relative group">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+              <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${errors.email ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
               <input
+                {...register('email')}
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 placeholder="nom@vestacheck.com"
-                required
-                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50 transition-all placeholder:text-slate-600"
+                className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
+                  errors.email ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                }`}
               />
             </div>
+            {errors.email && <p className="text-xs text-red-400 ml-1 mt-1">{errors.email.message}</p>}
           </div>
 
           <div>
             <label className="text-sm font-medium text-slate-300 mb-2 block ml-1">Mot de passe</label>
             <div className="relative group">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${errors.password ? 'text-red-400' : 'text-slate-500 group-focus-within:text-blue-400'}`} />
               <input
+                {...register('password')}
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                required
-                className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50 transition-all placeholder:text-slate-600"
+                className={`w-full bg-slate-800/50 border rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 transition-all ${
+                  errors.password ? 'border-red-500/50 focus:ring-red-500/20' : 'border-slate-700/50 focus:ring-blue-500/40'
+                }`}
               />
             </div>
+            {errors.password && <p className="text-xs text-red-400 ml-1 mt-1">{errors.password.message}</p>}
           </div>
+
+          {/* Honeypot Field */}
+          <div className="absolute opacity-0 -z-50 pointer-events-none" aria-hidden="true">
+            <input
+              {...register('fax_number')}
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
+
+          {/* Cloudflare Turnstile */}
+          <div className="flex justify-center py-2">
+            <Turnstile
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+              onSuccess={(token) => setValue('turnstileToken', token)}
+              options={{
+                theme: 'dark',
+              }}
+            />
+          </div>
+          {errors.turnstileToken && <p className="text-xs text-red-400 text-center">{errors.turnstileToken.message}</p>}
 
           {error && (
             <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm animate-in fade-in slide-in-from-top-2">
@@ -109,6 +160,21 @@ function LoginForm() {
               </>
             )}
           </button>
+
+          <div className="pt-4 flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-px flex-1 bg-white/5"></div>
+              <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Ou</span>
+              <div className="h-px flex-1 bg-white/5"></div>
+            </div>
+
+            <Link 
+              href="/register"
+              className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold py-3.5 rounded-xl transition-all text-center backdrop-blur-md active:scale-[0.98]"
+            >
+              Créer un compte entreprise
+            </Link>
+          </div>
         </form>
 
         <div className="mt-8 pt-8 border-t border-white/5 text-center">

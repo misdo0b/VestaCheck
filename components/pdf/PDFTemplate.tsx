@@ -35,10 +35,10 @@ interface PDFTemplateProps {
 
 export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection-report-pdf' }) => {
   const getTenantById = useTenantStore(state => state.getTenantById);
-  const tenant = getTenantById(data.tenantId);
-  const tenantName = tenant?.name || 'Locataire inconnu';
-  const tenantEmail = tenant?.email || '-';
-  const tenantPhone = tenant?.phone || '-';
+  const tenant = data.tenantId ? getTenantById(data.tenantId) : null;
+  const tenantName = tenant?.name || data.manualTenant?.name || 'Locataire inconnu';
+  const tenantEmail = tenant?.email || data.manualTenant?.email || '-';
+  const tenantPhone = tenant?.phone || data.manualTenant?.phone || '-';
   
   const { users } = useUserStore();
   const inspector = users.find(u => u.id === data.inspectorId);
@@ -152,7 +152,7 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
               {data.keyInventories.map((key, idx) => (
                 <tr key={key.id} className={`${idx !== data.keyInventories.length - 1 ? 'border-b border-slate-100' : ''} font-bold`}>
                   <td className="p-4">{key.type}</td>
-                  <td className="p-4 text-blue-600 font-black text-right">{key.count}</td>
+                  <td className="p-4 text-blue-600 font-black text-right">{String(key.count ?? '0')}</td>
                 </tr>
               ))}
               {data.keyInventories.length === 0 && (

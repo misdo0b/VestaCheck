@@ -8,7 +8,7 @@ interface TenantState {
   error: string | null;
 
   // Actions
-  initStore: () => Promise<void>;
+  initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
   fetchTenants: () => Promise<void>;
   setTenants: (tenants: Tenant[]) => void;
   addTenant: (tenant: Omit<Tenant, 'serverVersion' | 'lastModified' | 'syncStatus'>) => Promise<string>;
@@ -25,11 +25,20 @@ export const useTenantStore = create<TenantState>((set, get) => ({
   loading: false,
   error: null,
 
-  initStore: async () => {
+  initStore: async (user) => {
     set({ loading: true });
     try {
-      const localTenants = await db.tenants.toArray();
-      set({ tenants: localTenants, loading: false });
+      const allLocalTenants = await db.tenants.toArray();
+      
+      // Segmentation des données
+      const filteredTenants = allLocalTenants.filter(tenant => {
+        if (user.role === 'Administrateur') {
+          return tenant.organizationId === user.organizationId;
+        }
+        return tenant.agencyId === user.agencyId;
+      });
+
+      set({ tenants: filteredTenants, loading: false });
     } catch (err) {
       console.error('Failed to init TenantStore:', err);
       set({ loading: false, error: 'Erreur lors du chargement local des locataires' });

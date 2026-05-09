@@ -8,9 +8,9 @@ interface AgencyStore {
   error: string | null;
 
   // Actions
-  initStore: () => Promise<void>;
-  fetchAgencies: (organizationId: string) => Promise<void>;
-  addAgency: (agencyData: Omit<Agency, 'updatedAt' | 'isSynced'>) => Promise<void>;
+  initStore: (user: { role: string; organizationId: string }) => Promise<void>;
+  fetchAgencies: (organizationId?: string) => Promise<void>;
+  addAgency: (agencyData: Omit<Agency, 'serverVersion' | 'lastModified' | 'syncStatus'>) => Promise<void>;
   updateAgency: (id: string, updates: Partial<Agency>) => Promise<void>;
   deleteAgency: (id: string) => Promise<void>;
   getAgenciesByOrg: (organizationId: string) => Agency[];
@@ -21,31 +21,38 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
   loading: false,
   error: null,
 
-  initStore: async () => {
+  initStore: async (user) => {
     set({ loading: true });
     try {
-      const localAgencies = await db.agencies.toArray();
-      set({ agencies: localAgencies, loading: false });
+      const allLocalAgencies = await db.agencies.toArray();
+      
+      // Segmentation par organisation pour les admins
+      const filteredAgencies = allLocalAgencies.filter(agency => {
+        return agency.organizationId === user.organizationId;
+      });
+
+      set({ agencies: filteredAgencies, loading: false });
     } catch (err) {
       console.error('Failed to init AgencyStore:', err);
       set({ loading: false, error: 'Erreur lors du chargement local des agences' });
     }
   },
 
-  fetchAgencies: async (organizationId: string) => {
+  fetchAgencies: async (organizationId?: string) => {
     set({ loading: true });
     try {
-      const response = await fetch(`/api/agencies?organizationId=${organizationId}`);
+      const url = organizationId ? `/api/agencies?organizationId=${organizationId}` : '/api/agencies';
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         // Filtrage serveur simulé ou réel
-        const filtered = Array.isArray(data) ? data.filter((a: any) => a.organizationId === organizationId) : [];
+        const filtered = Array.isArray(data) ? (organizationId ? data.filter((a: any) => a.organizationId === organizationId) : data) : [];
         await db.agencies.bulkPut(filtered);
         set({ agencies: filtered, loading: false });
       }
     } catch (error) {
       console.warn('Fetch agencies failed, using local data:', error);
-      const localAgencies = await db.agencies.where('organizationId').equals(organizationId).toArray();
+      const localAgencies = organizationId ? await db.agencies.where('organizationId').equals(organizationId).toArray() : await db.agencies.toArray();
       set({ agencies: localAgencies, loading: false });
     }
   },
@@ -53,8 +60,9 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
   addAgency: async (agencyData) => {
     const newAgency: Agency = {
       ...agencyData,
-      updatedAt: Date.now(),
-      isSynced: false
+      serverVersion: 1,
+      lastModified: new Date().toISOString(),
+      syncStatus: 'pending'
     };
 
     set((state) => ({ agencies: [...state.agencies, newAgency] }));
@@ -77,16 +85,16 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
       agencies: state.agencies.map(a => a.id === id ? { 
         ...a, 
         ...updates, 
-        isSynced: false,
-        updatedAt: Date.now() 
+        syncStatus: 'pending',
+        lastModified: new Date().toISOString() 
       } : a)
     }));
 
     try {
       await db.agencies.update(id, { 
         ...updates, 
-        isSynced: false,
-        updatedAt: Date.now() 
+        syncStatus: 'pending',
+        lastModified: new Date().toISOString() 
       });
       
       await db.enqueueMutation({

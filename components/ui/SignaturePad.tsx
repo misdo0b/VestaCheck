@@ -28,6 +28,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, title }) => 
       <div className="px-4 py-2 border-b border-slate-300 flex justify-between items-center bg-slate-300/50">
         <h3 className="font-bold text-slate-700 text-[10px] uppercase tracking-widest">{title}</h3>
         <button 
+          type="button"
           onClick={clear}
           className="text-slate-400 hover:text-slate-600 transition-colors"
           title="Effacer"
@@ -56,6 +57,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, title }) => 
 
       <div className="px-4 py-3 bg-slate-300/30 border-t border-slate-300 flex justify-center">
         <button
+          type="button"
           onClick={save}
           className="flex items-center gap-2 px-6 py-2 text-xs font-black text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 uppercase tracking-widest"
         >

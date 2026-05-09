@@ -8,7 +8,7 @@ interface UserStore {
   error: string | null;
 
   // Actions
-  initStore: () => Promise<void>;
+  initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
   fetchUsers: () => Promise<void>; // Fetch from server and update local
   addUser: (user: Omit<User, 'serverVersion' | 'lastModified' | 'syncStatus'>) => Promise<void>;
   updateUser: (id: string, updates: Partial<User>) => Promise<void>;
@@ -20,11 +20,26 @@ export const useUserStore = create<UserStore>((set, get) => ({
   loading: false,
   error: null,
 
-  initStore: async () => {
+  initStore: async (user) => {
     set({ loading: true });
     try {
-      const localUsers = await db.users.toArray();
-      set({ users: localUsers, loading: false });
+      const allLocalUsers = await db.users.toArray();
+      
+      // Segmentation des données
+      const filteredUsers = allLocalUsers.filter(u => {
+        if (user.role === 'Administrateur') {
+          // L'admin voit les utilisateurs de son organisation
+          return u.organizationId === user.organizationId;
+        }
+        if (user.role === 'Agent') {
+          // L'agent voit les utilisateurs de son agence (ou au moins les propriétaires/locataires liés)
+          // Pour simplifier, on limite à l'organisation pour l'instant
+          return u.organizationId === user.organizationId;
+        }
+        return u.id === user.id;
+      });
+
+      set({ users: filteredUsers, loading: false });
     } catch (err) {
       console.error('Failed to init UserStore:', err);
       set({ loading: false, error: 'Erreur lors du chargement local' });
@@ -57,7 +72,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
       syncStatus: 'pending'
     };
 
-    set((state) => ({ users: [...state.users, newUser] }));
+    set((state) => {
+      const exists = state.users.some(u => u.id === newUser.id);
+      if (exists) {
+        return { users: state.users.map(u => u.id === newUser.id ? newUser : u) };
+      }
+      return { users: [...state.users, newUser] };
+    });
 
     try {
       await db.users.add(newUser);
