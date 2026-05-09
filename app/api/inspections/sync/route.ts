@@ -33,7 +33,8 @@ export async function POST(req: Request) {
 
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(entityId)) {
-          results.push({ id: mutation.id, status: 'error', error: 'Invalid UUID' });
+          console.warn(`[Sync] Rejet mutation : ID non-UUID détecté (${entity}:${entityId})`);
+          results.push({ id: mutation.id, status: 'error', error: 'Invalid UUID format. Expected standard UUID.' });
           continue;
         }
 
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
             results.push({ id: mutation.id, status: 'error', error: 'Email is required for creation' });
             continue;
           }
-          
+
           if (data.password) {
             if (data.password.trim() !== '' && !data.password.startsWith('$2')) {
               data.password = await hashPassword(data.password);
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
         if (entity === 'inspection') {
           const { rooms, ...inspectionData } = data;
           const mappedData = camelToSnake(inspectionData);
-          
+
           const { error: insError } = await supabase.from('inspections').upsert({
             ...mappedData,
             id: entityId,
@@ -111,7 +112,7 @@ export async function POST(req: Request) {
         } else if (entity === 'tenant') {
           const { propertyIds, ...tenantData } = data;
           const mappedData = camelToSnake(tenantData);
-          
+
           const payload = {
             ...mappedData,
             id: entityId,
@@ -132,7 +133,7 @@ export async function POST(req: Request) {
               .upsert(payload);
             error = upsertError;
           }
-          
+
           if (error) throw error;
 
           if (propertyIds && Array.isArray(propertyIds)) {
@@ -149,7 +150,7 @@ export async function POST(req: Request) {
         } else {
           const { templateIds, ...cleanData } = data;
           const mappedData = camelToSnake(cleanData);
-          
+
           const payload = {
             ...mappedData,
             id: entityId,
@@ -170,7 +171,7 @@ export async function POST(req: Request) {
               .upsert(payload);
             error = upsertError;
           }
-          
+
           if (error) throw error;
         }
 
@@ -183,17 +184,17 @@ export async function POST(req: Request) {
         results.push({ id: mutation.id, status: 'success' });
       } catch (mutationError: any) {
         console.error(`[Sync] Mutation error (${mutation.entity}:${mutation.entityId}):`, mutationError);
-        results.push({ 
-          id: mutation.id, 
-          status: 'error', 
+        results.push({
+          id: mutation.id,
+          status: 'error',
           error: mutationError.message || 'Unknown error',
           code: mutationError.code
         });
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       processed: mutations.length,
       results,
       syncedAt: new Date().toISOString()
@@ -202,7 +203,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('[Sync] Critical global error:', error);
     return NextResponse.json(
-      { error: 'Critical sync error', message: error.message }, 
+      { error: 'Critical sync error', message: error.message },
       { status: 500 }
     );
   }

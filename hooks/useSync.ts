@@ -161,11 +161,25 @@ export function useSync() {
             await db.mutationQueue.bulkDelete(successfulMutationIds);
           }
 
+          // Gestion des erreurs fatales (ex: UUID invalide) pour éviter les boucles infinies
+          const fatalMutationIds = results
+            .filter((r: any) => r.status === 'error' && r.error.includes('Invalid UUID format'))
+            .map((r: any) => r.id);
+            
+          if (fatalMutationIds.length > 0) {
+            console.warn(`[Sync] Suppression de ${fatalMutationIds.length} mutation(s) invalides (IDs obsolètes)`);
+            await db.mutationQueue.bulkDelete(fatalMutationIds);
+          }
+
           if (failedCount > 0) {
-            console.warn(`[Sync] ${failedCount} mutations ont échoué et restent en file d'attente.`);
-            toast.warning(`${failedCount} éléments n'ont pas pu être synchronisés. Vérifiez vos données.`);
+            const failedMutations = results.filter((r: any) => r.status === 'error');
+            console.error(`[Sync] ${failedCount} mutations ont échoué :`, failedMutations);
+            toast.warning(`${failedCount} éléments n'ont pas pu être synchronisés.`, {
+              id: 'sync-warning',
+              description: 'Vérifiez la console pour plus de détails.'
+            });
           } else {
-            toast.success("Données synchronisées avec succès");
+            toast.success("Données synchronisées avec succès", { id: 'sync-success' });
           }
           
           // Rafraîchir les stores pour obtenir l'état final du serveur
@@ -185,7 +199,10 @@ export function useSync() {
       }
     } catch (err: any) {
       console.error('[Sync] Error:', err);
-      toast.error(`Échec de la synchronisation : ${err.message || 'Erreur inconnue'}`);
+      toast.error(`Échec de la synchronisation`, {
+        id: 'sync-error',
+        description: err.message || 'Erreur inconnue'
+      });
     } finally {
       setIsSyncing(false);
     }
