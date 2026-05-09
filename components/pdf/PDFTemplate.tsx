@@ -115,18 +115,18 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
             <tbody className="text-sm text-slate-700">
                 <tr className="border-b-[0.5pt] border-slate-100 even:bg-slate-50/30">
                   <td className="p-4 font-medium">Eau potable</td>
-                  <td className="p-4 text-blue-700 font-mono font-bold text-base">{String(data.counters?.water ?? '0')}</td>
+                  <td className="p-4 text-blue-700 font-mono font-bold text-base">{String(data?.counters?.water ?? '0')}</td>
                   <td className="p-4 text-slate-400 text-right font-medium">m³</td>
                 </tr>
                 <tr className="border-b-[0.5pt] border-slate-100 even:bg-slate-50/30">
                   <td className="p-4 font-medium">Électricité</td>
-                  <td className="p-4 text-amber-700 font-mono font-bold text-base">{String(data.counters?.electricity ?? '0')}</td>
+                  <td className="p-4 text-amber-700 font-mono font-bold text-base">{String(data?.counters?.electricity ?? '0')}</td>
                   <td className="p-4 text-slate-400 text-right font-medium">kWh</td>
                 </tr>
-                {data.counters?.gas !== undefined && (
+                {data?.counters?.gas !== undefined && (
                   <tr className="even:bg-slate-50/30">
                     <td className="p-4 font-medium">Gaz naturel</td>
-                    <td className="p-4 text-orange-700 font-mono font-bold text-base">{String(data.counters.gas ?? '0')}</td>
+                    <td className="p-4 text-orange-700 font-mono font-bold text-base">{String(data?.counters?.gas ?? '0')}</td>
                     <td className="p-4 text-slate-400 text-right font-medium">m³</td>
                   </tr>
                 )}
@@ -149,13 +149,13 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
               </tr>
             </thead>
             <tbody className="text-sm text-slate-700">
-              {data.keyInventories.map((key, idx) => (
-                <tr key={key.id} className={`${idx !== data.keyInventories.length - 1 ? 'border-b border-slate-100' : ''} font-bold`}>
+              {(data.keyInventories || []).map((key, idx) => (
+                <tr key={key.id} className={`${idx !== (data.keyInventories?.length || 0) - 1 ? 'border-b border-slate-100' : ''} font-bold`}>
                   <td className="p-4">{key.type}</td>
                   <td className="p-4 text-blue-600 font-black text-right">{String(key.count ?? '0')}</td>
                 </tr>
               ))}
-              {data.keyInventories.length === 0 && (
+              {(data.keyInventories || []).length === 0 && (
                 <tr>
                   <td colSpan={2} className="p-4 text-center text-slate-400 italic py-6 font-medium">
                     Aucun trousseau répertorié.
@@ -172,11 +172,11 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
         <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 text-center justify-center">
             DESCRIPTIF DÉTAILLÉ DES PIÈCES
         </h3>
-          {data.rooms.map((room) => (
+          {(data.rooms || []).map((room) => (
           <div key={room.id} className="pdf-section mb-10 break-inside-avoid border-[0.5pt] border-slate-200 rounded-xl overflow-hidden">
             <div className={`${STYLE.SECTION_HEADER_BG} p-4 flex justify-between items-center`}>
               <span className="font-black uppercase tracking-widest text-xs text-slate-900">{room.name}</span>
-              <span className="text-[9px] font-bold text-slate-400 uppercase">{room.items.length} éléments</span>
+              <span className="text-[9px] font-bold text-slate-400 uppercase">{(room.items || []).length} éléments</span>
             </div>
             <table className="w-full text-sm">
               <thead className="text-[9px] uppercase text-slate-400 bg-slate-50/50 border-b-[0.5pt] border-slate-100">
@@ -187,7 +187,7 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
                 </tr>
               </thead>
               <tbody className="text-slate-700">
-                {room.items.map((item) => (
+                {(room.items || []).map((item) => (
                   <tr key={item.id} className="border-b-[0.5pt] border-slate-100 last:border-0 even:bg-slate-50/30">
                     <td className="py-4 px-4 font-bold text-slate-900">{item.label}</td>
                     <td className="py-4 px-4">
@@ -222,29 +222,29 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
             <div className="text-center">
               <p className="text-[9px] font-bold text-blue-600 uppercase mb-4 tracking-widest">Le Locataire</p>
               <div className="h-32 bg-white rounded-xl flex items-center justify-center border-[0.5pt] border-slate-200 overflow-hidden relative shadow-sm">
-                {data.signatures.tenant.drawData ? (
+                {data.signatures?.tenant?.drawData ? (
                   <img src={data.signatures.tenant.drawData} alt="Signature Locataire" className="max-h-full max-w-full mix-blend-multiply" />
                 ) : (
                   <span className="text-slate-300 text-[9px] uppercase font-bold tracking-tight">Non signé</span>
                 )}
               </div>
               <p className="mt-4 text-xs font-bold text-slate-900 uppercase tracking-tight">{tenantName}</p>
-              {data.signatures.tenant.signedAt && (
-                <p className="text-[8px] text-slate-400 mt-1 font-medium">Le {new Date(data.signatures.tenant.signedAt).toLocaleDateString('fr-FR')} ├á {new Date(data.signatures.tenant.signedAt).toLocaleTimeString('fr-FR')}</p>
+              {data.signatures?.tenant?.signedAt && (
+                <p className="text-[8px] text-slate-400 mt-1 font-medium">Le {new Date(data.signatures.tenant.signedAt).toLocaleDateString('fr-FR')} à {new Date(data.signatures.tenant.signedAt).toLocaleTimeString('fr-FR')}</p>
               )}
             </div>
             <div className="text-center">
               <p className="text-[9px] font-bold text-blue-600 uppercase mb-4 tracking-widest">L'Inspecteur</p>
               <div className="h-32 bg-white rounded-xl flex items-center justify-center border-[0.5pt] border-slate-200 overflow-hidden relative shadow-sm">
-                {data.signatures.inspector.drawData ? (
+                {data.signatures?.inspector?.drawData ? (
                   <img src={data.signatures.inspector.drawData} alt="Signature Inspecteur" className="max-h-full max-w-full mix-blend-multiply" />
                 ) : (
                   <span className="text-slate-300 text-[9px] uppercase font-bold tracking-tight">Non signé</span>
                 )}
               </div>
               <p className="mt-4 text-xs font-bold text-slate-900 uppercase tracking-tight">{inspectorName}</p>
-              {data.signatures.inspector.signedAt && (
-                <p className="text-[8px] text-slate-400 mt-1 font-medium">Le {new Date(data.signatures.inspector.signedAt).toLocaleDateString('fr-FR')} ├á {new Date(data.signatures.inspector.signedAt).toLocaleTimeString('fr-FR')}</p>
+              {data.signatures?.inspector?.signedAt && (
+                <p className="text-[8px] text-slate-400 mt-1 font-medium">Le {new Date(data.signatures.inspector.signedAt).toLocaleDateString('fr-FR')} à {new Date(data.signatures.inspector.signedAt).toLocaleTimeString('fr-FR')}</p>
               )}
             </div>
           </div>
@@ -257,8 +257,8 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
           <Info size={20} className="text-blue-500" /> Annexe Photographique
         </h3>
         
-        {data.rooms.map((room) => {
-          const roomPhotos = room.items.flatMap(item => item.photos.map(p => ({ ...p, itemLabel: item.label })));
+        {(data.rooms || []).map((room) => {
+          const roomPhotos = (room.items || []).flatMap(item => (item.photos || []).map(p => ({ ...p, itemLabel: item.label })));
           if (roomPhotos.length === 0) return null;
 
           return (
@@ -279,7 +279,7 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
                         />
                       </div>
                       <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1 flex justify-between">
-                        <span>PI├êCE : {room.name}</span>
+                        <span>PIÈCE : {room.name}</span>
                         <span className="text-blue-700">{photo.itemLabel}</span>
                       </p>
                   </div>
