@@ -14,20 +14,27 @@ export const HeaderSection: React.FC = () => {
   const type = watch('type');
   const manualTenant = watch('manualTenant');
   
-  const [isManualMode, setIsManualMode] = useState(type === 'Entrée');
+  const isFinalized = watch('isFinalized');
+  const [isManualMode, setIsManualMode] = useState(type === 'Entrée' && !selectedTenantId);
 
-  // Gère le mode par défaut selon le type d'inspection
+  // Gère le mode par défaut selon le type d'inspection et l'état de finalisation
   useEffect(() => {
+    if (isFinalized && selectedTenantId) {
+      setIsManualMode(false);
+      return;
+    }
+
     if (type === 'Sortie') {
       setIsManualMode(false);
       resetField('manualTenant');
-    } else if (type === 'Entrée') {
+    } else if (type === 'Entrée' && !selectedTenantId) {
       setIsManualMode(true);
     }
-  }, [type, resetField]);
+  }, [type, resetField, isFinalized, selectedTenantId]);
+
+  const selectedTenant = tenants.find(t => t.id === selectedTenantId);
 
   // Filtrer les locataires par propriété
-  // RÈGLE : Pour une sortie, on ne montre que les locataires ACTUELS rattachés à ce bien
   const filteredTenants = tenants.filter(t => {
     const isLinked = t.propertyIds.includes(selectedPropertyId);
     if (type === 'Sortie') {
@@ -38,6 +45,7 @@ export const HeaderSection: React.FC = () => {
 
   // Détection de doublons d'email
   const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (isFinalized) return;
     const email = e.target.value;
     if (!email || !email.includes('@')) return;
 
@@ -74,15 +82,17 @@ export const HeaderSection: React.FC = () => {
         <div className="flex bg-slate-950/50 border border-white/10 rounded-xl p-1">
           <button 
             type="button"
+            disabled={isFinalized}
             onClick={() => setValue('type', 'Entrée')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${type === 'Entrée' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${type === 'Entrée' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'} disabled:opacity-50`}
           >
             ENTRÉE
           </button>
           <button 
             type="button"
+            disabled={isFinalized}
             onClick={() => setValue('type', 'Sortie')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${type === 'Sortie' ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${type === 'Sortie' ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'} disabled:opacity-50`}
           >
             SORTIE
           </button>
@@ -111,7 +121,7 @@ export const HeaderSection: React.FC = () => {
             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
               Locataire
             </label>
-            {type === 'Entrée' && (
+            {type === 'Entrée' && !isFinalized && (
               <div className="flex bg-slate-950/50 border border-white/10 rounded-lg p-0.5">
                 <button 
                   type="button"
@@ -137,7 +147,28 @@ export const HeaderSection: React.FC = () => {
             )}
           </div>
 
-          {!isManualMode ? (
+          {isFinalized ? (
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-center gap-4">
+              <div className="bg-blue-500/10 p-2 rounded-full">
+                <UserCheck className="text-blue-400" size={20} />
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm">{selectedTenant?.name || "Locataire inconnu"}</p>
+                <div className="flex gap-4 mt-1">
+                  {selectedTenant?.email && (
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Mail size={10} /> {selectedTenant.email}
+                    </span>
+                  )}
+                  {selectedTenant?.phone && (
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Phone size={10} /> {selectedTenant.phone}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : !isManualMode ? (
             <div className="relative">
               <UserCheck className={`absolute left-4 top-1/2 -translate-y-1/2 ${selectedTenantId ? 'text-blue-500' : 'text-slate-600'}`} size={18} />
               <select
