@@ -9,7 +9,7 @@ interface OrganizationStore {
 
   initStore: (user: { organizationId: string }) => Promise<void>;
   fetchOrganizations: () => Promise<void>;
-  addOrganization: (org: Organization) => Promise<void>;
+  addOrganization: (org: Omit<Organization, 'serverVersion' | 'lastModified' | 'syncStatus'> & { id: string }) => Promise<void>;
   updateOrganization: (id: string, updates: Partial<Organization>) => Promise<void>;
 }
 
@@ -50,15 +50,21 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
     }
   },
 
-  addOrganization: async (org) => {
-    set((state) => ({ organizations: [...state.organizations, org] }));
+  addOrganization: async (orgData) => {
+    const newOrg: Organization = {
+      ...orgData,
+      serverVersion: 1,
+      lastModified: new Date().toISOString(),
+      syncStatus: 'pending'
+    };
+    set((state) => ({ organizations: [...state.organizations, newOrg] }));
     try {
-      await db.organizations.add(org);
+      await db.organizations.add(newOrg);
       await db.enqueueMutation({
         type: 'CREATE',
         entity: 'organization',
-        entityId: org.id,
-        data: org
+        entityId: newOrg.id,
+        data: newOrg
       });
     } catch (err) {
       console.error('Failed to add org:', err);
@@ -66,11 +72,21 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
   },
 
   updateOrganization: async (id, updates) => {
+    const lastModified = new Date().toISOString();
     set((state) => ({
-      organizations: state.organizations.map(o => o.id === id ? { ...o, ...updates } : o)
+      organizations: state.organizations.map(o => o.id === id ? { 
+        ...o, 
+        ...updates,
+        lastModified,
+        syncStatus: 'pending'
+      } : o)
     }));
     try {
-      await db.organizations.update(id, updates);
+      await db.organizations.update(id, {
+        ...updates,
+        lastModified,
+        syncStatus: 'pending'
+      });
       await db.enqueueMutation({
         type: 'UPDATE',
         entity: 'organization',

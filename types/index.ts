@@ -5,7 +5,11 @@ export interface Organization {
   raisonSociale: string;
   siret: string;
   adressePostale: string;
-  updatedAt: number;
+  
+  // Champs de synchronisation harmonisés
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
 }
 
 export interface Agency {
@@ -16,8 +20,11 @@ export interface Agency {
   email: string;
   phone: string;
   type: 'Siège' | 'Établissement';
-  updatedAt: number;
-  isSynced: boolean;
+  
+  // Champs de synchronisation harmonisés
+  serverVersion: number;
+  lastModified: string;
+  syncStatus: SyncStatus;
 }
 
 export interface InspectionItem {
