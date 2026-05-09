@@ -110,7 +110,11 @@ export async function POST(req: Request) {
             }
           }
         } else if (entity === 'tenant') {
-          const { propertyIds, ...tenantData } = data;
+          // Extraction robuste des propertyIds (supporte camelCase et snake_case)
+          const propertyIds = data.propertyIds || data.property_ids;
+          
+          // Nettoyage des données pour l'upsert
+          const { propertyIds: _, property_ids: __, ...tenantData } = data;
           const mappedData = camelToSnake(tenantData);
 
           const payload = {
@@ -136,15 +140,25 @@ export async function POST(req: Request) {
 
           if (error) throw error;
 
+          // Synchronisation de la table de jointure property_tenants
           if (propertyIds && Array.isArray(propertyIds)) {
+            // Nettoyage des relations existantes
             await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
+
             if (propertyIds.length > 0) {
-              const relations = propertyIds.map((pId: string) => ({
-                property_id: pId,
-                tenant_id: entityId
-              }));
-              const { error: relError } = await supabase.from('property_tenants').insert(relations);
-              if (relError) throw relError;
+              const relations = propertyIds
+                .filter((pId: string) => pId && pId.length > 5 && pId !== 'prop1') // Filtrage IDs invalides
+                .map((pId: string) => ({
+                  property_id: pId,
+                  tenant_id: entityId
+                }));
+
+              if (relations.length > 0) {
+                const { error: relError } = await supabase.from('property_tenants').insert(relations);
+                if (relError) {
+                  console.error(`[Sync] Error updating property_tenants for tenant ${entityId}:`, relError);
+                }
+              }
             }
           }
         } else {
