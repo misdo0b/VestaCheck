@@ -39,12 +39,19 @@ export function useSync() {
    */
   const uploadUnsyncedPhotos = useCallback(async () => {
     try {
-      const unsyncedPhotos = await db.photos.where('isSynced').equals(0).toArray();
+      // Utilisation d'un filtre au lieu d'un where clause pour éviter les erreurs "The parameter is not a valid key"
+      // sur les index bohéens dans certains environnements IndexedDB.
+      const unsyncedPhotos = await db.photos.filter(p => p.isSynced === false).toArray();
       if (unsyncedPhotos.length === 0) return;
 
       console.log(`[Sync] ${unsyncedPhotos.length} photos HD en attente d'upload...`);
+      
+      const allInspections = await db.inspections.toArray();
+      const modifiedInspectionIds = new Set<string>();
 
       for (const photo of unsyncedPhotos) {
+        if (!photo.blob) continue;
+        
         const formData = new FormData();
         formData.append('file', photo.blob, `${photo.id}.jpg`);
 
@@ -56,18 +63,18 @@ export function useSync() {
         if (response.ok) {
           const { url } = await response.json();
 
-          // Mise à jour locale
+          // 1. Mise à jour table photos
           await db.photos.update(photo.id, {
-            isSynced: 1,
+            isSynced: true,
             cloudUrl: url,
             lastModified: new Date().toISOString()
           });
 
-          // Mise à jour de l'inspection correspondante dans le JSON pour cohérence
-          // On cherche l'élément dans toutes les inspections locales
-          const allInspections = await db.inspections.toArray();
-          for (const insp of allInspections) {
+          // 2. Mise à jour en mémoire des inspections correspondantes
+          for (let i = 0; i < allInspections.length; i++) {
+            const insp = allInspections[i];
             let photoFound = false;
+            
             const updatedRooms = insp.rooms.map(room => ({
               ...room,
               items: room.items.map(item => {
@@ -85,18 +92,24 @@ export function useSync() {
             }));
 
             if (photoFound) {
-              const updatedInspection = { ...insp, rooms: updatedRooms };
-              await db.inspections.update(insp.id, { rooms: updatedRooms });
-
-              // On déclenche une mutation de synchro pour mettre à jour la base SQL
-              await db.enqueueMutation({
-                type: 'UPDATE',
-                entity: 'inspection',
-                entityId: insp.id,
-                data: updatedInspection
-              });
+              allInspections[i] = { ...insp, rooms: updatedRooms };
+              modifiedInspectionIds.add(insp.id);
             }
           }
+        }
+      }
+
+      // 3. Persistance groupée des inspections modifiées
+      for (const id of modifiedInspectionIds) {
+        const updatedInsp = allInspections.find(insp => insp.id === id);
+        if (updatedInsp) {
+          await db.inspections.update(id, { rooms: updatedInsp.rooms });
+          await db.enqueueMutation({
+            type: 'UPDATE',
+            entity: 'inspection',
+            entityId: id,
+            data: updatedInsp
+          });
         }
       }
     } catch (error) {
@@ -216,6 +229,11 @@ export function useSync() {
       setSyncStatus('error');
     } finally {
       isProcessingRef.current = false;
+      // Sécurité : si on sort du processus et qu'on est resté en "syncing", on repasse en "synced" 
+      // (sauf si une erreur a déjà été enregistrée)
+      if (useInspectionStore.getState().syncStatus === 'syncing') {
+        setSyncStatus('synced');
+      }
     }
   }, [session, syncStatus, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, isOnline]);
 

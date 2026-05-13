@@ -10,29 +10,39 @@ const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}
 
 const fixInvalidIds = (inspection: InspectionReport): InspectionReport => {
   let changed = false;
+  const seenIds = new Set<string>();
+
   const updatedRooms = inspection.rooms.map(room => {
     let roomChanged = false;
     let roomId = room.id;
-    if (!isUUID(roomId)) {
+    
+    // Détection de non-UUID ou de doublon
+    if (!isUUID(roomId) || seenIds.has(roomId)) {
       roomId = crypto.randomUUID();
       roomChanged = true;
       changed = true;
     }
+    seenIds.add(roomId);
 
     const updatedItems = room.items.map(item => {
       let itemChanged = false;
       let itemId = item.id;
-      if (!isUUID(itemId)) {
+      
+      if (!isUUID(itemId) || seenIds.has(itemId)) {
         itemId = crypto.randomUUID();
         itemChanged = true;
         changed = true;
       }
+      seenIds.add(itemId);
 
       const updatedPhotos = item.photos.map(photo => {
-        if (!isUUID(photo.id)) {
+        if (!isUUID(photo.id) || seenIds.has(photo.id)) {
           changed = true;
-          return { ...photo, id: crypto.randomUUID() };
+          const newPhotoId = crypto.randomUUID();
+          seenIds.add(newPhotoId);
+          return { ...photo, id: newPhotoId };
         }
+        seenIds.add(photo.id);
         return photo;
       });
 
