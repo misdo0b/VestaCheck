@@ -36,18 +36,17 @@ export async function POST(req: Request) {
           inspector_id: data.inspectorId,
           owner_id: data.ownerId,
           tenant_id: data.tenantId,
+          agency_id: data.agencyId,
+          organization_id: data.organizationId,
           date: data.date,
           type: data.type,
-          status: data.isFinalized ? 'finalisé' : 'brouillon',
-          water_counter: data.counters?.water || 0,
-          electricity_counter: data.counters?.electricity || 0,
-          gas_counter: data.counters?.gas || null,
+          counters: data.counters || { water: 0, electricity: 0 },
           general_observations: data.generalObservations || '',
           is_finalized: data.isFinalized || false,
           last_modified: data.lastModified || new Date().toISOString(),
           property_address: data.propertyAddress,
           key_inventories: data.keyInventories || [],
-          signatures: data.signatures || {}
+          signatures: data.signatures || { tenant: { type: 'Aucune' }, inspector: { type: 'Aucune' } }
         });
 
         if (inspError) {
@@ -95,14 +94,14 @@ export async function POST(req: Request) {
                   // Upsert Photos
                   if (item.photos && Array.isArray(item.photos)) {
                     for (const photo of item.photos) {
-                      const { error: photoError } = await supabase.from('photos').upsert({
-                        id: photo.id,
-                        item_id: item.id,
-                        cloud_url: photo.cloudUrl || null,
-                        compressed_base64: photo.compressedBase64 || null,
-                        is_synced: photo.isSynced || false,
-                        storage_path: photo.storagePath || null
-                      });
+                        const { error: photoError } = await supabase.from('photos').upsert({
+                          id: photo.id,
+                          item_id: item.id,
+                          cloud_url: photo.cloudUrl || null,
+                          compressed_base64: photo.compressedBase64 || null,
+                          is_synced: photo.isSynced || false,
+                          has_full_res: photo.hasFullRes || false
+                        });
 
                       if (photoError) {
                         console.error(`[Sync] Erreur upsert photo ${photo.id}:`, photoError);
