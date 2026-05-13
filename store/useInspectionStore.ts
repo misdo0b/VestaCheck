@@ -65,8 +65,17 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
+        
+        // 1. Récupérer les ID des inspections en attente de synchronisation
+        const pendingMutations = await db.mutationQueue.where('entity').equals('inspection').toArray();
+        const pendingIds = pendingMutations.map(m => m.entityId);
+
         if (data.length > 0) {
-          await db.inspections.bulkPut(data);
+          // 2. Ne sauvegarder en local que les inspections qui n'ont pas de modifs en attente
+          const safeData = data.filter((d: InspectionReport) => !pendingIds.includes(d.id));
+          if (safeData.length > 0) {
+            await db.inspections.bulkPut(safeData);
+          }
         }
         
         // Merge avec les inspections existantes pour ne pas perdre les données des autres biens
@@ -74,6 +83,11 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         const newInspections = [...currentInspections];
         
         data.forEach((newInspection: InspectionReport) => {
+          // 3. Ignorer l'écrasement dans le store pour les inspections avec des modifs locales
+          if (pendingIds.includes(newInspection.id)) {
+            return;
+          }
+
           const index = newInspections.findIndex(i => i.id === newInspection.id);
           if (index !== -1) {
             newInspections[index] = newInspection;
@@ -123,11 +137,10 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       lastModified: new Date().toISOString()
     };
 
-    // Validation Zod avant mise en file d'attente
+    // Validation Zod (informative pour les brouillons, ne pas bloquer)
     const validation = InspectionReportSchema.safeParse(updatedInspection);
     if (!validation.success) {
-      console.error('Validation échouée (updateItem):', validation.error);
-      return;
+      console.warn('Draft validation warning (updateItem):', validation.error.format());
     }
 
     set({ currentInspection: updatedInspection });
@@ -175,11 +188,10 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       lastModified: new Date().toISOString()
     };
 
-    // Validation Zod avant mise en file d'attente
+    // Validation Zod (informative pour les brouillons, ne pas bloquer)
     const validation = InspectionReportSchema.safeParse(updatedInspection);
     if (!validation.success) {
-      console.error('Validation échouée (addPhoto):', validation.error);
-      return;
+      console.warn('Draft validation warning (addPhoto):', validation.error.format());
     }
 
     set({ currentInspection: updatedInspection });
@@ -230,7 +242,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     if (!validation.success) {
       console.error('Validation échouée (finalizeInspection):', validation.error);
       set({ error: "Le rapport ne respecte pas les critères légaux pour être finalisé." });
-      return;
+      throw new Error("Validation Zod échouée pour la finalisation.");
     }
 
     set((state) => ({
