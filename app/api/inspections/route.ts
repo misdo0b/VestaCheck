@@ -45,7 +45,19 @@ export async function GET(request: Request) {
       return new NextResponse(error.message, { status: 500 });
     }
 
-    return NextResponse.json(snakeToCamel(data));
+    // Mapper inspectionItems vers items pour correspondre à l'interface Room
+    const mappedData = (data || []).map((inspection: any) => ({
+      ...snakeToCamel(inspection),
+      rooms: (inspection.rooms || []).map((room: any) => ({
+        ...snakeToCamel(room),
+        items: (room.inspection_items || []).map((item: any) => ({
+          ...snakeToCamel(item),
+          photos: snakeToCamel(item.photos || [])
+        }))
+      }))
+    }));
+
+    return NextResponse.json(mappedData);
   } catch (error) {
     console.error('API Inspections Error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });

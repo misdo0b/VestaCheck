@@ -11,19 +11,26 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const propertyId = searchParams.get('propertyId');
-  const user = session.user as any;
-  const orgId = user.organizationId;
+    const user = session.user as any;
+    const orgId = user.organizationId;
+    const agencyId = user.agencyId;
+    const role = user.role;
 
-  try {
-    const supabase = await getSupabase(true);
-    let query = supabase
-      .from('property_templates')
-      .select('*')
-      .eq('organization_id', orgId);
+    try {
+      const supabase = await getSupabase(true);
+      let query = supabase
+        .from('property_templates')
+        .select('*')
+        .eq('organization_id', orgId);
 
-    if (propertyId) {
-      query = query.eq('property_id', propertyId);
-    }
+      // Filtrer par agence si pas Administrateur
+      if (role !== 'Administrateur') {
+        query = query.eq('agency_id', agencyId);
+      }
+
+      if (propertyId) {
+        query = query.eq('property_id', propertyId);
+      }
 
     const { data, error } = await query;
 

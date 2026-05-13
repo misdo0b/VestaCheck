@@ -61,7 +61,16 @@ export async function GET() {
       properties: snakeToCamel(properties) || [],
       templates: snakeToCamel(templates) || [],
       users: (snakeToCamel(users) || []).map(({ password, ...u }: any) => u),
-      inspections: snakeToCamel(inspections) || [],
+      inspections: (inspections || []).map((inspection: any) => ({
+        ...snakeToCamel(inspection),
+        rooms: (inspection.rooms || []).map((room: any) => ({
+          ...snakeToCamel(room),
+          items: (room.inspection_items || []).map((item: any) => ({
+            ...snakeToCamel(item),
+            photos: snakeToCamel(item.photos || [])
+          }))
+        }))
+      })),
       tenants: (tenants || []).map((t: any) => ({
         ...snakeToCamel(t),
         propertyIds: t.property_tenants?.map((rel: any) => rel.property_id) || []
