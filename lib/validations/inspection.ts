@@ -4,25 +4,17 @@ export const ConditionSchema = z.enum(['Neuf', 'Très Bon', 'Bon', 'Usage', 'Mau
 
 export const PhotoMetadataSchema = z.object({
   id: z.string(),
-  compressedBase64: z.string(), // Version miniature (RAM)
-  hasFullRes: z.boolean().optional(), // Présent dans IndexedDB
+  compressedBase64: z.string().optional(),
   cloudUrl: z.string().optional(),
-  isSynced: z.boolean(),
-  status: z.enum(['PENDING', 'SYNCING', 'UPLOADED', 'ERROR']),
-});
-
-export const TenantSchema = z.object({
-  id: z.string(),
-  name: z.string().min(2, "Le nom du locataire est requis"),
-  email: z.string().email("L'adresse email est invalide"),
-  phone: z.string().min(10, "Le numéro de téléphone est trop court"),
-  status: z.enum(['Actuel', 'Sorti']).default('Actuel'),
-  propertyIds: z.array(z.string()).default([]),
+  isSynced: z.boolean().default(false),
+  hasFullRes: z.boolean().optional(),
+  status: z.enum(['PENDING', 'SYNCING', 'UPLOADED', 'ERROR']).optional(),
+  storagePath: z.string().optional(),
 });
 
 export const InspectionItemSchema = z.object({
   id: z.string(),
-  label: z.string().min(1, "Le nom de l'élément est requis"),
+  label: z.string().default(''), // Permis vide pendant la saisie
   condition: ConditionSchema,
   comment: z.string().default(''),
   photos: z.array(PhotoMetadataSchema).default([]),
@@ -30,78 +22,104 @@ export const InspectionItemSchema = z.object({
 
 export const RoomSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, "Le nom de la pièce est requis"),
-  items: z.array(InspectionItemSchema).min(1, "Chaque pièce doit contenir au moins un élément"),
+  name: z.string().default(''), // Permis vide pendant la saisie
+  items: z.array(InspectionItemSchema).default([]),
 });
 
 // Schéma de base pour éviter la duplication et les erreurs cycliques
 const BaseReportSchema = z.object({
   id: z.string(),
   propertyId: z.string(),
-  propertyAddress: z.string().min(5, "L'adresse est trop courte"),
-  date: z.string().min(1, "La date de l'inspection est requise"),
+  propertyAddress: z.string(),
+  date: z.string(),
   type: z.enum(['Entrée', 'Sortie']),
   ownerId: z.string(),
   inspectorId: z.string(),
-  agencyId: z.string().min(1, "L'identifiant de l'agence est requis"),
-  organizationId: z.string().min(1, "L'identifiant de l'organisation est requis"),
   tenantId: z.string().optional(),
+  agencyId: z.string(),
+  organizationId: z.string(),
+
+  // Locataire manuel si pas sélectionné
   manualTenant: z.object({
-    name: z.string().min(2, "Nom requis"),
-    email: z.string().email("Email invalide"),
-    phone: z.string().min(10, "Téléphone requis"),
+    name: z.string(),
+    email: z.string(),
+    phone: z.string(),
   }).optional(),
+
+  counters: z.object({
+    water: z.number().min(0),
+    electricity: z.number().min(0),
+    gas: z.number().optional(),
+  }),
+
+  keyInventories: z.array(z.object({
+    id: z.string(),
+    type: z.string(),
+    count: z.number().min(0),
+  })).default([]),
+
+  generalObservations: z.string().default(''),
+
   signatures: z.object({
     tenant: z.object({
       drawData: z.string().optional(),
-      type: z.enum(['Local', 'Distance', 'Aucune']).default('Aucune'),
+      type: z.enum(['Local', 'Distance', 'Aucune']),
       signedAt: z.string().optional(),
-    }),
+    }).optional(),
     inspector: z.object({
       drawData: z.string().optional(),
-      type: z.enum(['Local', 'Distance', 'Aucune']).default('Aucune'),
+      type: z.enum(['Local', 'Distance', 'Aucune']),
       signedAt: z.string().optional(),
-    }),
-  }),
-  counters: z.object({
-    water: z.number().min(0, "L'index d'eau doit être un nombre positif"),
-    electricity: z.number().min(0, "L'index d'électricité doit être un nombre positif"),
-    gas: z.number().min(0).optional(),
-  }),
-  keyInventories: z.array(z.object({
-    id: z.string(),
-    type: z.string().min(1, "Le type de clé est requis"),
-    count: z.number().min(0, "Le compte ne peut pas être négatif"),
-  })),
-  generalObservations: z.string().min(0).default(''),
-  rooms: z.array(RoomSchema).min(1, "Au moins une pièce est requise"),
-  isFinalized: z.boolean().default(false),
-});
+    }).optional(),
+  }).optional(),
 
-// Exportation de l'interface complète
-export type InspectionFormData = z.infer<typeof BaseReportSchema>;
+  rooms: z.array(RoomSchema).default([]),
+  isFinalized: z.boolean().default(false),
+  lastModified: z.string(),
+});
 
 // Schéma avec raffinements pour la validation RUNTIME
-export const InspectionReportSchema = BaseReportSchema.refine((data) => {
-  if (data.type === 'Sortie') {
-    return !!data.tenantId;
-  }
-  return !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
-}, {
-  message: "Le locataire est requis (sélection ou saisie manuelle complète)",
-  path: ['tenantId']
-});
+export const InspectionReportSchema = BaseReportSchema
+  .refine((data) => {
+    // Si finalisé, le locataire est requis
+    if (data.isFinalized) {
+      const hasTenant = !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
+      if (data.type === 'Sortie') return !!data.tenantId;
+      return hasTenant;
+    }
+    return true;
+  }, {
+    message: "Le locataire est requis (sélection ou saisie manuelle complète) pour finaliser le rapport.",
+    path: ['tenantId']
+  })
+  .refine((data) => {
+    // Si finalisé, on exige que tout soit rempli
+    if (data.isFinalized) {
+      if (data.rooms.length === 0) return false;
+      for (const room of data.rooms) {
+        if (!room.name || room.name.trim() === '') return false;
+        if (room.items.length === 0) return false;
+        for (const item of room.items) {
+          if (!item.label || item.label.trim() === '') return false;
+        }
+      }
+    }
+    return true;
+  }, {
+    message: "Le rapport doit être complet (noms des pièces et éléments) pour être finalisé.",
+    path: ['isFinalized']
+  });
 
 // Schéma de Template
 export const PropertyTemplateSchema = z.object({
   id: z.string(),
+  name: z.string().min(1, "Nom du modèle requis"),
   propertyId: z.string(),
-  agencyId: z.string().min(1, "Agence requise"),
-  organizationId: z.string().min(1, "Organisation requise"),
-  rooms: z.array(RoomSchema).min(1, "Au moins une pièce est requise"),
-  keyInventories: z.array(z.object({
-    id: z.string(),
-    type: z.string().min(1, "Le type de clé est requis"),
-    count: z.number().min(0),
-  })).optional(),
-}).passthrough();
+  agencyId: z.string().optional(),
+  organizationId: z.string().optional(),
+  rooms: z.array(RoomSchema).default([]),
+  lastModified: z.string(),
+});
+
+export type InspectionFormData = z.infer<typeof InspectionReportSchema>;
+export type TemplateFormData = z.infer<typeof PropertyTemplateSchema>;

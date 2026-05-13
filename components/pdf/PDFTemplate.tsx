@@ -269,21 +269,27 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
                 <span className="text-[10px] font-black text-slate-400 uppercase">{roomPhotos.length} clichés</span>
               </div>
               <div className="grid grid-cols-2 gap-8">
-                {roomPhotos.map((photo, idx) => (
-                  <div key={photo.id} className="space-y-3 break-inside-avoid">
-                      <div className="aspect-[4/3] bg-slate-50 rounded-xl overflow-hidden border-[0.5pt] border-slate-200 shadow-sm">
-                        <img 
-                          src={photo.compressedBase64} 
-                          alt={`${room.name} - ${photo.itemLabel}`} 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1 flex justify-between">
-                        <span>PIÈCE : {room.name}</span>
-                        <span className="text-blue-700">{photo.itemLabel}</span>
-                      </p>
-                  </div>
-                ))}
+                {roomPhotos.map((photo: any, idx) => {
+                  const imageSrc = photo.fullResBase64 || photo.compressedBase64 || photo.cloudUrl || null;
+                  
+                  if (!imageSrc) return null;
+
+                  return (
+                    <div key={photo.id} className="space-y-3 break-inside-avoid">
+                        <div className="aspect-[4/3] bg-slate-50 rounded-xl overflow-hidden border-[0.5pt] border-slate-200 shadow-sm">
+                          <img 
+                            src={imageSrc} 
+                            alt={`${room.name} - ${photo.itemLabel}`} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1 flex justify-between">
+                          <span>PIÈCE : {room.name}</span>
+                          <span className="text-blue-700">{photo.itemLabel}</span>
+                        </p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

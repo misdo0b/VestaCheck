@@ -9,14 +9,14 @@ import { KeyInventorySection } from './sections/KeyInventorySection';
 import { SignatureSection } from './sections/SignatureSection';
 import { Stepper } from './Stepper';
 import { useSession } from 'next-auth/react';
-import { 
-  Save, 
-  Send, 
-  AlertCircle, 
-  FileDown, 
-  Loader2, 
-  LayoutGrid, 
-  ArrowRight, 
+import {
+  Save,
+  Send,
+  AlertCircle,
+  FileDown,
+  Loader2,
+  LayoutGrid,
+  ArrowRight,
   ArrowLeft,
   CheckCircle2
 } from 'lucide-react';
@@ -42,7 +42,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
   const { addTenant } = useTenantStore();
   const { data: session } = useSession();
   const currentUser = session?.user as any;
-  
+
   const [templateName, setTemplateName] = useState(initialData?.templateName || '');
   const [isExporting, setIsExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -51,22 +51,22 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
   const router = useRouter();
 
   // Définition des étapes selon le mode
-  const steps = isTemplateMode 
+  const steps = isTemplateMode
     ? [
-        { id: 1, label: 'Configuration' },
-        { id: 2, label: 'Structure & Clés' }
-      ]
+      { id: 1, label: 'Configuration' },
+      { id: 2, label: 'Structure & Clés' }
+    ]
     : [
-        { id: 1, label: 'Synthèse' },
-        { id: 2, label: 'Pièces & État' },
-        { id: 3, label: 'Clés & Accès' },
-        { id: 4, label: 'Signatures' }
-      ];
+      { id: 1, label: 'Synthèse' },
+      { id: 2, label: 'Pièces & État' },
+      { id: 3, label: 'Clés & Accès' },
+      { id: 4, label: 'Signatures' }
+    ];
 
   useEffect(() => {
     setMounted(true);
   }, []);
-  
+
   const methods = useForm<InspectionFormData>({
     resolver: zodResolver(isTemplateMode ? PropertyTemplateSchema : InspectionReportSchema) as any,
     defaultValues: {
@@ -100,6 +100,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
         }
       ],
       isFinalized: initialData?.isFinalized || false,
+      lastModified: new Date().toISOString(),
     },
     mode: 'onTouched'
   });
@@ -193,12 +194,12 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       return;
     }
 
-    const finalData = { 
-      ...data, 
+    const finalData = {
+      ...data,
       tenantId: finalTenantId,
       agencyId: data.agencyId || currentUser?.agencyId,
       organizationId: data.organizationId || currentUser?.organizationId,
-      manualTenant: undefined 
+      manualTenant: undefined
     };
 
     try {
@@ -224,7 +225,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
 
     try {
       const enrichedData = JSON.parse(JSON.stringify(data));
-      
+
       for (const room of enrichedData.rooms || []) {
         for (const item of room.items || []) {
           for (const photo of item.photos || []) {
@@ -243,7 +244,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
 
       const safeTenantName = data.id.slice(0, 8);
       const fileName = `Rapport_${safeTenantName}_${data.date.replace(/\//g, '-')}.pdf`;
-      
+
       await generatePDF('inspection-report-pdf', fileName);
       toast.success("PDF HD généré avec succès !");
     } catch (error) {
@@ -278,7 +279,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
               </h1>
             </div>
           </div>
-          
+
           <div className="flex gap-3">
             {!isTemplateMode && isFinalized && (
               <button
@@ -291,14 +292,14 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
                 <span className="hidden md:inline">Exporter</span>
               </button>
             )}
-            
+
             {(isTemplateMode || (currentStep === steps.length - 1 && !initialData?.isFinalized)) && (
               <button
                 type="submit"
                 disabled={isTemplateMode ? false : !canFinalize}
                 className={`flex items-center gap-2 px-6 py-2 ${isTemplateMode ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-blue-600 hover:bg-blue-500'} text-white rounded-xl font-bold shadow-lg transition-all active:scale-95 disabled:opacity-40`}
               >
-                {isTemplateMode ? <Save size={18} /> : <CheckCircle2 size={18} />} 
+                {isTemplateMode ? <Save size={18} /> : <CheckCircle2 size={18} />}
                 <span>{isTemplateMode ? "Enregistrer" : "Finaliser"}</span>
               </button>
             )}
@@ -308,59 +309,59 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
         <Stepper currentStep={currentStep} steps={steps} />
 
         <div className="space-y-4 px-2 relative min-h-[400px]">
-            {currentStep === 0 && (
-              <fieldset disabled={isLocked} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {isTemplateMode && (
-                  <div className="mb-6 p-6 bg-slate-900/40 border border-emerald-500/20 rounded-3xl backdrop-blur-sm shadow-xl shadow-emerald-500/5">
-                    <label className="block text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-3">Nom du Template</label>
-                    <div className="relative group">
-                      <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/50 group-focus-within:text-emerald-400 transition-colors" size={20} />
-                      <input 
-                        type="text"
-                        placeholder="Ex: Configuration Standard Studio..."
-                        value={templateName}
-                        onChange={(e) => setTemplateName(e.target.value)}
-                        className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-semibold"
-                      />
-                    </div>
+          {currentStep === 0 && (
+            <fieldset disabled={isLocked} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {isTemplateMode && (
+                <div className="mb-6 p-6 bg-slate-900/40 border border-emerald-500/20 rounded-3xl backdrop-blur-sm shadow-xl shadow-emerald-500/5">
+                  <label className="block text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-3">Nom du Template</label>
+                  <div className="relative group">
+                    <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/50 group-focus-within:text-emerald-400 transition-colors" size={20} />
+                    <input
+                      type="text"
+                      placeholder="Ex: Configuration Standard Studio..."
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-semibold"
+                    />
                   </div>
-                )}
-                {!isTemplateMode && <HeaderSection />}
-                <CounterSection isTemplateMode={isTemplateMode} />
-              </fieldset>
-            )}
-
-            {currentStep === 1 && (
-              <fieldset disabled={isLocked} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <RoomSection />
-                {isTemplateMode && (
-                  <div className="mt-8 border-t border-white/5 pt-8">
-                    <KeyInventorySection />
-                  </div>
-                )}
-              </fieldset>
-            )}
-
-            {!isTemplateMode && currentStep === 2 && (
-              <fieldset disabled={isLocked} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <KeyInventorySection />
-                <div className="bg-slate-900/40 p-6 rounded-3xl border border-white/5 mx-2">
-                   <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Observations Générales</label>
-                   <textarea 
-                     {...methods.register('generalObservations' as any)}
-                     rows={6}
-                     placeholder="Ajoutez ici des commentaires globaux sur l'état du logement..."
-                     className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-4 text-sm text-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                   />
                 </div>
-              </fieldset>
-            )}
+              )}
+              {!isTemplateMode && <HeaderSection />}
+              <CounterSection isTemplateMode={isTemplateMode} />
+            </fieldset>
+          )}
 
-            {!isTemplateMode && currentStep === 3 && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <SignatureSection />
+          {currentStep === 1 && (
+            <fieldset disabled={isLocked} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <RoomSection />
+              {isTemplateMode && (
+                <div className="mt-8 border-t border-white/5 pt-8">
+                  <KeyInventorySection />
+                </div>
+              )}
+            </fieldset>
+          )}
+
+          {!isTemplateMode && currentStep === 2 && (
+            <fieldset disabled={isLocked} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <KeyInventorySection />
+              <div className="bg-slate-900/40 p-6 rounded-3xl border border-white/5 mx-2">
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Observations Générales</label>
+                <textarea
+                  {...methods.register('generalObservations' as any)}
+                  rows={6}
+                  placeholder="Ajoutez ici des commentaires globaux sur l'état du logement..."
+                  className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-4 text-sm text-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                />
               </div>
-            )}
+            </fieldset>
+          )}
+
+          {!isTemplateMode && currentStep === 3 && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <SignatureSection />
+            </div>
+          )}
         </div>
 
         <div className="fixed bottom-0 inset-x-0 bg-slate-950/80 backdrop-blur-xl border-t border-white/5 p-4 z-50">
@@ -374,7 +375,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
               <ArrowLeft size={20} />
               <span>Précédent</span>
             </button>
-            
+
             {currentStep < steps.length - 1 ? (
               <button
                 type="button"
@@ -398,7 +399,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
         )}
 
         <div style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
-           <PDFTemplate data={pdfData || methods.getValues()} />
+          <PDFTemplate data={pdfData || methods.getValues()} />
         </div>
       </form>
     </FormProvider>

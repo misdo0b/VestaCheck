@@ -55,10 +55,11 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
       }
 
       // 3. IMPORTANT : Synchroniser le store avec le formulaire pour que le worker voie les photos
-      await setCurrentInspection(getValues() as any);
+      const currentValues = getValues() as any;
+      await setCurrentInspection(currentValues);
 
       // 4. Déclenchement de la synchro cloud en arrière-plan
-      setTimeout(() => syncPendingPhotos(), 1000);
+      setTimeout(() => syncPendingPhotos(currentValues.id), 1000);
     } catch (err) {
       console.error("Erreur capture photo:", err);
     } finally {
@@ -84,7 +85,7 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
       {fields.map((photo, pIndex) => (
         <div key={photo.id} className="relative group w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-50">
           <img 
-            src={(photo as any).compressedBase64 || (photo as any).cloudUrl} 
+            src={(photo as any).compressedBase64 || (photo as any).cloudUrl || null} 
             alt="Capture" 
             className="w-full h-full object-cover transition-transform group-hover:scale-110"
           />
@@ -108,7 +109,7 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                syncPendingPhotos();
+                syncPendingPhotos(getValues('id'));
               }}
               className="absolute inset-0 flex items-center justify-center bg-black/60 text-white rounded-lg group-hover:bg-blue-500/80 transition-colors"
               title="Réessayer la synchronisation"

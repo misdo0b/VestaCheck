@@ -1,70 +1,44 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+'use client';
+
+import { useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { db } from '@/lib/db';
-import { toast } from 'sonner';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
-import { useUserStore } from '@/store/useUserStore';
 import { useTenantStore } from '@/store/useTenantStore';
-import { useAgencyStore } from '@/store/useAgencyStore';
-import { useOrganizationStore } from '@/store/useOrganizationStore';
 
-/**
- * useSync - Hook de gestion de la synchronisation en arrière-plan
- * Gère l'authentification, l'upload des photos HD et la file d'attente des mutations.
- */
 export function useSync() {
   const { data: session } = useSession();
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const { syncStatus, setSyncStatus } = useInspectionStore();
+  const { fetchProperties } = usePropertyStore();
+  const { fetchTenants } = useTenantStore();
+  const isOnline = typeof window !== 'undefined' ? navigator.onLine : true;
 
-  // Observer la file d'attente (Mutations + Photos non synchronisées)
-  const mutationCount = useLiveQuery(() => db.mutationQueue.count()) || 0;
-  const unsyncedPhotosCount = useLiveQuery(() => 
-    db.photos.filter(photo => photo.isSynced === false).count()
-  ) || 0;
-
-  // Pour rafraîchir les stores après synchro
-  const { initStore: initInspections, currentInspection } = useInspectionStore();
-  const { initStore: initProperties } = usePropertyStore();
-  const { initStore: initUsers } = useUserStore();
-  const { initStore: initTenants } = useTenantStore();
-  const { initStore: initAgencies } = useAgencyStore();
-  const { initStore: initOrganizations } = useOrganizationStore();
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  // Verrou pour empêcher des exécutions concurrentes du processQueue
+  const isProcessingRef = useRef(false);
 
   /**
-   * uploadUnsyncedPhotos - Parcourt et upload les photos HD stockées localement
+   * Upload des photos HD qui n'ont pas encore été synchronisées.
+   * On le fait en amont de la synchro SQL pour avoir les URLs Cloudinary prêtes.
    */
-  const uploadUnsyncedPhotos = async () => {
-    const unsyncedPhotos = await db.photos.filter(photo => photo.isSynced === false).toArray();
-    if (unsyncedPhotos.length === 0) return;
+  const uploadUnsyncedPhotos = useCallback(async () => {
+    try {
+      // Utilisation d'un filtre au lieu d'un where clause pour éviter les erreurs "The parameter is not a valid key"
+      // sur les index bohéens dans certains environnements IndexedDB.
+      const unsyncedPhotos = await db.photos.filter(p => p.isSynced === false).toArray();
+      
+      if (unsyncedPhotos.length === 0) return;
 
-    console.log(`[Sync] Upload de ${unsyncedPhotos.length} photo(s) HD...`);
+      console.log(`[Sync] ${unsyncedPhotos.length} photos HD en attente d'upload...`);
+      
+      const allInspections = await db.inspections.toArray();
+      const modifiedInspectionIds = new Set<string>();
 
-    for (const photo of unsyncedPhotos) {
-      if (!photo.blob) {
-        // Nettoyage si le blob est manquant mais marqué non-sync
-        await db.photos.update(photo.id, { isSynced: true });
-        continue;
-      }
-
-      try {
+      for (const photo of unsyncedPhotos) {
+        if (!photo.blob) continue;
+        
         const formData = new FormData();
-        formData.append('file', photo.blob, `photo-${photo.id}.jpg`);
+        formData.append('file', photo.blob, `${photo.id}.jpg`);
 
         const response = await fetch('/api/upload', {
           method: 'POST',
@@ -73,171 +47,154 @@ export function useSync() {
 
         if (response.ok) {
           const { url } = await response.json();
-          
-          // 1. Mettre à jour l'enregistrement photo local
-          await db.photos.update(photo.id, { 
-            isSynced: true, 
+
+          // 1. Mise à jour table photos
+          await db.photos.update(photo.id, {
+            isSynced: true,
             cloudUrl: url,
-            blob: undefined // Libère de la mémoire après upload réussi
+            lastModified: new Date().toISOString()
           });
 
-          // 2. Mettre à jour l'inspection correspondante dans le JSON rooms
-          const allInspections = await db.inspections.toArray();
-          for (const insp of allInspections) {
-            let found = false;
+          // 2. Mise à jour en mémoire des inspections correspondantes
+          for (let i = 0; i < allInspections.length; i++) {
+            const insp = allInspections[i];
+            let photoFound = false;
+            
             const updatedRooms = insp.rooms.map(room => ({
               ...room,
               items: room.items.map(item => {
-                if (item.id === photo.itemId) {
+                if (item.photos.some(p => p.id === photo.id)) {
+                  photoFound = true;
                   return {
                     ...item,
-                    photos: item.photos.map(p => {
-                      if (p.id === photo.id) {
-                        found = true;
-                        return { ...p, isSynced: true, cloudUrl: url };
-                      }
-                      return p;
-                    })
+                    photos: item.photos.map(p =>
+                      p.id === photo.id ? { ...p, isSynced: true, cloudUrl: url } : p
+                    )
                   };
                 }
                 return item;
               })
             }));
 
-            if (found) {
-              const updatedInspection = { ...insp, rooms: updatedRooms };
-              await db.inspections.update(insp.id, { rooms: updatedRooms });
-              // Si c'est l'inspection en cours, on déclenche une mutation de synchro pour le cloudUrl
-              await db.enqueueMutation({
-                type: 'UPDATE',
-                entity: 'inspection',
-                entityId: insp.id,
-                data: updatedInspection
-              });
-              break;
+            if (photoFound) {
+              allInspections[i] = { ...insp, rooms: updatedRooms };
+              modifiedInspectionIds.add(insp.id);
             }
           }
         }
-      } catch (err) {
-        console.error(`[Sync] Échec upload photo ${photo.id}:`, err);
       }
+
+      // 3. Persistance groupée des inspections modifiées
+      for (const id of modifiedInspectionIds) {
+        const updatedInsp = allInspections.find(insp => insp.id === id);
+        if (updatedInsp) {
+          await db.inspections.update(id, { rooms: updatedInsp.rooms });
+          await db.enqueueMutation({
+            type: 'UPDATE',
+            entity: 'inspection',
+            entityId: id,
+            data: updatedInsp
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[Sync] Erreur upload photos HD:', error);
     }
-  };
+  }, []);
 
+  /**
+   * Processus principal de synchronisation
+   * 1. Upload des photos HD
+   * 2. Envoi des mutations (CRUD) en batch vers l'API
+   * 3. Récupération des dernières données
+   */
   const processQueue = useCallback(async () => {
-    // Éviter les doubles lancements ou la synchro hors-ligne/non-identifié
-    if (isSyncing || !isOnline || !session) return;
-
-    const mutations = await db.mutationQueue.orderBy('timestamp').toArray();
-    if (mutations.length === 0 && unsyncedPhotosCount === 0) return;
-
-    setIsSyncing(true);
-    console.log(`[Sync] Démarrage du cycle de synchronisation...`);
+    if (!session || !isOnline || isProcessingRef.current) return;
 
     try {
-      // 1. Synchronisation des Photos HD
+      isProcessingRef.current = true;
+
+      // 1. Upload des photos HD d'abord
       await uploadUnsyncedPhotos();
 
-      // 2. Synchronisation des mutations de données
-      const rawMutations = await db.mutationQueue.orderBy('timestamp').toArray();
+      // 2. Traitement de la file de mutations SQL
+      const rawMutations = await db.mutationQueue.toArray();
       
-      // Auto-correction : Si une mutation d'inspection est partielle (ex: issue d'une version précédente),
-      // on l'enrichit avec les données complètes de la base locale pour éviter les erreurs de contrainte NOT NULL
-      const mutations = await Promise.all(rawMutations.map(async (m) => {
-        if (m.entity === 'inspection' && m.type === 'UPDATE' && !m.data.propertyAddress && m.data.rooms) {
-          const fullReport = await db.inspections.get(m.entityId);
-          if (fullReport) {
-            console.log(`[Sync] Auto-enrichissement de la mutation ${m.id} pour l'inspection ${m.entityId}`);
-            return { ...m, data: fullReport };
-          }
-        }
-        return m;
+      // Si rien à synchroniser, on s'arrête là
+      if (rawMutations.length === 0) {
+        if (syncStatus !== 'synced') setSyncStatus('synced');
+        return;
+      }
+
+      setSyncStatus('syncing');
+
+      // Préparation du batch
+      const mutations = rawMutations.map(m => ({
+        ...m,
+        // On s'assure que les données sont propres pour JSON
+        data: typeof m.data === 'string' ? JSON.parse(m.data) : m.data
       }));
 
-      if (mutations.length > 0) {
-        const response = await fetch('/api/inspections/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mutations })
-        });
+      console.log(`[Sync] Envoi de ${mutations.length} mutations...`);
 
-        if (response.ok) {
-          const syncResult = await response.json();
-          const results = syncResult.results || [];
-          
-          // On ne supprime que les mutations qui ont réussi côté serveur
-          const successfulMutationIds = results
-            .filter((r: any) => r.status === 'success')
-            .map((r: any) => r.id);
-            
-          const failedCount = results.length - successfulMutationIds.length;
-          
-          if (successfulMutationIds.length > 0) {
-            await db.mutationQueue.bulkDelete(successfulMutationIds);
-          }
-
-          // Gestion des erreurs fatales (ex: UUID invalide) pour éviter les boucles infinies
-          const fatalMutationIds = results
-            .filter((r: any) => r.status === 'error' && r.error.includes('Invalid UUID format'))
-            .map((r: any) => r.id);
-            
-          if (fatalMutationIds.length > 0) {
-            console.warn(`[Sync] Suppression de ${fatalMutationIds.length} mutation(s) invalides (IDs obsolètes)`);
-            await db.mutationQueue.bulkDelete(fatalMutationIds);
-          }
-
-          if (failedCount > 0) {
-            const failedMutations = results.filter((r: any) => r.status === 'error');
-            console.error(`[Sync] ${failedCount} mutations ont échoué :`, failedMutations);
-            toast.warning(`${failedCount} éléments n'ont pas pu être synchronisés.`, {
-              id: 'sync-warning',
-              description: 'Vérifiez la console pour plus de détails.'
-            });
-          } else {
-            toast.success("Données synchronisées avec succès", { id: 'sync-success' });
-          }
-          
-          // Rafraîchir les stores pour obtenir l'état final du serveur
-          const user = session.user as any;
-          await Promise.all([
-            initInspections(user),
-            initProperties(user),
-            initUsers(user),
-            initTenants(user),
-            initAgencies(user),
-            initOrganizations(user)
-          ]);
-        } else {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Erreur serveur lors de la synchronisation");
-        }
-      }
-    } catch (err: any) {
-      console.error('[Sync] Error:', err);
-      toast.error(`Échec de la synchronisation`, {
-        id: 'sync-error',
-        description: err.message || 'Erreur inconnue'
+      const response = await fetch('/api/inspections/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mutations })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Sync failed');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Suppression des mutations traitées avec succès
+        const processedIds = mutations.map(m => m.id);
+        await db.mutationQueue.bulkDelete(processedIds);
+        
+        // Rafraîchissement des données locales pour s'assurer de la cohérence avec le serveur
+        await Promise.all([
+          fetchProperties(),
+          fetchTenants()
+        ]);
+
+        setSyncStatus('synced');
+        console.log('[Sync] Synchronisation réussie');
+      } else {
+        setSyncStatus('error');
+      }
+    } catch (error) {
+      console.error('[Sync] Erreur critique:', error);
+      setSyncStatus('error');
     } finally {
-      setIsSyncing(false);
+      isProcessingRef.current = false;
+      // Sécurité : si on sort du processus et qu'on est resté en "syncing", on repasse en "synced" 
+      // (sauf si une erreur a déjà été enregistrée)
+      if (useInspectionStore.getState().syncStatus === 'syncing') {
+        setSyncStatus('synced');
+      }
     }
-  }, [isOnline, isSyncing, session, initInspections, initProperties, initUsers, initTenants, unsyncedPhotosCount]);
+  }, [session, syncStatus, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, isOnline]);
 
-  // Synchronisation réactive : déclenchée dès que mutationCount > 0 ou photos en attente
+  // Déclenchement automatique de la synchro au montage et quand on repasse online
   useEffect(() => {
-    if ((mutationCount > 0 || unsyncedPhotosCount > 0) && isOnline && session) {
-      const timer = setTimeout(() => {
-        processQueue();
-      }, 1000);
-      return () => clearTimeout(timer);
+    if (isOnline && session) {
+      processQueue();
     }
-  }, [mutationCount, unsyncedPhotosCount, isOnline, session, processQueue]);
+  }, [isOnline, session, processQueue]);
 
-  return {
-    isOnline,
-    isSyncing,
-    processQueue,
-    mutationCount,
-    unsyncedPhotosCount
-  };
+  // Intervalle de sécurité (toutes les 2 minutes)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isOnline && session) {
+        processQueue();
+      }
+    }, 120000);
+    return () => clearInterval(interval);
+  }, [isOnline, session, processQueue]);
+
+  return { processQueue, isOnline, isSyncing: syncStatus === 'syncing' };
 }
