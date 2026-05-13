@@ -2,6 +2,7 @@ import { InspectionReport, Room, InspectionItem, PhotoMetadata } from "@/types";
 
 /**
  * Clone une structure d'inspection en régénérant tous les identifiants uniques.
+ * Indispensable lors de l'utilisation d'un template pour éviter les collisions en base de données.
  */
 export const cloneWithNewIds = (data: Partial<InspectionReport>): any => {
   const newInspectionId = crypto.randomUUID();

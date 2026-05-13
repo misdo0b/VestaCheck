@@ -1,47 +1,32 @@
-import React, { useEffect, useCallback, useState } from 'react';
+'use client';
+
+import { useCallback, useEffect, useRef } from 'react';
+import { useSession } from 'next-auth/react';
+import { db } from '@/lib/db';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useTenantStore } from '@/store/useTenantStore';
-import { db } from '@/lib/db';
-import { useSession } from 'next-auth/react';
 
-/**
- * Hook de synchronisation globale.
- * Gère le cycle de vie des données entre IndexedDB et Supabase.
- */
 export function useSync() {
   const { data: session } = useSession();
-  const { syncStatus, setSyncStatus, currentInspection } = useInspectionStore();
+  const { syncStatus, setSyncStatus } = useInspectionStore();
   const { fetchProperties } = usePropertyStore();
   const { fetchTenants } = useTenantStore();
+  const isOnline = typeof window !== 'undefined' ? navigator.onLine : true;
 
-  // Détection de l'état en ligne
-  const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  const isSyncing = syncStatus === 'syncing';
+  // Verrou pour empêcher des exécutions concurrentes du processQueue
+  const isProcessingRef = useRef(false);
 
   /**
-   * Synchronise les photos HD (Blobs) vers Supabase Storage
-   * Cette étape est complémentaire à la synchronisation des miniatures vers Cloudinary
+   * Upload des photos HD qui n'ont pas encore été synchronisées.
+   * On le fait en amont de la synchro SQL pour avoir les URLs Cloudinary prêtes.
    */
   const uploadUnsyncedPhotos = useCallback(async () => {
     try {
       // Utilisation d'un filtre au lieu d'un where clause pour éviter les erreurs "The parameter is not a valid key"
       // sur les index bohéens dans certains environnements IndexedDB.
       const unsyncedPhotos = await db.photos.filter(p => p.isSynced === false).toArray();
+      
       if (unsyncedPhotos.length === 0) return;
 
       console.log(`[Sync] ${unsyncedPhotos.length} photos HD en attente d'upload...`);
@@ -117,81 +102,40 @@ export function useSync() {
     }
   }, []);
 
-  const isProcessingRef = React.useRef(false);
-
   /**
-   * Traite la file d'attente des mutations de données
+   * Processus principal de synchronisation
+   * 1. Upload des photos HD
+   * 2. Envoi des mutations (CRUD) en batch vers l'API
+   * 3. Récupération des dernières données
    */
   const processQueue = useCallback(async () => {
-    if (!session || syncStatus === 'syncing' || !isOnline || isProcessingRef.current) return;
+    if (!session || !isOnline || isProcessingRef.current) return;
 
     try {
       isProcessingRef.current = true;
-      setSyncStatus('syncing');
 
-      // 1. Synchronisation des photos Cloudinary (Miniatures/Mode Hybrid)
-      await useInspectionStore.getState().syncPendingPhotos();
-
-      // 2. Upload des photos HD d'abord (Supabase Storage)
+      // 1. Upload des photos HD d'abord
       await uploadUnsyncedPhotos();
 
-      // 3. Synchronisation des mutations de données
-      const rawMutations = await db.mutationQueue.orderBy('timestamp').toArray();
+      // 2. Traitement de la file de mutations SQL
+      const rawMutations = await db.mutationQueue.toArray();
       
+      // Si rien à synchroniser, on s'arrête là
       if (rawMutations.length === 0) {
-        setSyncStatus('synced');
-        isProcessingRef.current = false;
+        if (syncStatus !== 'synced') setSyncStatus('synced');
         return;
       }
 
-      // Fusion des mutations consécutives pour la même entité (Squashing)
-      // On ne garde que la dernière version d'un UPDATE pour une entité donnée
-      const squashedMap = new Map();
-      const mutationsToDelete = [];
+      setSyncStatus('syncing');
 
-      for (const m of rawMutations) {
-        const key = `${m.entity}:${m.entityId}`;
-        if (m.type === 'UPDATE' && squashedMap.has(key)) {
-          const prev = squashedMap.get(key);
-          if (prev.type === 'UPDATE') {
-            mutationsToDelete.push(prev.id);
-            squashedMap.set(key, m);
-            continue;
-          }
-        }
-        squashedMap.set(key, m);
-      }
-
-      // Nettoyage immédiat des mutations obsolètes
-      if (mutationsToDelete.length > 0) {
-        await db.mutationQueue.bulkDelete(mutationsToDelete);
-      }
-
-      const uniqueMutations = Array.from(squashedMap.values());
-
-      // Enrichissement et nettoyage final
-      const mutations = await Promise.all(uniqueMutations.map(async (m) => {
-        if (m.entity === 'inspection' && m.type === 'UPDATE') {
-          const fullReport = await db.inspections.get(m.entityId);
-          if (fullReport) {
-            // On s'assure que les photos déjà synchronisées n'envoient plus leur Base64 (trop lourd)
-            const cleanedRooms = fullReport.rooms.map(room => ({
-              ...room,
-              items: room.items.map(item => ({
-                ...item,
-                photos: item.photos.map(p => ({
-                  ...p,
-                  compressedBase64: p.isSynced ? '' : p.compressedBase64
-                }))
-              }))
-            }));
-            return { ...m, data: { ...fullReport, rooms: cleanedRooms } };
-          }
-        }
-        return m;
+      // Préparation du batch
+      const mutations = rawMutations.map(m => ({
+        ...m,
+        // On s'assure que les données sont propres pour JSON
+        data: typeof m.data === 'string' ? JSON.parse(m.data) : m.data
       }));
 
-      console.log(`[Sync] Envoi de ${mutations.length} mutations au serveur...`);
+      console.log(`[Sync] Envoi de ${mutations.length} mutations...`);
 
       const response = await fetch('/api/inspections/sync', {
         method: 'POST',
@@ -199,33 +143,31 @@ export function useSync() {
         body: JSON.stringify({ mutations })
       });
 
-      if (response.ok) {
-        const { results } = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Sync failed');
+      }
 
-        // On supprime de la queue locale uniquement ce qui a réussi
-        const successfulIds = (results || [])
-          .filter((r: any) => r.status === 'success')
-          .map((r: any) => r.id);
-
-        if (successfulIds.length > 0) {
-          await db.mutationQueue.bulkDelete(successfulIds);
-          console.log(`[Sync] ${successfulIds.length} mutations synchronisées.`);
-        }
+      const result = await response.json();
+      
+      if (result.success) {
+        // Suppression des mutations traitées avec succès
+        const processedIds = mutations.map(m => m.id);
+        await db.mutationQueue.bulkDelete(processedIds);
+        
+        // Rafraîchissement des données locales pour s'assurer de la cohérence avec le serveur
+        await Promise.all([
+          fetchProperties(),
+          fetchTenants()
+        ]);
 
         setSyncStatus('synced');
-
-        // Rafraîchissement optionnel des données globales après une synchro réussie
-        if (successfulIds.length > 0) {
-          fetchProperties();
-          fetchTenants();
-        }
+        console.log('[Sync] Synchronisation réussie');
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('[Sync] Erreur serveur:', response.status, errorData);
         setSyncStatus('error');
       }
     } catch (error) {
-      console.error('[Sync] Erreur lors de la synchronisation:', error);
+      console.error('[Sync] Erreur critique:', error);
       setSyncStatus('error');
     } finally {
       isProcessingRef.current = false;
@@ -237,30 +179,22 @@ export function useSync() {
     }
   }, [session, syncStatus, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, isOnline]);
 
-  // Déclencheur automatique périodique ou sur changement d'état
+  // Déclenchement automatique de la synchro au montage et quand on repasse online
   useEffect(() => {
-    if (session) {
-      const timer = setInterval(() => {
-        processQueue();
-      }, 30000); // Toutes les 30 secondes si online
-
-      // Aussi déclencher immédiatement
+    if (isOnline && session) {
       processQueue();
-
-      return () => clearInterval(timer);
     }
-  }, [session, processQueue]);
+  }, [isOnline, session, processQueue]);
 
-  // Déclencheur sur changement manuel d'inspection (quand on quitte un champ par exemple)
-  // On ne le fait pas sur chaque touche pour éviter de saturer la queue
+  // Intervalle de sécurité (toutes les 2 minutes)
   useEffect(() => {
-    if (currentInspection && session) {
-      const timeout = setTimeout(() => {
+    const interval = setInterval(() => {
+      if (isOnline && session) {
         processQueue();
-      }, 5000);
-      return () => clearTimeout(timeout);
-    }
-  }, [currentInspection, session, processQueue]);
+      }
+    }, 120000);
+    return () => clearInterval(interval);
+  }, [isOnline, session, processQueue]);
 
-  return { processQueue, syncStatus, isSyncing, isOnline };
+  return { processQueue, isOnline, isSyncing: syncStatus === 'syncing' };
 }
