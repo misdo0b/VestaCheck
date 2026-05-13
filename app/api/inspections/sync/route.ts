@@ -32,12 +32,12 @@ export async function POST(req: Request) {
         // 1. Upsert de l'inspection principale
         const { error: inspError } = await supabase.from('inspections').upsert({
           id: entityId,
-          property_id: data.propertyId,
-          inspector_id: data.inspectorId,
-          owner_id: data.ownerId,
-          tenant_id: data.tenantId,
-          agency_id: data.agencyId,
-          organization_id: data.organizationId,
+          property_id: data.propertyId || null,
+          inspector_id: data.inspectorId || null,
+          owner_id: data.ownerId || null,
+          tenant_id: data.tenantId || null,
+          agency_id: data.agencyId || null,
+          organization_id: data.organizationId || null,
           date: data.date,
           type: data.type,
           counters: data.counters || { water: 0, electricity: 0 },
@@ -56,6 +56,7 @@ export async function POST(req: Request) {
         }
 
         // 2. Traitement des pièces et éléments (si présents)
+        let hierarchyError = null;
         if (data.rooms && Array.isArray(data.rooms)) {
           console.log(`[Sync] Traitement de ${data.rooms.length} pièces pour l'inspection ${entityId}`);
           
@@ -69,10 +70,7 @@ export async function POST(req: Request) {
                 display_order: room.displayOrder || room.display_order || 0
               });
 
-              if (roomError) {
-                console.error(`[Sync] Erreur upsert pièce ${room.id}:`, roomError);
-                throw roomError;
-              }
+              if (roomError) throw roomError;
 
               // Upsert Items
               if (room.items && Array.isArray(room.items)) {
@@ -86,10 +84,7 @@ export async function POST(req: Request) {
                     display_order: item.displayOrder || item.display_order || 0
                   });
 
-                  if (itemError) {
-                    console.error(`[Sync] Erreur upsert élément ${item.id}:`, itemError);
-                    throw itemError;
-                  }
+                  if (itemError) throw itemError;
 
                   // Upsert Photos
                   if (item.photos && Array.isArray(item.photos)) {
@@ -103,22 +98,24 @@ export async function POST(req: Request) {
                           has_full_res: photo.hasFullRes || false
                         });
 
-                      if (photoError) {
-                        console.error(`[Sync] Erreur upsert photo ${photo.id}:`, photoError);
-                        throw photoError;
-                      }
+                      if (photoError) throw photoError;
                     }
                   }
                 }
               }
             } catch (err: any) {
               console.error(`[Sync] Échec de la hiérarchie pour la pièce ${room.id}:`, err);
-              // On continue pour les autres pièces mais on pourrait marquer l'inspection en erreur
+              hierarchyError = err;
+              break; // Stop processing this inspection's hierarchy
             }
           }
         }
 
-        results.push({ id: mutation.id, status: 'success' });
+        if (hierarchyError) {
+          results.push({ id: mutation.id, status: 'error', error: hierarchyError.message });
+        } else {
+          results.push({ id: mutation.id, status: 'success' });
+        }
       } else {
         // Autres types d'entités (propriétés, etc.) - Traitement générique simplifié
         const tableName = entity === 'property' ? 'properties' : 

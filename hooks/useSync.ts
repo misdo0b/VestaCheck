@@ -45,6 +45,7 @@ export function useSync() {
       console.log(`[Sync] ${unsyncedPhotos.length} photos HD en attente d'upload...`);
 
       for (const photo of unsyncedPhotos) {
+        if (!photo.blob) continue;
         const formData = new FormData();
         formData.append('file', photo.blob, `${photo.id}.jpg`);
 
@@ -58,9 +59,8 @@ export function useSync() {
           
           // Mise à jour locale
           await db.photos.update(photo.id, { 
-            isSynced: 1, 
-            cloudUrl: url,
-            lastModified: new Date().toISOString()
+            isSynced: true, 
+            cloudUrl: url
           });
 
           // Mise à jour de l'inspection correspondante dans le JSON pour cohérence
@@ -188,7 +188,12 @@ export function useSync() {
           console.log(`[Sync] ${successfulIds.length} mutations synchronisées.`);
         }
 
-        setSyncStatus('synced');
+        if (successfulIds.length === mutations.length) {
+          setSyncStatus('synced');
+        } else {
+          setSyncStatus('error');
+          console.error('[Sync] Certaines mutations ont échoué.');
+        }
 
         // Rafraîchissement optionnel des données globales après une synchro réussie
         if (successfulIds.length > 0) {

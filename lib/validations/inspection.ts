@@ -4,10 +4,11 @@ export const ConditionSchema = z.enum(['Neuf', 'Très Bon', 'Bon', 'Usage', 'Mau
 
 export const PhotoMetadataSchema = z.object({
   id: z.string(),
-  compressedBase64: z.string().optional(),
+  compressedBase64: z.string(),
+  hasFullRes: z.boolean().optional(),
   cloudUrl: z.string().optional(),
   isSynced: z.boolean().default(false),
-  status: z.enum(['PENDING', 'SYNCING', 'UPLOADED', 'ERROR']).optional(),
+  status: z.enum(['PENDING', 'SYNCING', 'UPLOADED', 'ERROR']).default('PENDING'),
   storagePath: z.string().optional(),
 });
 
@@ -35,6 +36,8 @@ const BaseReportSchema = z.object({
   ownerId: z.string(),
   inspectorId: z.string(),
   tenantId: z.string().optional(),
+  agencyId: z.string(),
+  organizationId: z.string(),
   
   // Locataire manuel si pas sélectionné
   manualTenant: z.object({
