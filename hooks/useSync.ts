@@ -1,70 +1,34 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { useSession } from 'next-auth/react';
-import { db } from '@/lib/db';
-import { toast } from 'sonner';
+import { useEffect, useCallback } from 'react';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
-import { useUserStore } from '@/store/useUserStore';
 import { useTenantStore } from '@/store/useTenantStore';
-import { useAgencyStore } from '@/store/useAgencyStore';
-import { useOrganizationStore } from '@/store/useOrganizationStore';
+import { db } from '@/lib/db';
+import { useSession } from 'next-auth/react';
 
 /**
- * useSync - Hook de gestion de la synchronisation en arrière-plan
- * Gère l'authentification, l'upload des photos HD et la file d'attente des mutations.
+ * Hook de synchronisation globale.
+ * Gère le cycle de vie des données entre IndexedDB et Supabase.
  */
 export function useSync() {
   const { data: session } = useSession();
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
-
-  // Observer la file d'attente (Mutations + Photos non synchronisées)
-  const mutationCount = useLiveQuery(() => db.mutationQueue.count()) || 0;
-  const unsyncedPhotosCount = useLiveQuery(() => 
-    db.photos.filter(photo => photo.isSynced === false).count()
-  ) || 0;
-
-  // Pour rafraîchir les stores après synchro
-  const { initStore: initInspections, currentInspection } = useInspectionStore();
-  const { initStore: initProperties } = usePropertyStore();
-  const { initStore: initUsers } = useUserStore();
-  const { initStore: initTenants } = useTenantStore();
-  const { initStore: initAgencies } = useAgencyStore();
-  const { initStore: initOrganizations } = useOrganizationStore();
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const { syncStatus, setSyncStatus, currentInspection } = useInspectionStore();
+  const { fetchProperties } = usePropertyStore();
+  const { fetchTenants } = useTenantStore();
 
   /**
-   * uploadUnsyncedPhotos - Parcourt et upload les photos HD stockées localement
+   * Synchronise les photos HD (Blobs) vers Supabase Storage
+   * Cette étape est complémentaire à la synchronisation des miniatures vers Cloudinary
    */
-  const uploadUnsyncedPhotos = async () => {
-    const unsyncedPhotos = await db.photos.filter(photo => photo.isSynced === false).toArray();
-    if (unsyncedPhotos.length === 0) return;
+  const uploadUnsyncedPhotos = useCallback(async () => {
+    try {
+      const unsyncedPhotos = await db.photos.where('isSynced').equals(0).toArray();
+      if (unsyncedPhotos.length === 0) return;
 
-    console.log(`[Sync] Upload de ${unsyncedPhotos.length} photo(s) HD...`);
+      console.log(`[Sync] ${unsyncedPhotos.length} photos HD en attente d'upload...`);
 
-    for (const photo of unsyncedPhotos) {
-      if (!photo.blob) {
-        // Nettoyage si le blob est manquant mais marqué non-sync
-        await db.photos.update(photo.id, { isSynced: true });
-        continue;
-      }
-
-      try {
+      for (const photo of unsyncedPhotos) {
         const formData = new FormData();
-        formData.append('file', photo.blob, `photo-${photo.id}.jpg`);
+        formData.append('file', photo.blob, `${photo.id}.jpg`);
 
         const response = await fetch('/api/upload', {
           method: 'POST',
@@ -74,170 +38,180 @@ export function useSync() {
         if (response.ok) {
           const { url } = await response.json();
           
-          // 1. Mettre à jour l'enregistrement photo local
+          // Mise à jour locale
           await db.photos.update(photo.id, { 
-            isSynced: true, 
+            isSynced: 1, 
             cloudUrl: url,
-            blob: undefined // Libère de la mémoire après upload réussi
+            lastModified: new Date().toISOString()
           });
 
-          // 2. Mettre à jour l'inspection correspondante dans le JSON rooms
+          // Mise à jour de l'inspection correspondante dans le JSON pour cohérence
+          // On cherche l'élément dans toutes les inspections locales
           const allInspections = await db.inspections.toArray();
           for (const insp of allInspections) {
-            let found = false;
+            let photoFound = false;
             const updatedRooms = insp.rooms.map(room => ({
               ...room,
               items: room.items.map(item => {
-                if (item.id === photo.itemId) {
+                if (item.photos.some(p => p.id === photo.id)) {
+                  photoFound = true;
                   return {
                     ...item,
-                    photos: item.photos.map(p => {
-                      if (p.id === photo.id) {
-                        found = true;
-                        return { ...p, isSynced: true, cloudUrl: url };
-                      }
-                      return p;
-                    })
+                    photos: item.photos.map(p => 
+                      p.id === photo.id ? { ...p, isSynced: true, cloudUrl: url } : p
+                    )
                   };
                 }
                 return item;
               })
             }));
 
-            if (found) {
+            if (photoFound) {
               const updatedInspection = { ...insp, rooms: updatedRooms };
               await db.inspections.update(insp.id, { rooms: updatedRooms });
-              // Si c'est l'inspection en cours, on déclenche une mutation de synchro pour le cloudUrl
+              
+              // On déclenche une mutation de synchro pour mettre à jour la base SQL
               await db.enqueueMutation({
                 type: 'UPDATE',
                 entity: 'inspection',
                 entityId: insp.id,
                 data: updatedInspection
               });
-              break;
             }
           }
         }
-      } catch (err) {
-        console.error(`[Sync] Échec upload photo ${photo.id}:`, err);
       }
+    } catch (error) {
+      console.error('[Sync] Erreur upload photos HD:', error);
     }
-  };
+  }, []);
 
+  /**
+   * Traite la file d'attente des mutations de données
+   */
   const processQueue = useCallback(async () => {
-    // Éviter les doubles lancements ou la synchro hors-ligne/non-identifié
-    if (isSyncing || !isOnline || !session) return;
-
-    const mutations = await db.mutationQueue.orderBy('timestamp').toArray();
-    if (mutations.length === 0 && unsyncedPhotosCount === 0) return;
-
-    setIsSyncing(true);
-    console.log(`[Sync] Démarrage du cycle de synchronisation...`);
+    if (!session || syncStatus === 'syncing') return;
 
     try {
-      // 1. Synchronisation des Photos HD
+      // 1. Upload des photos HD d'abord
       await uploadUnsyncedPhotos();
 
       // 2. Synchronisation des mutations de données
       const rawMutations = await db.mutationQueue.orderBy('timestamp').toArray();
+      if (rawMutations.length === 0) return;
+
+      setSyncStatus('syncing');
+
+      // Fusion des mutations consécutives pour la même entité (Squashing)
+      // On ne garde que la dernière version d'un UPDATE pour une entité donnée
+      const squashedMap = new Map();
+      const mutationsToDelete = [];
+
+      for (const m of rawMutations) {
+        const key = `${m.entity}:${m.entityId}`;
+        if (m.type === 'UPDATE' && squashedMap.has(key)) {
+          const prev = squashedMap.get(key);
+          if (prev.type === 'UPDATE') {
+            mutationsToDelete.push(prev.id);
+            squashedMap.set(key, m);
+            continue;
+          }
+        }
+        squashedMap.set(key, m);
+      }
+
+      // Nettoyage immédiat des mutations obsolètes
+      if (mutationsToDelete.length > 0) {
+        await db.mutationQueue.bulkDelete(mutationsToDelete);
+      }
+
+      const uniqueMutations = Array.from(squashedMap.values());
       
-      // Auto-correction : Si une mutation d'inspection est partielle (ex: issue d'une version précédente),
-      // on l'enrichit avec les données complètes de la base locale pour éviter les erreurs de contrainte NOT NULL
-      const mutations = await Promise.all(rawMutations.map(async (m) => {
-        if (m.entity === 'inspection' && m.type === 'UPDATE' && !m.data.propertyAddress && m.data.rooms) {
+      // Enrichissement et nettoyage final
+      const mutations = await Promise.all(uniqueMutations.map(async (m) => {
+        if (m.entity === 'inspection' && m.type === 'UPDATE') {
           const fullReport = await db.inspections.get(m.entityId);
           if (fullReport) {
-            console.log(`[Sync] Auto-enrichissement de la mutation ${m.id} pour l'inspection ${m.entityId}`);
-            return { ...m, data: fullReport };
+            // On s'assure que les photos déjà synchronisées n'envoient plus leur Base64 (trop lourd)
+            const cleanedRooms = fullReport.rooms.map(room => ({
+              ...room,
+              items: room.items.map(item => ({
+                ...item,
+                photos: item.photos.map(p => ({
+                  ...p,
+                  compressedBase64: p.isSynced ? '' : p.compressedBase64
+                }))
+              }))
+            }));
+            return { ...m, data: { ...fullReport, rooms: cleanedRooms } };
           }
         }
         return m;
       }));
 
-      if (mutations.length > 0) {
-        const response = await fetch('/api/inspections/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mutations })
-        });
+      console.log(`[Sync] Envoi de ${mutations.length} mutations au serveur...`);
 
-        if (response.ok) {
-          const syncResult = await response.json();
-          const results = syncResult.results || [];
-          
-          // On ne supprime que les mutations qui ont réussi côté serveur
-          const successfulMutationIds = results
-            .filter((r: any) => r.status === 'success')
-            .map((r: any) => r.id);
-            
-          const failedCount = results.length - successfulMutationIds.length;
-          
-          if (successfulMutationIds.length > 0) {
-            await db.mutationQueue.bulkDelete(successfulMutationIds);
-          }
-
-          // Gestion des erreurs fatales (ex: UUID invalide) pour éviter les boucles infinies
-          const fatalMutationIds = results
-            .filter((r: any) => r.status === 'error' && r.error.includes('Invalid UUID format'))
-            .map((r: any) => r.id);
-            
-          if (fatalMutationIds.length > 0) {
-            console.warn(`[Sync] Suppression de ${fatalMutationIds.length} mutation(s) invalides (IDs obsolètes)`);
-            await db.mutationQueue.bulkDelete(fatalMutationIds);
-          }
-
-          if (failedCount > 0) {
-            const failedMutations = results.filter((r: any) => r.status === 'error');
-            console.error(`[Sync] ${failedCount} mutations ont échoué :`, failedMutations);
-            toast.warning(`${failedCount} éléments n'ont pas pu être synchronisés.`, {
-              id: 'sync-warning',
-              description: 'Vérifiez la console pour plus de détails.'
-            });
-          } else {
-            toast.success("Données synchronisées avec succès", { id: 'sync-success' });
-          }
-          
-          // Rafraîchir les stores pour obtenir l'état final du serveur
-          const user = session.user as any;
-          await Promise.all([
-            initInspections(user),
-            initProperties(user),
-            initUsers(user),
-            initTenants(user),
-            initAgencies(user),
-            initOrganizations(user)
-          ]);
-        } else {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Erreur serveur lors de la synchronisation");
-        }
-      }
-    } catch (err: any) {
-      console.error('[Sync] Error:', err);
-      toast.error(`Échec de la synchronisation`, {
-        id: 'sync-error',
-        description: err.message || 'Erreur inconnue'
+      const response = await fetch('/api/inspections/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mutations })
       });
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [isOnline, isSyncing, session, initInspections, initProperties, initUsers, initTenants, unsyncedPhotosCount]);
 
-  // Synchronisation réactive : déclenchée dès que mutationCount > 0 ou photos en attente
+      if (response.ok) {
+        const { results } = await response.json();
+        
+        // On supprime de la queue locale uniquement ce qui a réussi
+        const successfulIds = (results || [])
+          .filter((r: any) => r.status === 'success')
+          .map((r: any) => r.id);
+
+        if (successfulIds.length > 0) {
+          await db.mutationQueue.bulkDelete(successfulIds);
+          console.log(`[Sync] ${successfulIds.length} mutations synchronisées.`);
+        }
+
+        setSyncStatus('synced');
+
+        // Rafraîchissement optionnel des données globales après une synchro réussie
+        if (successfulIds.length > 0) {
+          fetchProperties();
+          fetchTenants();
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[Sync] Erreur serveur:', response.status, errorData);
+        setSyncStatus('error');
+      }
+    } catch (error) {
+      console.error('[Sync] Erreur lors de la synchronisation:', error);
+      setSyncStatus('error');
+    }
+  }, [session, syncStatus, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants]);
+
+  // Déclencheur automatique périodique ou sur changement d'état
   useEffect(() => {
-    if ((mutationCount > 0 || unsyncedPhotosCount > 0) && isOnline && session) {
-      const timer = setTimeout(() => {
+    if (session) {
+      const timer = setInterval(() => {
         processQueue();
-      }, 1000);
-      return () => clearTimeout(timer);
+      }, 30000); // Toutes les 30 secondes si online
+      
+      // Aussi déclencher immédiatement
+      processQueue();
+      
+      return () => clearInterval(timer);
     }
-  }, [mutationCount, unsyncedPhotosCount, isOnline, session, processQueue]);
+  }, [session, processQueue]);
 
-  return {
-    isOnline,
-    isSyncing,
-    processQueue,
-    mutationCount,
-    unsyncedPhotosCount
-  };
+  // Déclencheur sur changement manuel d'inspection (quand on quitte un champ par exemple)
+  // On ne le fait pas sur chaque touche pour éviter de saturer la queue
+  useEffect(() => {
+    if (currentInspection && session) {
+      const timeout = setTimeout(() => {
+         processQueue();
+      }, 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentInspection, session, processQueue]);
+
+  return { processQueue, syncStatus };
 }
