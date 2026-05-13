@@ -98,7 +98,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         type: 'UPDATE',
         entity: 'inspection',
         entityId: updatedInspection.id,
-        data: { rooms: newRooms }
+        data: updatedInspection
       });
     } catch (err) {
       console.error('Offline update failed:', err);
@@ -161,7 +161,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         type: 'UPDATE',
         entity: 'inspection',
         entityId: updatedInspection.id,
-        data: { rooms: newRooms }
+        data: updatedInspection
       });
     } catch (err) {
       console.error('Failed to save photo offline:', err);

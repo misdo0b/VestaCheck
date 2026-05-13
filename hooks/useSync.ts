@@ -105,13 +105,14 @@ export function useSync() {
             }));
 
             if (found) {
+              const updatedInspection = { ...insp, rooms: updatedRooms };
               await db.inspections.update(insp.id, { rooms: updatedRooms });
               // Si c'est l'inspection en cours, on déclenche une mutation de synchro pour le cloudUrl
               await db.enqueueMutation({
                 type: 'UPDATE',
                 entity: 'inspection',
                 entityId: insp.id,
-                data: { rooms: updatedRooms }
+                data: updatedInspection
               });
               break;
             }
@@ -138,12 +139,26 @@ export function useSync() {
       await uploadUnsyncedPhotos();
 
       // 2. Synchronisation des mutations de données
-      const remainingMutations = await db.mutationQueue.orderBy('timestamp').toArray();
-      if (remainingMutations.length > 0) {
+      const rawMutations = await db.mutationQueue.orderBy('timestamp').toArray();
+      
+      // Auto-correction : Si une mutation d'inspection est partielle (ex: issue d'une version précédente),
+      // on l'enrichit avec les données complètes de la base locale pour éviter les erreurs de contrainte NOT NULL
+      const mutations = await Promise.all(rawMutations.map(async (m) => {
+        if (m.entity === 'inspection' && m.type === 'UPDATE' && !m.data.propertyAddress && m.data.rooms) {
+          const fullReport = await db.inspections.get(m.entityId);
+          if (fullReport) {
+            console.log(`[Sync] Auto-enrichissement de la mutation ${m.id} pour l'inspection ${m.entityId}`);
+            return { ...m, data: fullReport };
+          }
+        }
+        return m;
+      }));
+
+      if (mutations.length > 0) {
         const response = await fetch('/api/inspections/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mutations: remainingMutations })
+          body: JSON.stringify({ mutations })
         });
 
         if (response.ok) {
