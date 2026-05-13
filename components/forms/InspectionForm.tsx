@@ -100,6 +100,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
         }
       ],
       isFinalized: initialData?.isFinalized || false,
+      lastModified: new Date().toISOString(),
     },
     mode: 'onTouched'
   });
