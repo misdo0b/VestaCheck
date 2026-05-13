@@ -28,16 +28,16 @@ export async function POST(req: Request) {
 
       if (entity === 'inspection' && type === 'UPDATE') {
         console.log(`[Sync] Traitement de l'inspection: ${entityId}`);
-        
+
         // 1. Upsert de l'inspection principale
         const { error: inspError } = await supabase.from('inspections').upsert({
           id: entityId,
-          property_id: data.propertyId || null,
-          inspector_id: data.inspectorId || null,
-          owner_id: data.ownerId || null,
-          tenant_id: data.tenantId || null,
-          agency_id: data.agencyId || null,
-          organization_id: data.organizationId || null,
+          property_id: data.propertyId,
+          inspector_id: data.inspectorId,
+          owner_id: data.ownerId,
+          tenant_id: data.tenantId,
+          agency_id: data.agencyId,
+          organization_id: data.organizationId,
           date: data.date,
           type: data.type,
           counters: data.counters || { water: 0, electricity: 0 },
@@ -56,10 +56,10 @@ export async function POST(req: Request) {
         }
 
         // 2. Traitement des pièces et éléments (si présents)
-        let hierarchyError = null;
+        let hasError = false;
         if (data.rooms && Array.isArray(data.rooms)) {
           console.log(`[Sync] Traitement de ${data.rooms.length} pièces pour l'inspection ${entityId}`);
-          
+
           for (const room of data.rooms) {
             try {
               // Upsert Room
@@ -89,14 +89,14 @@ export async function POST(req: Request) {
                   // Upsert Photos
                   if (item.photos && Array.isArray(item.photos)) {
                     for (const photo of item.photos) {
-                        const { error: photoError } = await supabase.from('photos').upsert({
-                          id: photo.id,
-                          item_id: item.id,
-                          cloud_url: photo.cloudUrl || null,
-                          compressed_base64: photo.compressedBase64 || null,
-                          is_synced: photo.isSynced || false,
-                          has_full_res: photo.hasFullRes || false
-                        });
+                      const { error: photoError } = await supabase.from('photos').upsert({
+                        id: photo.id,
+                        item_id: item.id,
+                        cloud_url: photo.cloudUrl || null,
+                        compressed_base64: photo.compressedBase64 || null,
+                        is_synced: photo.isSynced || false,
+                        has_full_res: photo.hasFullRes || false
+                      });
 
                       if (photoError) throw photoError;
                     }
@@ -105,29 +105,29 @@ export async function POST(req: Request) {
               }
             } catch (err: any) {
               console.error(`[Sync] Échec de la hiérarchie pour la pièce ${room.id}:`, err);
-              hierarchyError = err;
-              break; // Stop processing this inspection's hierarchy
+              hasError = true;
+              break; // On arrête pour cette inspection si une pièce échoue
             }
           }
         }
 
-        if (hierarchyError) {
-          results.push({ id: mutation.id, status: 'error', error: hierarchyError.message });
-        } else {
+        if (!hasError) {
           results.push({ id: mutation.id, status: 'success' });
+        } else {
+          results.push({ id: mutation.id, status: 'error', error: 'Erreur lors du traitement de la hiérarchie des pièces' });
         }
       } else {
         // Autres types d'entités (propriétés, etc.) - Traitement générique simplifié
-        const tableName = entity === 'property' ? 'properties' : 
-                         entity === 'tenant' ? 'tenants' : 
-                         entity === 'user' ? 'users' : null;
-        
+        const tableName = entity === 'property' ? 'properties' :
+          entity === 'tenant' ? 'tenants' :
+            entity === 'user' ? 'users' : null;
+
         if (tableName) {
           const { error } = await supabase.from(tableName).upsert(data);
-          results.push({ 
-            id: mutation.id, 
-            status: error ? 'error' : 'success', 
-            error: error?.message 
+          results.push({
+            id: mutation.id,
+            status: error ? 'error' : 'success',
+            error: error?.message
           });
         }
       }

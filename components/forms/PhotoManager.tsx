@@ -84,7 +84,7 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
       {fields.map((photo, pIndex) => (
         <div key={photo.id} className="relative group w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-50">
           <img 
-            src={(photo as any).compressedBase64 || (photo as any).cloudUrl} 
+            src={(photo as any).compressedBase64 || (photo as any).cloudUrl || null} 
             alt="Capture" 
             className="w-full h-full object-cover transition-transform group-hover:scale-110"
           />
