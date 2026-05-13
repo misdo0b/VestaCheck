@@ -30,7 +30,7 @@ export async function GET() {
     ] = await Promise.all([
       supabase.from('users').select('*').eq('organization_id', orgId),
       supabase.from('properties').select('*').eq('organization_id', orgId),
-      supabase.from('tenants').select('*').eq('organization_id', orgId),
+      supabase.from('tenants').select('*, property_tenants(property_id)').eq('organization_id', orgId),
       supabase.from('property_templates').select('*').eq('organization_id', orgId),
       supabase.from('organizations').select('*').eq('id', orgId),
       supabase.from('agencies').select('*').eq('organization_id', orgId),
@@ -61,8 +61,20 @@ export async function GET() {
       properties: snakeToCamel(properties) || [],
       templates: snakeToCamel(templates) || [],
       users: (snakeToCamel(users) || []).map(({ password, ...u }: any) => u),
-      inspections: snakeToCamel(inspections) || [],
-      tenants: snakeToCamel(tenants) || [],
+      inspections: (inspections || []).map((inspection: any) => ({
+        ...snakeToCamel(inspection),
+        rooms: (inspection.rooms || []).map((room: any) => ({
+          ...snakeToCamel(room),
+          items: (room.inspection_items || []).map((item: any) => ({
+            ...snakeToCamel(item),
+            photos: snakeToCamel(item.photos || [])
+          }))
+        }))
+      })),
+      tenants: (tenants || []).map((t: any) => ({
+        ...snakeToCamel(t),
+        propertyIds: t.property_tenants?.map((rel: any) => rel.property_id) || []
+      })),
       organizations: snakeToCamel(organizations) || [],
       agencies: snakeToCamel(agencies) || [],
       timestamp: new Date().toISOString()

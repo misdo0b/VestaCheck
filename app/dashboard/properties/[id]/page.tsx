@@ -21,12 +21,19 @@ import { useUserStore } from '@/store/useUserStore';
 export default function PropertyDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { properties, templates, getTemplatesByProperty } = usePropertyStore();
-  const { inspections } = useInspectionStore();
+  const { properties, templates, getTemplatesByProperty, fetchTemplates } = usePropertyStore();
+  const { inspections, fetchInspections } = useInspectionStore();
   const { tenants } = useTenantStore();
   const { users } = useUserStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (id) {
+      fetchInspections(id as string);
+      fetchTemplates(id as string);
+    }
+  }, [id, fetchInspections, fetchTemplates]);
 
   const property = properties.find(p => p.id === id);
   const owner = users.find(u => u.id === property?.ownerId);

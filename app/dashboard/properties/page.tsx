@@ -23,6 +23,14 @@ export default function PropertiesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
+  const { fetchProperties } = usePropertyStore();
+
+  React.useEffect(() => {
+    if (session) {
+      fetchProperties();
+    }
+  }, [session, fetchProperties]);
+  
   // New States
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
