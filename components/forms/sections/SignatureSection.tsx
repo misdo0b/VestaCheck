@@ -22,11 +22,25 @@ export const SignatureSection: React.FC = () => {
     
     // On déclenche la validation de TOUT le formulaire avant de permettre la signature (Exigence du verrouillage)
     const isValid = await trigger();
+    
     if (isValid) {
       setActivePad(role);
     } else {
-      toast.error("Veuillez remplir les informations obligatoires (ADRESSE, LOCATAIRE, DATE, PIÈCES) avant de signer.", {
-        description: "Le formulaire sera ensuite verrouillé pour garantir l'intégrité du rapport.",
+      console.log("Validation errors before signature:", errors);
+      
+      // Diagnostic précis pour l'utilisateur
+      const missingFields = [];
+      if (errors.propertyAddress) missingFields.push("ADRESSE");
+      if (errors.tenantId || errors.manualTenant) missingFields.push("LOCATAIRE");
+      if (errors.date) missingFields.push("DATE");
+      if (errors.rooms) missingFields.push("PIÈCES");
+      
+      const message = missingFields.length > 0 
+        ? `Champs manquants : ${missingFields.join(', ')}`
+        : "Certaines informations du formulaire sont invalides.";
+
+      toast.error(message, {
+        description: "Veuillez compléter ces sections avant de pouvoir signer le rapport.",
         duration: 5000
       });
     }

@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useTenantStore } from '@/store/useTenantStore';
@@ -14,6 +14,24 @@ export function useSync() {
   const { syncStatus, setSyncStatus, currentInspection } = useInspectionStore();
   const { fetchProperties } = usePropertyStore();
   const { fetchTenants } = useTenantStore();
+
+  // Détection de l'état en ligne
+  const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const isSyncing = syncStatus === 'syncing';
 
   /**
    * Synchronise les photos HD (Blobs) vers Supabase Storage
@@ -90,7 +108,7 @@ export function useSync() {
    * Traite la file d'attente des mutations de données
    */
   const processQueue = useCallback(async () => {
-    if (!session || syncStatus === 'syncing') return;
+    if (!session || syncStatus === 'syncing' || !isOnline) return;
 
     try {
       // 1. Upload des photos HD d'abord
@@ -186,7 +204,7 @@ export function useSync() {
       console.error('[Sync] Erreur lors de la synchronisation:', error);
       setSyncStatus('error');
     }
-  }, [session, syncStatus, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants]);
+  }, [session, syncStatus, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, isOnline]);
 
   // Déclencheur automatique périodique ou sur changement d'état
   useEffect(() => {
@@ -213,5 +231,5 @@ export function useSync() {
     }
   }, [currentInspection, session, processQueue]);
 
-  return { processQueue, syncStatus };
+  return { processQueue, syncStatus, isSyncing, isOnline };
 }
