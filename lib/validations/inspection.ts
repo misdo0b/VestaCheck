@@ -76,29 +76,33 @@ const BaseReportSchema = z.object({
 });
 
 // Schéma avec raffinements pour la validation RUNTIME
-export const InspectionReportSchema = BaseReportSchema.refine((data) => {
-  // Validation du locataire selon le type
-  const hasTenant = !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
-  if (data.type === 'Sortie' && !data.tenantId) return false;
-  if (!hasTenant) return false;
-  
-  // Si finalisé, on exige que tout soit rempli
-  if (data.isFinalized) {
-    if (data.rooms.length === 0) return false;
-    for (const room of data.rooms) {
-      if (!room.name || room.name.trim() === '') return false;
-      if (room.items.length === 0) return false;
-      for (const item of room.items) {
-        if (!item.label || item.label.trim() === '') return false;
+export const InspectionReportSchema = BaseReportSchema
+  .refine((data) => {
+    // Validation du locataire selon le type
+    const hasTenant = !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
+    if (data.type === 'Sortie') return !!data.tenantId;
+    return hasTenant;
+  }, {
+    message: "Le locataire est requis (sélection ou saisie manuelle complète)",
+    path: ['tenantId']
+  })
+  .refine((data) => {
+    // Si finalisé, on exige que tout soit rempli
+    if (data.isFinalized) {
+      if (data.rooms.length === 0) return false;
+      for (const room of data.rooms) {
+        if (!room.name || room.name.trim() === '') return false;
+        if (room.items.length === 0) return false;
+        for (const item of room.items) {
+          if (!item.label || item.label.trim() === '') return false;
+        }
       }
     }
-  }
-
-  return true;
-}, {
-  message: "Le rapport doit être complet (noms des pièces et éléments) pour être finalisé.",
-  path: ['isFinalized']
-});
+    return true;
+  }, {
+    message: "Le rapport doit être complet (noms des pièces et éléments) pour être finalisé.",
+    path: ['isFinalized']
+  });
 
 // Schéma de Template
 export const PropertyTemplateSchema = z.object({
