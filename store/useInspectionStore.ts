@@ -21,6 +21,7 @@ interface InspectionState {
   saveOffline: () => void;
   finalizeInspection: (id: string, fullData?: InspectionReport) => Promise<void>;
   getInspectionsByAgency: (agencyId: string) => InspectionReport[];
+  fetchInspections: (propertyId?: string) => Promise<void>;
   syncPendingPhotos: () => Promise<void>;
 }
 
@@ -49,6 +50,40 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     } catch (err) {
       console.error('Failed to init InspectionStore:', err);
       set({ loading: false, error: 'Erreur lors du chargement des états des lieux' });
+    }
+  },
+
+  fetchInspections: async (propertyId?: string) => {
+    set({ loading: true });
+    try {
+      const url = propertyId ? `/api/inspections?propertyId=${propertyId}` : '/api/inspections';
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.length > 0) {
+          await db.inspections.bulkPut(data);
+        }
+        
+        // Merge avec les inspections existantes pour ne pas perdre les données des autres biens
+        const currentInspections = get().inspections;
+        const newInspections = [...currentInspections];
+        
+        data.forEach((newInspection: InspectionReport) => {
+          const index = newInspections.findIndex(i => i.id === newInspection.id);
+          if (index !== -1) {
+            newInspections[index] = newInspection;
+          } else {
+            newInspections.push(newInspection);
+          }
+        });
+
+        set({ inspections: newInspections, loading: false });
+      } else {
+        set({ loading: false });
+      }
+    } catch (err) {
+      console.error('Fetch inspections failed:', err);
+      set({ loading: false });
     }
   },
 

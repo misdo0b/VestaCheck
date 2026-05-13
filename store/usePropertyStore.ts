@@ -15,6 +15,7 @@ interface PropertyState {
   addProperty: (property: Property) => Promise<void>;
   updateProperty: (id: string, updates: Partial<Property>) => Promise<void>;
   deleteProperty: (id: string) => Promise<void>;
+  fetchTemplates: (propertyId?: string) => Promise<void>;
 
   // Template Actions
   setTemplates: (templates: PropertyTemplate[]) => void;
@@ -78,12 +79,54 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
       if (response.ok) {
         const data = await response.json();
         await db.properties.bulkPut(data);
-        set({ properties: data, loading: false });
+        
+        const currentProperties = get().properties;
+        const newProperties = [...currentProperties];
+
+        data.forEach((newProp: Property) => {
+          const index = newProperties.findIndex(p => p.id === newProp.id);
+          if (index !== -1) {
+            newProperties[index] = newProp;
+          } else {
+            newProperties.push(newProp);
+          }
+        });
+
+        set({ properties: newProperties, loading: false });
       }
     } catch (err) {
       console.error('Fetch properties failed:', err);
       const localProps = agencyId ? await db.properties.where('agencyId').equals(agencyId).toArray() : await db.properties.toArray();
       set({ properties: localProps, loading: false });
+    }
+  },
+
+  fetchTemplates: async (propertyId?: string) => {
+    try {
+      const url = propertyId ? `/api/templates?propertyId=${propertyId}` : '/api/templates';
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.length > 0) {
+          await db.templates.bulkPut(data);
+        }
+
+        const currentTemplates = get().templates;
+        const newTemplates = [...currentTemplates];
+
+        data.forEach((newTemplate: PropertyTemplate) => {
+          const index = newTemplates.findIndex(t => t.id === newTemplate.id);
+          if (index !== -1) {
+            newTemplates[index] = newTemplate;
+          } else {
+            newTemplates.push(newTemplate);
+          }
+        });
+
+        set({ templates: newTemplates });
+      }
+    } catch (err) {
+      console.error('Fetch templates failed:', err);
     }
   },
 
