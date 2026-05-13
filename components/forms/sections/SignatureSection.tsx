@@ -29,18 +29,36 @@ export const SignatureSection: React.FC = () => {
       console.log("Validation errors before signature:", errors);
       
       // Diagnostic précis pour l'utilisateur
-      const missingFields = [];
-      if (errors.propertyAddress) missingFields.push("ADRESSE");
-      if (errors.tenantId || errors.manualTenant) missingFields.push("LOCATAIRE");
-      if (errors.date) missingFields.push("DATE");
-      if (errors.rooms) missingFields.push("PIÈCES");
+      const missingFields = new Set<string>();
       
-      const message = missingFields.length > 0 
-        ? `Champs manquants : ${missingFields.join(', ')}`
+      if (errors.propertyAddress) missingFields.add("ADRESSE");
+      if (errors.tenantId || errors.manualTenant) missingFields.add("LOCATAIRE");
+      if (errors.date) missingFields.add("DATE");
+      if (errors.rooms) missingFields.add("PIÈCES");
+      if (errors.counters) missingFields.add("COMPTEURS");
+      if (errors.keyInventories) missingFields.add("CLÉS/ACCÈS");
+      
+      // Cas spécifique pour les sous-champs des compteurs si l'objet parent n'est pas marqué
+      if (!errors.counters && (errors as any).counters) {
+        missingFields.add("COMPTEURS");
+      }
+
+      const message = missingFields.size > 0 
+        ? `Champs manquants : ${Array.from(missingFields).join(', ')}`
         : "Certaines informations du formulaire sont invalides.";
 
+      // Si aucune catégorie n'est trouvée mais qu'il y a des erreurs, on affiche la première erreur brute pour aider
+      let detailMessage = "Veuillez compléter ces sections avant de pouvoir signer le rapport.";
+      if (missingFields.size === 0 && Object.keys(errors).length > 0) {
+        const firstErrorKey = Object.keys(errors)[0];
+        const error = (errors as any)[firstErrorKey];
+        if (error?.message) {
+          detailMessage = `Erreur sur ${firstErrorKey} : ${error.message}`;
+        }
+      }
+
       toast.error(message, {
-        description: "Veuillez compléter ces sections avant de pouvoir signer le rapport.",
+        description: detailMessage,
         duration: 5000
       });
     }
