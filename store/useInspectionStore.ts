@@ -377,6 +377,11 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
 
             // 2. Appel de la Server Action
             try {
+              if (!photo.compressedBase64) {
+                updatedPhotos[k] = { ...photo, status: 'ERROR' as const };
+                continue;
+              }
+
               const result = await uploadInspectionPhoto(photo.compressedBase64, {
                 propertyId: inspection.propertyId,
                 organizationId: (inspection as any).organizationId,
