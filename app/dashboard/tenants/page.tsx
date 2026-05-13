@@ -160,12 +160,17 @@ const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSu
 import { Suspense } from 'react';
 
 function TenantsPageContent() {
-  const { tenants, loading, addTenant, updateTenant, deleteTenant } = useTenantStore();
+  const { tenants, loading, addTenant, updateTenant, deleteTenant, fetchTenants } = useTenantStore();
   const { properties } = usePropertyStore();
   const { data: session } = useSession();
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'Tous' | 'Actuel' | 'Sorti'>('Actuel');
+  const [statusFilter, setStatusFilter] = useState<'Actuel' | 'Sorti' | 'Tous'>('Actuel');
+  
+  React.useEffect(() => {
+    fetchTenants();
+  }, [fetchTenants]);
+
   const [sortBy, setSortBy] = useState<'name' | 'lastModified'>('name');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
