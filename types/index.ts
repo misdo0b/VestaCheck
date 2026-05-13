@@ -50,7 +50,7 @@ export interface Room {
   items: InspectionItem[];
 }
 
-export type SyncStatus = 'synced' | 'pending' | 'error';
+export type SyncStatus = 'synced' | 'pending' | 'error' | 'syncing';
 
 export interface Property {
   id: string;

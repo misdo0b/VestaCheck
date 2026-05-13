@@ -11,8 +11,10 @@ interface InspectionState {
   currentInspection: InspectionReport | null;
   loading: boolean;
   error: string | null;
+  syncStatus: 'synced' | 'pending' | 'error' | 'syncing';
   
   // Actions
+  setSyncStatus: (status: 'synced' | 'pending' | 'error' | 'syncing') => void;
   initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
   setInspections: (inspections: InspectionReport[]) => void;
   setCurrentInspection: (report: InspectionReport | null) => Promise<void>;
@@ -30,6 +32,9 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
   currentInspection: null,
   loading: false,
   error: null,
+  syncStatus: 'synced',
+
+  setSyncStatus: (status) => set({ syncStatus: status }),
 
   initStore: async (user) => {
     set({ loading: true });
