@@ -8,6 +8,7 @@ import { useInspectionStore } from '@/store/useInspectionStore';
 import { InspectionForm } from '@/components/forms/InspectionForm';
 import { ArrowLeft, LayoutGrid, FileText, Sparkles, ShieldAlert } from 'lucide-react';
 import { PropertyTemplate } from '@/types';
+import { cloneWithNewIds } from '@/lib/utils/mapping';
 
 function NewInspectionForm() {
   const { data: session } = useSession();
@@ -55,16 +56,22 @@ function NewInspectionForm() {
   };
 
   if (showForm) {
-    const initialData = {
+    let initialData: any = {
       propertyId: property.id,
       propertyAddress: property.address,
       ownerId: property.ownerId,
       agencyId: property.agencyId,
       organizationId: property.organizationId,
-      // If template is selected, clone its rooms and keys
-      rooms: selectedTemplate ? JSON.parse(JSON.stringify(selectedTemplate.rooms)) : undefined,
-      keyInventories: selectedTemplate?.keyInventories ? JSON.parse(JSON.stringify(selectedTemplate.keyInventories)) : undefined
     };
+
+    if (selectedTemplate) {
+      const cloned = cloneWithNewIds(selectedTemplate as any);
+      initialData = {
+        ...initialData,
+        rooms: cloned.rooms,
+        keyInventories: cloned.keyInventories
+      };
+    }
 
     return (
       <div className="min-h-screen bg-slate-950">
