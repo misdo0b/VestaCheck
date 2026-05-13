@@ -37,11 +37,12 @@ export interface InspectionItem {
 
 export interface PhotoMetadata {
   id: string;
-  compressedBase64: string; // Version miniature pour le mode offline (RAM)
+  compressedBase64?: string; // Version miniature pour le mode offline (RAM) - Optionnelle après synchro
   hasFullRes?: boolean;      // Indique si la version HD est dans IndexedDB
   cloudUrl?: string;        // URL distante après synchro
   isSynced: boolean;
-  status: 'PENDING' | 'SYNCING' | 'UPLOADED' | 'ERROR'; // Cycle de vie Cloudinary
+  status?: 'PENDING' | 'SYNCING' | 'UPLOADED' | 'ERROR'; // Cycle de vie Cloudinary
+  lastModified?: string;
 }
 
 export interface Room {

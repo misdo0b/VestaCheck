@@ -18,7 +18,7 @@ export interface LocalMutation {
   type: 'CREATE' | 'UPDATE' | 'DELETE';
   entity: 'user' | 'property' | 'template' | 'tenant' | 'inspection' | 'room' | 'item' | 'photo' | 'agency' | 'organization';
   entityId: string;
-  data: any;
+  data?: any;
   timestamp: number;
 }
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { InspectionReport, SyncStatus, Room } from '@/types';
 import { db } from '@/lib/db';
-import { uploadInspectionPhoto } from '@/lib/cloudinary';
+import { uploadInspectionPhoto } from '@/app/actions/media';
 
 const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
@@ -69,7 +69,7 @@ interface InspectionState {
   syncStatus: SyncStatus;
 
   // Actions
-  init: (user: any) => Promise<void>;
+  initStore: (user: any) => Promise<void>;
   fetchInspections: (propertyId?: string) => Promise<void>;
   setInspections: (inspections: InspectionReport[]) => void;
   setCurrentInspection: (report: InspectionReport | null) => void;
@@ -86,6 +86,7 @@ interface InspectionState {
   // Synchronisation
   setSyncStatus: (status: SyncStatus) => void;
   syncPendingPhotos: (inspectionId: string) => Promise<void>;
+  finalizeInspection: (id: string, data: InspectionReport) => Promise<void>;
 }
 
 export const useInspectionStore = create<InspectionState>((set, get) => ({
@@ -95,7 +96,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
   error: null,
   syncStatus: 'synced',
 
-  init: async (user) => {
+  initStore: async (user) => {
     if (!user) return;
     set({ loading: true });
     try {
@@ -251,8 +252,9 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     // 1. Sauvegarde dans IndexedDB (Photos HD)
     await db.photos.add({
       id: photo.id,
+      itemId,
       blob: photo.blob,
-      isSynced: 0,
+      isSynced: false,
       lastModified: new Date().toISOString()
     });
 
@@ -269,7 +271,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
               id: photo.id,
               compressedBase64: photo.compressedBase64,
               isSynced: false,
-              status: 'PENDING'
+              status: 'PENDING' as const
             }]
           };
         })
@@ -326,6 +328,11 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
           const photo = updatedPhotos[k];
           if (photo.status === 'PENDING' && photo.compressedBase64) {
             try {
+              if (!photo.compressedBase64) {
+                updatedPhotos[k] = { ...photo, status: 'ERROR' as const };
+                continue;
+              }
+
               const result = await uploadInspectionPhoto(photo.compressedBase64, {
                 propertyId: inspection.propertyId,
                 organizationId: (inspection as any).organizationId,
@@ -388,5 +395,21 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         });
       }
     }
+  },
+
+  finalizeInspection: async (id, data) => {
+    const finalized = { ...data, isFinalized: true, lastModified: new Date().toISOString() };
+    await db.inspections.put(finalized);
+    await db.enqueueMutation({
+      type: 'UPDATE',
+      entity: 'inspection',
+      entityId: id,
+      data: finalized
+    });
+
+    set(state => ({
+      inspections: state.inspections.map(i => i.id === id ? finalized : i),
+      currentInspection: state.currentInspection?.id === id ? finalized : state.currentInspection
+    }));
   }
 }));

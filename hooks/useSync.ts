@@ -23,7 +23,10 @@ export function useSync() {
    */
   const uploadUnsyncedPhotos = useCallback(async () => {
     try {
-      const unsyncedPhotos = await db.photos.where('isSynced').equals(false).toArray();
+      // Utilisation d'un filtre au lieu d'un where clause pour éviter les erreurs "The parameter is not a valid key"
+      // sur les index bohéens dans certains environnements IndexedDB.
+      const unsyncedPhotos = await db.photos.filter(p => p.isSynced === false).toArray();
+      
       if (unsyncedPhotos.length === 0) return;
 
       console.log(`[Sync] ${unsyncedPhotos.length} photos HD en attente d'upload...`);
@@ -193,5 +196,5 @@ export function useSync() {
     return () => clearInterval(interval);
   }, [isOnline, session, processQueue]);
 
-  return { processQueue, isOnline };
+  return { processQueue, isOnline, isSyncing: syncStatus === 'syncing' };
 }
