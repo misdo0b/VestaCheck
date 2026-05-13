@@ -45,7 +45,6 @@ export function useSync() {
       console.log(`[Sync] ${unsyncedPhotos.length} photos HD en attente d'upload...`);
 
       for (const photo of unsyncedPhotos) {
-        if (!photo.blob) continue;
         const formData = new FormData();
         formData.append('file', photo.blob, `${photo.id}.jpg`);
 
@@ -56,11 +55,12 @@ export function useSync() {
 
         if (response.ok) {
           const { url } = await response.json();
-          
+
           // Mise à jour locale
-          await db.photos.update(photo.id, { 
-            isSynced: true, 
-            cloudUrl: url
+          await db.photos.update(photo.id, {
+            isSynced: 1,
+            cloudUrl: url,
+            lastModified: new Date().toISOString()
           });
 
           // Mise à jour de l'inspection correspondante dans le JSON pour cohérence
@@ -75,7 +75,7 @@ export function useSync() {
                   photoFound = true;
                   return {
                     ...item,
-                    photos: item.photos.map(p => 
+                    photos: item.photos.map(p =>
                       p.id === photo.id ? { ...p, isSynced: true, cloudUrl: url } : p
                     )
                   };
@@ -87,7 +87,7 @@ export function useSync() {
             if (photoFound) {
               const updatedInspection = { ...insp, rooms: updatedRooms };
               await db.inspections.update(insp.id, { rooms: updatedRooms });
-              
+
               // On déclenche une mutation de synchro pour mettre à jour la base SQL
               await db.enqueueMutation({
                 type: 'UPDATE',
@@ -104,21 +104,32 @@ export function useSync() {
     }
   }, []);
 
+  const isProcessingRef = React.useRef(false);
+
   /**
    * Traite la file d'attente des mutations de données
    */
   const processQueue = useCallback(async () => {
-    if (!session || syncStatus === 'syncing' || !isOnline) return;
+    if (!session || syncStatus === 'syncing' || !isOnline || isProcessingRef.current) return;
 
     try {
-      // 1. Upload des photos HD d'abord
+      isProcessingRef.current = true;
+      setSyncStatus('syncing');
+
+      // 1. Synchronisation des photos Cloudinary (Miniatures/Mode Hybrid)
+      await useInspectionStore.getState().syncPendingPhotos();
+
+      // 2. Upload des photos HD d'abord (Supabase Storage)
       await uploadUnsyncedPhotos();
 
-      // 2. Synchronisation des mutations de données
+      // 3. Synchronisation des mutations de données
       const rawMutations = await db.mutationQueue.orderBy('timestamp').toArray();
-      if (rawMutations.length === 0) return;
-
-      setSyncStatus('syncing');
+      
+      if (rawMutations.length === 0) {
+        setSyncStatus('synced');
+        isProcessingRef.current = false;
+        return;
+      }
 
       // Fusion des mutations consécutives pour la même entité (Squashing)
       // On ne garde que la dernière version d'un UPDATE pour une entité donnée
@@ -144,7 +155,7 @@ export function useSync() {
       }
 
       const uniqueMutations = Array.from(squashedMap.values());
-      
+
       // Enrichissement et nettoyage final
       const mutations = await Promise.all(uniqueMutations.map(async (m) => {
         if (m.entity === 'inspection' && m.type === 'UPDATE') {
@@ -177,7 +188,7 @@ export function useSync() {
 
       if (response.ok) {
         const { results } = await response.json();
-        
+
         // On supprime de la queue locale uniquement ce qui a réussi
         const successfulIds = (results || [])
           .filter((r: any) => r.status === 'success')
@@ -188,12 +199,7 @@ export function useSync() {
           console.log(`[Sync] ${successfulIds.length} mutations synchronisées.`);
         }
 
-        if (successfulIds.length === mutations.length) {
-          setSyncStatus('synced');
-        } else {
-          setSyncStatus('error');
-          console.error('[Sync] Certaines mutations ont échoué.');
-        }
+        setSyncStatus('synced');
 
         // Rafraîchissement optionnel des données globales après une synchro réussie
         if (successfulIds.length > 0) {
@@ -208,6 +214,8 @@ export function useSync() {
     } catch (error) {
       console.error('[Sync] Erreur lors de la synchronisation:', error);
       setSyncStatus('error');
+    } finally {
+      isProcessingRef.current = false;
     }
   }, [session, syncStatus, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, isOnline]);
 
@@ -217,10 +225,10 @@ export function useSync() {
       const timer = setInterval(() => {
         processQueue();
       }, 30000); // Toutes les 30 secondes si online
-      
+
       // Aussi déclencher immédiatement
       processQueue();
-      
+
       return () => clearInterval(timer);
     }
   }, [session, processQueue]);
@@ -230,7 +238,7 @@ export function useSync() {
   useEffect(() => {
     if (currentInspection && session) {
       const timeout = setTimeout(() => {
-         processQueue();
+        processQueue();
       }, 5000);
       return () => clearTimeout(timeout);
     }

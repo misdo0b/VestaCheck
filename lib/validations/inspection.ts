@@ -4,11 +4,11 @@ export const ConditionSchema = z.enum(['Neuf', 'Très Bon', 'Bon', 'Usage', 'Mau
 
 export const PhotoMetadataSchema = z.object({
   id: z.string(),
-  compressedBase64: z.string(),
-  hasFullRes: z.boolean().optional(),
+  compressedBase64: z.string().optional(),
   cloudUrl: z.string().optional(),
   isSynced: z.boolean().default(false),
-  status: z.enum(['PENDING', 'SYNCING', 'UPLOADED', 'ERROR']).default('PENDING'),
+  hasFullRes: z.boolean().optional(),
+  status: z.enum(['PENDING', 'SYNCING', 'UPLOADED', 'ERROR']).optional(),
   storagePath: z.string().optional(),
 });
 
@@ -38,7 +38,7 @@ const BaseReportSchema = z.object({
   tenantId: z.string().optional(),
   agencyId: z.string(),
   organizationId: z.string(),
-  
+
   // Locataire manuel si pas sélectionné
   manualTenant: z.object({
     name: z.string(),
@@ -51,7 +51,7 @@ const BaseReportSchema = z.object({
     electricity: z.number().min(0),
     gas: z.number().optional(),
   }),
-  
+
   keyInventories: z.array(z.object({
     id: z.string(),
     type: z.string(),
@@ -81,12 +81,15 @@ const BaseReportSchema = z.object({
 // Schéma avec raffinements pour la validation RUNTIME
 export const InspectionReportSchema = BaseReportSchema
   .refine((data) => {
-    // Validation du locataire selon le type
-    const hasTenant = !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
-    if (data.type === 'Sortie') return !!data.tenantId;
-    return hasTenant;
+    // Si finalisé, le locataire est requis
+    if (data.isFinalized) {
+      const hasTenant = !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
+      if (data.type === 'Sortie') return !!data.tenantId;
+      return hasTenant;
+    }
+    return true;
   }, {
-    message: "Le locataire est requis (sélection ou saisie manuelle complète)",
+    message: "Le locataire est requis (sélection ou saisie manuelle complète) pour finaliser le rapport.",
     path: ['tenantId']
   })
   .refine((data) => {
@@ -112,6 +115,8 @@ export const PropertyTemplateSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Nom du modèle requis"),
   propertyId: z.string(),
+  agencyId: z.string().optional(),
+  organizationId: z.string().optional(),
   rooms: z.array(RoomSchema).default([]),
   lastModified: z.string(),
 });
