@@ -15,13 +15,15 @@ export const compressImage = (file: File, maxWidth: number = 1200, quality: numb
 
         // Prepare Compressed Version (Thumbnail/Offline)
         const canvas = document.createElement('canvas');
+        
+        // Miniature beaucoup plus petite pour le stockage JSON (IndexedDB + Sync payload)
+        const thumbMaxWidth = 400; 
         let width = img.width;
         let height = img.height;
 
-        // Resize if too large
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
+        if (width > thumbMaxWidth) {
+          height = Math.round((height * thumbMaxWidth) / width);
+          width = thumbMaxWidth;
         }
 
         canvas.width = width;
@@ -35,7 +37,7 @@ export const compressImage = (file: File, maxWidth: number = 1200, quality: numb
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Export as JPEG with specific quality to hit ~100kb target
+        // Export as JPEG with specific quality
         const thumb = canvas.toDataURL('image/jpeg', quality);
 
         resolve({
