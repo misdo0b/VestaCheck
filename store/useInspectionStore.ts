@@ -208,7 +208,8 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     await db.enqueueMutation({
       type: 'DELETE',
       entity: 'inspection',
-      entityId: id
+      entityId: id,
+      data: { id }
     });
     set(state => ({
       inspections: state.inspections.filter(i => i.id !== id),
@@ -251,9 +252,11 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     // 1. Sauvegarde dans IndexedDB (Photos HD)
     await db.photos.add({
       id: photo.id,
+      itemId: itemId,
       blob: photo.blob,
-      isSynced: 0,
-      lastModified: new Date().toISOString()
+      isSynced: false,
+      compressedBase64: photo.compressedBase64,
+      status: 'PENDING' as const
     });
 
     // 2. Mise à jour du rapport (Miniature)
@@ -269,7 +272,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
               id: photo.id,
               compressedBase64: photo.compressedBase64,
               isSynced: false,
-              status: 'PENDING'
+              status: 'PENDING' as const
             }]
           };
         })
