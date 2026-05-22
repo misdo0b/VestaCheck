@@ -13,6 +13,28 @@ import { useInspectionStore } from '@/store/useInspectionStore';
  * @param filename Nom du fichier de sortie
  * @param data Données du rapport d'inspection
  */
+/**
+ * Récupère une image depuis une URL locale et la convertit en chaîne Base64.
+ */
+const getBase64ImageFromUrl = async (url: string): Promise<string> => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+/**
+ * Génère un rapport d'état des lieux PDF haut de gamme, 100% vectoriel et net.
+ * Utilise jsPDF et jspdf-autotable pour la mise en page et la pagination automatique.
+ *
+ * @param elementId Identifiant de l'élément DOM (inutilisé désormais mais conservé pour compatibilité)
+ * @param filename Nom du fichier de sortie
+ * @param data Données du rapport d'inspection
+ */
 export const generatePDF = async (
   elementId: string,
   filename: string = 'rapport-vestacheck.pdf',
@@ -48,22 +70,54 @@ export const generatePDF = async (
     const inspector = users.find(u => u.id === activeData.inspectorId);
     const inspectorName = inspector?.name || "Inspecteur VestaCheck";
 
-    // 4. Tracé de l'en-tête vectoriel corporate sur la première page
-    // Dessin d'un emblème moderne (carré bleu avec une coche blanche vectorielle)
-    pdf.setFillColor(37, 99, 235); // Bleu VestaCheck
-    pdf.rect(margin, 20, 8, 8, 'F');
-    
-    // Coche blanche vectorielle
-    pdf.setDrawColor(255, 255, 255);
-    pdf.setLineWidth(0.8);
-    pdf.line(margin + 2, 24, margin + 3.5, 25.5);
-    pdf.line(margin + 3.5, 25.5, margin + 6, 22);
+    // 4. Tracé de l'en-tête (Logo premium de l'application ou repli vectoriel)
+    let logoLoaded = false;
+    try {
+      const logoBase64 = await getBase64ImageFromUrl('/assets/logo-horizontal.png');
+      if (logoBase64 && logoBase64.startsWith('data:image')) {
+        const logoFormat = logoBase64.includes('image/png') || logoBase64.includes('image/PNG') ? 'PNG' : 'JPEG';
+        // Charger l'image pour obtenir son aspect ratio naturel
+        const dims = await new Promise<{ width: number; height: number }>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+          img.onerror = () => resolve({ width: 200, height: 40 }); // dimensions par défaut si erreur
+          img.src = logoBase64;
+        });
+        
+        // On souhaite que la hauteur du logo soit de 8mm (identique à l'emblème précédent pour la cohérence)
+        const targetHeight = 8;
+        const aspectRatio = dims.width / dims.height;
+        const targetWidth = targetHeight * aspectRatio;
+        
+        // On limite la largeur à 50mm maximum pour ne pas écraser les métadonnées de droite
+        const finalWidth = Math.min(targetWidth, 50);
+        const finalHeight = finalWidth / aspectRatio;
+        
+        // On place le logo au même endroit (x = margin, y = 20)
+        pdf.addImage(logoBase64, logoFormat, margin, 20, finalWidth, finalHeight);
+        logoLoaded = true;
+      }
+    } catch (error) {
+      console.warn("Impossible de charger le logo horizontal PNG pour le PDF, repli sur l'en-tête vectoriel :", error);
+    }
 
-    // Titre de l'application
-    pdf.setFont('Helvetica', 'bold');
-    pdf.setFontSize(16);
-    pdf.setTextColor(37, 99, 235);
-    pdf.text("VESTACHECK", margin + 12, 26.5);
+    if (!logoLoaded) {
+      // Repli : Dessin d'un emblème moderne (carré bleu avec une coche blanche vectorielle)
+      pdf.setFillColor(37, 99, 235); // Bleu VestaCheck
+      pdf.rect(margin, 20, 8, 8, 'F');
+      
+      // Coche blanche vectorielle
+      pdf.setDrawColor(255, 255, 255);
+      pdf.setLineWidth(0.8);
+      pdf.line(margin + 2, 24, margin + 3.5, 25.5);
+      pdf.line(margin + 3.5, 25.5, margin + 6, 22);
+
+      // Titre de l'application
+      pdf.setFont('Helvetica', 'bold');
+      pdf.setFontSize(16);
+      pdf.setTextColor(37, 99, 235);
+      pdf.text("VESTACHECK", margin + 12, 26.5);
+    }
 
     // Métadonnées de l'état des lieux à droite
     pdf.setFont('Helvetica', 'bold');
