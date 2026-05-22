@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { UserRole } from "@/types";
 import { getSupabase } from "@/lib/supabase";
+import { sendWelcomeEmail } from "@/lib/mail";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -93,6 +94,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               console.error("SSO Signin Auto-Create Error:", insertError);
               return false;
             }
+
+            // Envoi asynchrone non-bloquant du mail de bienvenue pour le nouvel Agent SSO
+            const welcomeName = user.name || email.split('@')[0];
+            sendWelcomeEmail(email, welcomeName, "Agence Principale").catch((err) => {
+              console.error("[Mail] Échec d'envoi du mail de bienvenue SSO:", err);
+            });
           }
         } catch (err) {
           console.error("SSO Signin Callback Error:", err);
