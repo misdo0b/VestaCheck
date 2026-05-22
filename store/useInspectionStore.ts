@@ -69,7 +69,7 @@ interface InspectionState {
   syncStatus: SyncStatus;
 
   // Actions
-  init: (user: any) => Promise<void>;
+  initStore: (user: any) => Promise<void>;
   fetchInspections: (propertyId?: string) => Promise<void>;
   setInspections: (inspections: InspectionReport[]) => void;
   setCurrentInspection: (report: InspectionReport | null) => void;
@@ -95,7 +95,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
   error: null,
   syncStatus: 'synced',
 
-  init: async (user) => {
+  initStore: async (user) => {
     if (!user) return;
     set({ loading: true });
     try {
