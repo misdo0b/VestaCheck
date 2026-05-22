@@ -23,7 +23,7 @@ export function useSync() {
    */
   const uploadUnsyncedPhotos = useCallback(async () => {
     try {
-      const unsyncedPhotos = await db.photos.where('isSynced').equals(false).toArray();
+      const unsyncedPhotos = await db.photos.filter(p => !p.isSynced || (p.isSynced as any) === 0).toArray();
       if (unsyncedPhotos.length === 0) return;
 
       console.log(`[Sync] ${unsyncedPhotos.length} photos HD en attente d'upload...`);
@@ -48,8 +48,7 @@ export function useSync() {
           // 1. Mise à jour table photos
           await db.photos.update(photo.id, {
             isSynced: true,
-            cloudUrl: url,
-            lastModified: new Date().toISOString()
+            cloudUrl: url
           });
 
           // 2. Mise à jour en mémoire des inspections correspondantes
