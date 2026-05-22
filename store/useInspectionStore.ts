@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { InspectionReport, SyncStatus, Room } from '@/types';
 import { db } from '@/lib/db';
-import { uploadInspectionPhoto } from '@/lib/cloudinary';
+import { uploadInspectionPhoto } from '@/app/actions/media';
 
 const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
