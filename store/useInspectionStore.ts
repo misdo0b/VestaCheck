@@ -82,11 +82,11 @@ interface InspectionState {
   updateItem: (roomId: string, itemId: string, data: Partial<any>) => void;
   addPhoto: (roomId: string, itemId: string, photo: any) => Promise<void>;
   deletePhoto: (roomId: string, itemId: string, photoId: string) => void;
-  finalizeInspection: (id: string, report: Partial<InspectionReport>) => Promise<void>;
   
   // Synchronisation
   setSyncStatus: (status: SyncStatus) => void;
   syncPendingPhotos: (inspectionId: string) => Promise<void>;
+  finalizeInspection: (id: string, report: Partial<InspectionReport>) => Promise<void>;
 }
 
 export const useInspectionStore = create<InspectionState>((set, get) => ({
@@ -253,11 +253,12 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     // 1. Sauvegarde dans IndexedDB (Photos HD)
     await db.photos.add({
       id: photo.id,
-      itemId: itemId,
+      itemId,
       blob: photo.blob,
       isSynced: false,
       compressedBase64: photo.compressedBase64,
-      status: 'PENDING' as const
+      status: 'PENDING' as const,
+      lastModified: new Date().toISOString()
     });
 
     // 2. Mise à jour du rapport (Miniature)
@@ -361,6 +362,11 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
           const photo = updatedPhotos[k];
           if (photo.status === 'PENDING' && photo.compressedBase64) {
             try {
+              if (!photo.compressedBase64) {
+                updatedPhotos[k] = { ...photo, status: 'ERROR' as const };
+                continue;
+              }
+
               const result = await uploadInspectionPhoto(photo.compressedBase64, {
                 propertyId: inspection.propertyId,
                 organizationId: (inspection as any).organizationId,

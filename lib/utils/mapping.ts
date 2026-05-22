@@ -45,39 +45,40 @@ export const cloneWithNewIds = (data: Partial<InspectionReport>): any => {
   };
 };
 
-const toCamel = (s: string) => {
-  return s.replace(/([-_][a-z])/gi, ($1) => {
-    return $1.toUpperCase()
-      .replace('-', '')
-      .replace('_', '');
-  });
-};
-
-const toSnake = (s: string) => {
-  return s.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-};
-
-export const snakeToCamel = (obj: any): any => {
+/**
+ * Convertit un objet (ou un tableau d'objets) de snake_case vers camelCase.
+ */
+export function snakeToCamel(obj: any): any {
   if (Array.isArray(obj)) {
     return obj.map(v => snakeToCamel(v));
-  } else if (obj !== null && typeof obj === 'object') {
-    return Object.keys(obj).reduce((result, key) => {
-      result[toCamel(key)] = snakeToCamel(obj[key]);
-      return result;
-    }, {} as any);
+  } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Date) && !(obj instanceof Blob)) {
+    const result: any = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const camelKey = key.replace(/(_\w)/g, (m) => m[1].toUpperCase());
+        result[camelKey] = snakeToCamel(obj[key]);
+      }
+    }
+    return result;
   }
   return obj;
-};
+}
 
-export const camelToSnake = (obj: any): any => {
+/**
+ * Convertit un objet (ou un tableau d'objets) de camelCase vers snake_case.
+ */
+export function camelToSnake(obj: any): any {
   if (Array.isArray(obj)) {
     return obj.map(v => camelToSnake(v));
-  } else if (obj !== null && typeof obj === 'object') {
-    return Object.keys(obj).reduce((result, key) => {
-      result[toSnake(key)] = camelToSnake(obj[key]);
-      return result;
-    }, {} as any);
+  } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Date) && !(obj instanceof Blob)) {
+    const result: any = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const snakeKey = key.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
+        result[snakeKey] = camelToSnake(obj[key]);
+      }
+    }
+    return result;
   }
   return obj;
-};
-
+}

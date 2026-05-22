@@ -56,10 +56,11 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
       }
 
       // 3. IMPORTANT : Synchroniser le store avec le formulaire pour que le worker voie les photos
-      await setCurrentInspection(getValues() as any);
+      const currentValues = getValues() as any;
+      await setCurrentInspection(currentValues);
 
       // 4. Déclenchement de la synchro cloud en arrière-plan
-      setTimeout(() => syncPendingPhotos(getValues('id')), 1000);
+      setTimeout(() => syncPendingPhotos(currentValues.id), 1000);
     } catch (err) {
       console.error("Erreur capture photo:", err);
     } finally {
