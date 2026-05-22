@@ -83,18 +83,18 @@ export const generatePDF = async (
           img.onerror = () => resolve({ width: 200, height: 40 }); // dimensions par défaut si erreur
           img.src = logoBase64;
         });
-        
-        // On souhaite que la hauteur du logo soit de 8mm (identique à l'emblème précédent pour la cohérence)
-        const targetHeight = 8;
+
+        // On souhaite que la hauteur du logo soit de 12mm pour une excellente visibilité et un impact premium
+        const targetHeight = 12;
         const aspectRatio = dims.width / dims.height;
         const targetWidth = targetHeight * aspectRatio;
-        
-        // On limite la largeur à 50mm maximum pour ne pas écraser les métadonnées de droite
-        const finalWidth = Math.min(targetWidth, 50);
+
+        // On limite la largeur à 60mm maximum pour ne pas écraser les métadonnées de droite
+        const finalWidth = Math.min(targetWidth, 60);
         const finalHeight = finalWidth / aspectRatio;
-        
-        // On place le logo au même endroit (x = margin, y = 20)
-        pdf.addImage(logoBase64, logoFormat, margin, 20, finalWidth, finalHeight);
+
+        // On place le logo au même endroit horizontalement mais légèrement relevé verticalement (x = margin, y = 16) pour s'harmoniser avec la ligne de démarcation
+        pdf.addImage(logoBase64, logoFormat, margin, 16, finalWidth, finalHeight);
         logoLoaded = true;
       }
     } catch (error) {
@@ -105,7 +105,7 @@ export const generatePDF = async (
       // Repli : Dessin d'un emblème moderne (carré bleu avec une coche blanche vectorielle)
       pdf.setFillColor(37, 99, 235); // Bleu VestaCheck
       pdf.rect(margin, 20, 8, 8, 'F');
-      
+
       // Coche blanche vectorielle
       pdf.setDrawColor(255, 255, 255);
       pdf.setLineWidth(0.8);
@@ -414,7 +414,7 @@ export const generatePDF = async (
       const imgHeight = 50;
       const colWidth = 75;
       const colGap = 20; // 20 + 75 + 20 + 75 = 190 (Symétrique avec marges de 20mm)
-      
+
       const rowGap = 30; // Espace vertical entre les deux lignes de grille
       const row1_Y = 35;
       const row2_Y = 120;
@@ -438,7 +438,7 @@ export const generatePDF = async (
 
         // Dessin de la photo (priorité HD locale, puis Cloudinary, puis miniature offline)
         const photoSrc = photoInfo.fullResBase64 || photoInfo.cloudUrl || photoInfo.compressedBase64;
-        
+
         if (photoSrc) {
           const format = photoSrc.includes('image/png') || photoSrc.includes('image/PNG') ? 'PNG' : 'JPEG';
           try {
@@ -463,7 +463,7 @@ export const generatePDF = async (
 
         // Légendes claires et corporatives en-dessous
         const labelY = y + imgHeight + 6;
-        
+
         pdf.setFont('Helvetica', 'bold');
         pdf.setFontSize(8);
         pdf.setTextColor(17, 24, 39);
@@ -508,7 +508,7 @@ export const generatePDF = async (
       const legalTextLine1 = `DOCUMENT CERTIFIÉ CONFORME PAR VESTACHECK © 2026`;
       const legalTextLine2 = `Signatures électroniques horodatées et certifiées conformes au règlement eIDAS (UE) n°910/2014.`;
       const legalTextLine3 = `Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}. Toute modification altère la signature et invalide ce document.`;
-      
+
       pdf.text(legalTextLine1, pdfWidth / 2, 286, { align: 'center' });
       pdf.text(legalTextLine2, pdfWidth / 2, 289, { align: 'center' });
       pdf.text(legalTextLine3, pdfWidth / 2, 292, { align: 'center' });
