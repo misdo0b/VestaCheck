@@ -241,7 +241,8 @@ export const HeaderSection: React.FC = () => {
           <input
             type="date"
             {...register('date')}
-            className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all cursor-pointer"
+            disabled={isFinalized}
+            className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           />
         </div>
       </div>

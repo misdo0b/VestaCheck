@@ -72,7 +72,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     defaultValues: {
       id: initialData?.id || crypto.randomUUID(),
       propertyId: initialData?.propertyId || 'prop1',
-      date: initialData?.date || new Date().toISOString().split('T')[0],
+      date: initialData?.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0],
       type: initialData?.type || 'Entrée',
       propertyAddress: initialData?.propertyAddress || '',
       tenantId: initialData?.tenantId || '',
