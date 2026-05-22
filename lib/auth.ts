@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import Apple from "next-auth/providers/apple";
 import { UserRole } from "@/types";
 import { getSupabase } from "@/lib/supabase";
 
@@ -10,10 +9,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET,
-    }),
-    Apple({
-      clientId: process.env.AUTH_APPLE_ID || process.env.APPLE_CLIENT_ID,
-      clientSecret: process.env.AUTH_APPLE_SECRET || process.env.APPLE_CLIENT_SECRET,
     }),
     Credentials({
       name: "Credentials",
@@ -62,7 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === 'google' || account?.provider === 'apple') {
+      if (account?.provider === 'google') {
         const email = user.email?.toLowerCase();
         if (!email) return false;
 
@@ -108,7 +103,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user, account }) {
       if (user) {
-        if (account && (account.provider === 'google' || account.provider === 'apple')) {
+        if (account && account.provider === 'google') {
           const email = user.email?.toLowerCase();
           if (email) {
             try {
