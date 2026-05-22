@@ -245,7 +245,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       const safeTenantName = data.id.slice(0, 8);
       const fileName = `Rapport_${safeTenantName}_${data.date.replace(/\//g, '-')}.pdf`;
 
-      await generatePDF('inspection-report-pdf', fileName);
+      await generatePDF('inspection-report-pdf', fileName, enrichedData);
       toast.success("PDF HD généré avec succès !");
     } catch (error) {
       console.error("Export PDF Error:", error);

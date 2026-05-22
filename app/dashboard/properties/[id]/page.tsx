@@ -14,6 +14,7 @@ import {
 import { PropertyModal } from '@/components/properties/PropertyModal';
 import { PDFTemplate } from '@/components/pdf/PDFTemplate';
 import { generatePDF } from '@/lib/utils/generate-pdf';
+import { PhotoBlobStorage } from '@/lib/utils/blob-storage';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useUserStore } from '@/store/useUserStore';
@@ -69,6 +70,22 @@ export default function PropertyDetailPage() {
   const handleExportPDF = async (inspection: any) => {
     setExportingId(inspection.id);
     try {
+      const enrichedInspection = JSON.parse(JSON.stringify(inspection));
+
+      // Enrichissement avec les photos HD si présentes en local
+      for (const room of enrichedInspection.rooms || []) {
+        for (const item of room.items || []) {
+          for (const photo of item.photos || []) {
+            if (photo.hasFullRes) {
+              const hdData = await PhotoBlobStorage.getPhotoHD(photo.id);
+              if (hdData) {
+                photo.fullResBase64 = hdData;
+              }
+            }
+          }
+        }
+      }
+
       await new Promise(resolve => setTimeout(resolve, 500));
       const tenant = tenants.find(t => t.id === inspection.tenantId);
       const nameToUse = tenant?.name || 'Inconnu';
@@ -78,7 +95,7 @@ export default function PropertyDetailPage() {
         .toLowerCase();
       
       const fileName = `Rapport_${safeTenantName}_${inspection.date.replace(/\//g, '-')}.pdf`;
-      await generatePDF('inspection-report-pdf-history', fileName);
+      await generatePDF('inspection-report-pdf-history', fileName, enrichedInspection);
       toast.success("PDF généré avec succès !");
     } catch (error) {
       console.error("Erreur lors de l'export PDF:", error);
