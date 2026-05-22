@@ -80,16 +80,24 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       inspectorId: initialData?.inspectorId || currentUser?.id || 'agent1',
       agencyId: initialData?.agencyId || currentUser?.agencyId || '',
       organizationId: initialData?.organizationId || currentUser?.organizationId || '',
-      counters: initialData?.counters || { water: 0, electricity: 0, gas: 0 },
-      keyInventories: initialData?.keyInventories || [
+      counters: {
+        water: initialData?.counters?.water ?? 0,
+        electricity: initialData?.counters?.electricity ?? 0,
+        gas: initialData?.counters?.gas ?? 0,
+      },
+      keyInventories: (initialData?.keyInventories || [
         { id: crypto.randomUUID(), type: 'Clés du logement', count: 2 }
-      ],
+      ]).map(k => ({
+        ...k,
+        count: k.count ?? 1,
+        type: k.type || 'Clés du logement'
+      })),
       signatures: initialData?.signatures || {
         tenant: { type: 'Aucune' },
         inspector: { type: 'Aucune' }
       },
       generalObservations: initialData?.generalObservations || '',
-      rooms: initialData?.rooms || [
+      rooms: (initialData?.rooms || [
         {
           id: crypto.randomUUID(),
           name: 'Salon',
@@ -98,7 +106,13 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
             { id: crypto.randomUUID(), label: 'Sols', condition: 'Bon', comment: '', photos: [] }
           ]
         }
-      ],
+      ]).map(room => ({
+        ...room,
+        items: (room.items || []).map(item => ({
+          ...item,
+          condition: item.condition || 'Bon'
+        }))
+      })),
       isFinalized: initialData?.isFinalized || false,
       lastModified: new Date().toISOString(),
     },
@@ -110,11 +124,28 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
   const tenantSig = methods.watch('signatures.tenant');
   const inspectorSig = methods.watch('signatures.inspector');
 
-  const bothSignaturesPresent = !!tenantSig?.drawData && !!inspectorSig?.drawData;
-  const isLocked = isFinalized || !!tenantSig?.drawData || !!inspectorSig?.drawData;
-  const canFinalize = isValid && bothSignaturesPresent && isFinalized;
+  const bothSignaturesPresent = !!(tenantSig?.drawData && inspectorSig?.drawData);
+  const isLocked = !!(
+    initialData?.isFinalized || 
+    isFinalized || 
+    tenantSig?.drawData || 
+    inspectorSig?.drawData ||
+    methods.getValues('isFinalized') ||
+    methods.getValues('signatures.tenant.drawData') ||
+    methods.getValues('signatures.inspector.drawData')
+  );
+  const canFinalize = isValid && bothSignaturesPresent && (initialData?.isFinalized || isFinalized);
 
   const nextStep = async () => {
+    if (isLocked) {
+      setCurrentStep(s => {
+        const next = Math.min(s + 1, steps.length - 1);
+        return isNaN(next) ? 0 : next;
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     let fieldsToValidate: any[] = [];
     if (isTemplateMode) {
       if (currentStep === 0) fieldsToValidate = ['counters'];
@@ -132,6 +163,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+      console.warn("[VestaCheck Validation Debug] Erreurs sur l'étape courante:", methods.formState.errors);
       toast.error("Veuillez corriger les erreurs avant de continuer.");
     }
   };

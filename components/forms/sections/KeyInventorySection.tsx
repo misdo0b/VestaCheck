@@ -4,15 +4,16 @@ import { InspectionFormData } from '@/lib/validations/inspection';
 import { Key, Plus, Trash2, ShieldCheck, Minus } from 'lucide-react';
 
 export const KeyInventorySection: React.FC = () => {
-  const { register, control, watch } = useFormContext<InspectionFormData>();
+  const { register, control, watch, getValues } = useFormContext<InspectionFormData>();
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'keyInventories'
   });
 
-  const tenantSig = watch('signatures.tenant.drawData');
-  const inspectorSig = watch('signatures.inspector.drawData');
-  const isLocked = !!(tenantSig || inspectorSig);
+  const tenantSig = watch('signatures.tenant.drawData') || getValues('signatures.tenant.drawData');
+  const inspectorSig = watch('signatures.inspector.drawData') || getValues('signatures.inspector.drawData');
+  const isFinalized = watch('isFinalized') || getValues('isFinalized');
+  const isLocked = !!(isFinalized || tenantSig || inspectorSig);
 
   return (
     <div className={`mb-12 ${isLocked ? 'opacity-75' : ''}`}>

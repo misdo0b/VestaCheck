@@ -21,7 +21,7 @@ export const generatePDF = async (
   // 1. Résolution des données (avec repli vers le store de l'état en cours)
   let activeData = data;
   if (!activeData) {
-    activeData = useInspectionStore.getState().currentInspection || undefined;
+    activeData = (useInspectionStore.getState().currentInspection as any) || undefined;
   }
 
   if (!activeData) {

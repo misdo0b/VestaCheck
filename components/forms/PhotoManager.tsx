@@ -17,9 +17,10 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
   const { setCurrentInspection, syncPendingPhotos } = useInspectionStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const tenantSig = watch('signatures.tenant.drawData');
-  const inspectorSig = watch('signatures.inspector.drawData');
-  const isLocked = !!(tenantSig || inspectorSig);
+  const tenantSig = watch('signatures.tenant.drawData') || getValues('signatures.tenant.drawData');
+  const inspectorSig = watch('signatures.inspector.drawData') || getValues('signatures.inspector.drawData');
+  const isFinalized = watch('isFinalized') || getValues('isFinalized');
+  const isLocked = !!(isFinalized || tenantSig || inspectorSig);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -58,7 +59,7 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
       await setCurrentInspection(getValues() as any);
 
       // 4. Déclenchement de la synchro cloud en arrière-plan
-      setTimeout(() => syncPendingPhotos(), 1000);
+      setTimeout(() => syncPendingPhotos(getValues('id')), 1000);
     } catch (err) {
       console.error("Erreur capture photo:", err);
     } finally {
@@ -108,7 +109,7 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                syncPendingPhotos();
+                syncPendingPhotos(getValues('id'));
               }}
               className="absolute inset-0 flex items-center justify-center bg-black/60 text-white rounded-lg group-hover:bg-blue-500/80 transition-colors"
               title="Réessayer la synchronisation"
@@ -118,20 +119,22 @@ export const PhotoManager: React.FC<PhotoManagerProps> = ({ roomIndex, itemIndex
           )}
 
           {/* Bouton supprimer (caché si retry affiché par défaut, mais accessible au hover) */}
-          <button
-            type="button"
-            onClick={() => handleRemove(pIndex, (photo as any).id)}
-            className={`absolute inset-0 bg-red-500/80 text-white flex items-center justify-center transition-opacity ${
-              (photo as any).status === 'ERROR' ? 'opacity-0 group-hover:opacity-100 z-10' : 'opacity-0 group-hover:opacity-100'
-            }`}
-          >
-            <X size={14} />
-          </button>
+          {!isLocked && (
+            <button
+              type="button"
+              onClick={() => handleRemove(pIndex, (photo as any).id)}
+              className={`absolute inset-0 bg-red-500/80 text-white flex items-center justify-center transition-opacity ${
+                (photo as any).status === 'ERROR' ? 'opacity-0 group-hover:opacity-100 z-10' : 'opacity-0 group-hover:opacity-100'
+              }`}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       ))}
 
       {/* Bouton Ajouter (si < 4 photos) */}
-      {fields.length < 4 && (
+      {fields.length < 4 && !isLocked && (
         <button
           type="button"
           onClick={triggerUpload}

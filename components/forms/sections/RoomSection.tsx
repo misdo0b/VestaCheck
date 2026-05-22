@@ -1,17 +1,18 @@
 import React from 'react';
 import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
-import { InspectionFormData, ConditionSchema } from '@/lib/validations/inspection';
+import { InspectionFormData, ConditionSchema, CONDITION_OPTIONS } from '@/lib/validations/inspection';
 import { PlusCircle, Trash2, Camera, Plus, LayoutGrid } from 'lucide-react';
 import { PhotoManager } from '../PhotoManager';
 
 const ITEM_SUGGESTIONS = ['Murs', 'Sols', 'Plafond', 'Fenêtres', 'Portes', 'Radiateur', 'Prises', 'Interrupteurs', 'Plinthes'];
 
 export const RoomSection: React.FC = () => {
-  const { register, control, watch, formState: { errors } } = useFormContext<InspectionFormData>();
+  const { register, control, watch, getValues, formState: { errors } } = useFormContext<InspectionFormData>();
   
-  const tenantSig = watch('signatures.tenant.drawData');
-  const inspectorSig = watch('signatures.inspector.drawData');
-  const isLocked = !!(tenantSig || inspectorSig);
+  const tenantSig = watch('signatures.tenant.drawData') || getValues('signatures.tenant.drawData');
+  const inspectorSig = watch('signatures.inspector.drawData') || getValues('signatures.inspector.drawData');
+  const isFinalized = watch('isFinalized') || getValues('isFinalized');
+  const isLocked = !!(isFinalized || tenantSig || inspectorSig);
 
   const { fields: roomFields, append: appendRoom, remove: removeRoom } = useFieldArray({
     control,
@@ -172,7 +173,7 @@ const InspectionItemCard: React.FC<{
                   {...register(`rooms.${roomIndex}.items.${itemIndex}.condition` as const)}
                   className={`w-full bg-slate-950/80 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer ${getConditionStyles(condition)}`}
                 >
-                  {ConditionSchema.options.map(opt => (
+                  {CONDITION_OPTIONS.map(opt => (
                     <option key={opt} value={opt} className="bg-slate-900 text-white font-semibold">{opt}</option>
                   ))}
                 </select>

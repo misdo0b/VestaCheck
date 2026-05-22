@@ -8,11 +8,12 @@ interface CounterSectionProps {
 }
 
 export const CounterSection: React.FC<CounterSectionProps> = ({ isTemplateMode = false }) => {
-  const { register, watch, formState: { errors } } = useFormContext<InspectionFormData>();
+  const { register, watch, getValues, formState: { errors } } = useFormContext<InspectionFormData>();
   
-  const tenantSig = watch('signatures.tenant.drawData');
-  const inspectorSig = watch('signatures.inspector.drawData');
-  const isLocked = !!(tenantSig || inspectorSig);
+  const tenantSig = watch('signatures.tenant.drawData') || getValues('signatures.tenant.drawData');
+  const inspectorSig = watch('signatures.inspector.drawData') || getValues('signatures.inspector.drawData');
+  const isFinalized = watch('isFinalized') || getValues('isFinalized');
+  const isLocked = !!(isFinalized || tenantSig || inspectorSig);
 
   return (
     <div className={`bg-slate-900/50 p-8 rounded-2xl shadow-xl border border-white/5 mb-8 backdrop-blur-sm ${

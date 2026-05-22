@@ -192,5 +192,5 @@ export function useSync() {
     return () => clearInterval(interval);
   }, [isOnline, session, processQueue]);
 
-  return { processQueue, isOnline };
+  return { processQueue, isOnline, isSyncing: syncStatus === 'syncing' };
 }

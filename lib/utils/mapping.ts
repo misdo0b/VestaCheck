@@ -44,3 +44,40 @@ export const cloneWithNewIds = (data: Partial<InspectionReport>): any => {
     lastModified: new Date().toISOString()
   };
 };
+
+const toCamel = (s: string) => {
+  return s.replace(/([-_][a-z])/gi, ($1) => {
+    return $1.toUpperCase()
+      .replace('-', '')
+      .replace('_', '');
+  });
+};
+
+const toSnake = (s: string) => {
+  return s.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+};
+
+export const snakeToCamel = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(v => snakeToCamel(v));
+  } else if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((result, key) => {
+      result[toCamel(key)] = snakeToCamel(obj[key]);
+      return result;
+    }, {} as any);
+  }
+  return obj;
+};
+
+export const camelToSnake = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(v => camelToSnake(v));
+  } else if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((result, key) => {
+      result[toSnake(key)] = camelToSnake(obj[key]);
+      return result;
+    }, {} as any);
+  }
+  return obj;
+};
+

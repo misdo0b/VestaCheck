@@ -82,6 +82,7 @@ interface InspectionState {
   updateItem: (roomId: string, itemId: string, data: Partial<any>) => void;
   addPhoto: (roomId: string, itemId: string, photo: any) => Promise<void>;
   deletePhoto: (roomId: string, itemId: string, photoId: string) => void;
+  finalizeInspection: (id: string, report: Partial<InspectionReport>) => Promise<void>;
   
   // Synchronisation
   setSyncStatus: (status: SyncStatus) => void;
@@ -304,6 +305,37 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     });
 
     await get().updateInspection(current.id, { rooms: updatedRooms });
+  },
+
+  finalizeInspection: async (id, data) => {
+    const current = get().inspections.find(i => i.id === id);
+    if (!current) return;
+
+    const updated = fixInvalidIds({
+      ...current,
+      ...data,
+      isFinalized: true,
+      syncStatus: 'pending' as const,
+      lastModified: new Date().toISOString()
+    });
+
+    await db.inspections.put(updated);
+    await db.enqueueMutation({
+      type: 'UPDATE',
+      entity: 'inspection',
+      entityId: id,
+      data: updated
+    });
+
+    set(state => ({
+      inspections: state.inspections.map(i => i.id === id ? updated : i),
+      currentInspection: state.currentInspection?.id === id ? updated : state.currentInspection
+    }));
+
+    // Lancer la synchronisation des photos HD en arrière-plan
+    get().syncPendingPhotos(id).catch(err => {
+      console.error("[Sync] Erreur lors de la synchronisation des photos :", err);
+    });
   },
 
   setSyncStatus: (status) => set({ syncStatus: status }),
