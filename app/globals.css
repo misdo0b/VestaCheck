@@ -49,14 +49,25 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Surcharge globale des contrôles de formulaire pour le mode clair */
+/* Surcharge globale impérative des zones de saisie pour préserver le bleu-noir premium #020617 */
+input, select, textarea {
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+}
+
 html.light input,
 html.light select,
 html.light textarea {
+  background-color: #f8fafc !important;
   color: #020617 !important;
 }
 
-/* Assurer la visibilité des options dans le menu déroulant de sélection de langue */
+/* Assurer la visibilité et la cohérence de couleur des options dans le menu déroulant */
+select option {
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+}
+
 html.light select option {
   background-color: #ffffff !important;
   color: #020617 !important;

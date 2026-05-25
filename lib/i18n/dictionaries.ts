@@ -13,6 +13,11 @@ export const dictionaries = {
       organization: "Organisation",
       logout: "Déconnexion",
     },
+    roles: {
+      Administrateur: "Administrateur",
+      Agent: "Agent",
+      Propriétaire: "Propriétaire",
+    },
     profile: {
       title: "Paramètres du Profil",
       subtitle: "Gérez vos informations personnelles et vos paramètres de connexion.",
@@ -51,6 +56,11 @@ export const dictionaries = {
       tenants: "Tenants",
       organization: "Organization",
       logout: "Sign Out",
+    },
+    roles: {
+      Administrateur: "Administrator",
+      Agent: "Agent",
+      Propriétaire: "Owner",
     },
     profile: {
       title: "Profile Settings",
@@ -91,6 +101,11 @@ export const dictionaries = {
       organization: "Organización",
       logout: "Cerrar sesión",
     },
+    roles: {
+      Administrateur: "Administrador",
+      Agent: "Agente",
+      Propriétaire: "Propietario",
+    },
     profile: {
       title: "Ajustes de Perfil",
       subtitle: "Gestione su información personal y configuración de conexión.",
@@ -130,6 +145,11 @@ export const dictionaries = {
       organization: "机构",
       logout: "登出",
     },
+    roles: {
+      Administrateur: "管理员",
+      Agent: "代理人",
+      Propriétaire: "业主",
+    },
     profile: {
       title: "个人资料设置",
       subtitle: "管理您的个人信息和登录设置。",
@@ -168,6 +188,11 @@ export const dictionaries = {
       tenants: "الموقعين",
       organization: "المؤسسة",
       logout: "تسجيل الخروج",
+    },
+    roles: {
+      Administrateur: "مدير النظام",
+      Agent: "وكيل",
+      Propriétaire: "مالك",
     },
     profile: {
       title: "إعدادات الحساب",

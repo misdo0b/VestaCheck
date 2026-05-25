@@ -93,7 +93,7 @@ export const Navbar = () => {
                 <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
                   <div className="p-2 border-b border-white/5">
                     <p className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      {(session.user as any).role}
+                      {t(`roles.${(session.user as any).role}`) || (session.user as any).role}
                     </p>
                   </div>
                   <div className="p-1">
