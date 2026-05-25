@@ -6,12 +6,14 @@ import { useSession, signOut } from 'next-auth/react';
 import { LogOut, User, ChevronDown, Settings, Building } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export const Navbar = () => {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -48,7 +50,7 @@ export const Navbar = () => {
               pathname === '/dashboard' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            Dashboard
+            {t('common.dashboard')}
           </Link>
           <Link 
             href="/dashboard/properties" 
@@ -56,7 +58,7 @@ export const Navbar = () => {
               pathname.startsWith('/dashboard/properties') ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            Biens
+            {t('common.properties')}
           </Link>
           <Link 
             href="/dashboard/tenants" 
@@ -64,7 +66,7 @@ export const Navbar = () => {
               pathname.startsWith('/dashboard/tenants') ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            Locataires
+            {t('common.tenants')}
           </Link>
         </div>
 
@@ -101,7 +103,7 @@ export const Navbar = () => {
                       className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <Building className="w-4 h-4" />
-                      Organisation
+                      {t('common.organization')}
                     </Link>
                     <Link 
                       href="/dashboard/settings"
@@ -109,7 +111,7 @@ export const Navbar = () => {
                       className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <Settings className="w-4 h-4" />
-                      Paramètres
+                      {t('common.settings')}
                     </Link>
                   </div>
                   <div className="p-1 border-t border-white/5">
@@ -118,7 +120,7 @@ export const Navbar = () => {
                       className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
-                      Déconnexion
+                      {t('common.logout')}
                     </button>
                   </div>
                 </div>

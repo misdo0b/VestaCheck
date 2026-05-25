@@ -6,11 +6,13 @@ import { useUserStore } from '@/store/useUserStore';
 import { Settings, Save, User as UserIcon, Mail, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import PreferencesForm from '@/components/settings/PreferencesForm';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function SettingsPage() {
   const { data: session, update: updateSession } = useSession();
   const { updateUser } = useUserStore();
   const user = session?.user as any;
+  const { t } = useTranslation();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -56,13 +58,13 @@ export default function SettingsPage() {
         }
       });
 
-      toast.success("Paramètres mis à jour avec succès");
+      toast.success(t('profile.saveSuccess'));
       
       // Reset password field after save
       setFormData(prev => ({ ...prev, password: '' }));
     } catch (err) {
       console.error(err);
-      toast.error("Erreur lors de la mise à jour");
+      toast.error(t('profile.saveError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -76,15 +78,15 @@ export default function SettingsPage() {
         <header className="mb-12">
           <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
             <Settings className="text-blue-500 w-10 h-10" />
-            Paramètres du Profil
+            {t('profile.title')}
           </h1>
-          <p className="text-slate-400">Gérez vos informations personnelles et vos paramètres de connexion.</p>
+          <p className="text-slate-400">{t('profile.subtitle')}</p>
         </header>
 
         <form onSubmit={handleSubmit} className="bg-slate-900/50 border border-white/5 rounded-3xl p-8 backdrop-blur-sm space-y-6">
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-              <UserIcon size={14} /> Nom complet
+              <UserIcon size={14} /> {t('profile.fullName')}
             </label>
             <input 
               required
@@ -96,7 +98,7 @@ export default function SettingsPage() {
           
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-              <Mail size={14} /> Adresse Email
+              <Mail size={14} /> {t('profile.email')}
             </label>
             <input 
               type="email"
@@ -109,11 +111,11 @@ export default function SettingsPage() {
 
           <div className="space-y-2 pt-4 border-t border-white/5">
             <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-              <Key size={14} /> Nouveau mot de passe (optionnel)
+              <Key size={14} /> {t('profile.newPassword')}
             </label>
             <input 
               type="password"
-              placeholder="Laisser vide pour ne pas modifier"
+              placeholder={t('profile.passwordPlaceholder')}
               value={formData.password}
               onChange={e => setFormData({...formData, password: e.target.value})}
               className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all"
@@ -127,7 +129,7 @@ export default function SettingsPage() {
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-95 disabled:opacity-50"
             >
               <Save size={18} />
-              {isSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
+              {isSubmitting ? t('common.saving') : t('common.save')}
             </button>
           </div>
         </form>
