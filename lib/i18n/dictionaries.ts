@@ -41,6 +41,18 @@ export const dictionaries = {
       languageDescription: "Choisissez votre langue d'affichage globale.",
       saveSuccess: "Préférences mises à jour avec succès",
       saveError: "Erreur lors de la mise à jour des préférences",
+    },
+    dashboard: {
+      welcome: "Bienvenue",
+      access: "Accéder",
+      propertiesTitle: "Parc Immobilier",
+      propertiesDesc: "Gérez vos biens, consultez l'historique et lancez de nouveaux états des lieux.",
+      tenantsTitle: "Locataires",
+      tenantsDesc: "Gérez la base des locataires, suivez leur statut et leurs rattachements.",
+      adminTitle: "Administration",
+      adminDesc: "Gestion des utilisateurs et des permissions.",
+      agenciesTitle: "Agences",
+      agenciesDesc: "Gestion des agences et succursales.",
     }
   },
   en: {
@@ -85,6 +97,18 @@ export const dictionaries = {
       languageDescription: "Choose your global display language.",
       saveSuccess: "Preferences updated successfully",
       saveError: "Error updating preferences",
+    },
+    dashboard: {
+      welcome: "Welcome",
+      access: "Access",
+      propertiesTitle: "Real Estate Portfolio",
+      propertiesDesc: "Manage your properties, view inspection histories, and launch new property reports.",
+      tenantsTitle: "Tenants",
+      tenantsDesc: "Manage the tenant database, track their status, and monitor linked property assignments.",
+      adminTitle: "Administration",
+      adminDesc: "Manage users, profiles, roles, and platform access permissions.",
+      agenciesTitle: "Agences / Branches",
+      agenciesDesc: "Manage local office branches, offices, and regional agencies.",
     }
   },
   es: {
@@ -129,6 +153,18 @@ export const dictionaries = {
       languageDescription: "Elija su idioma de visualización global.",
       saveSuccess: "Preferencias actualizadas con éxito",
       saveError: "Error al actualizar las preferencias",
+    },
+    dashboard: {
+      welcome: "Bienvenido",
+      access: "Acceder",
+      propertiesTitle: "Cartera Inmobiliaria",
+      propertiesDesc: "Gestione sus propiedades, consulte el historial de inspecciones y cree nuevos informes.",
+      tenantsTitle: "Inquilinos",
+      tenantsDesc: "Gestione la base de datos de inquilinos, realice un seguimiento de su estado y asignaciones.",
+      adminTitle: "Administración",
+      adminDesc: "Gestione usuarios, perfiles, roles y permisos de acceso a la plataforma.",
+      agenciesTitle: "Agencias",
+      agenciesDesc: "Gestione agencias locales, oficinas y sucursales regionales.",
     }
   },
   zh: {
@@ -173,6 +209,18 @@ export const dictionaries = {
       languageDescription: "选择您的全局显示语言。",
       saveSuccess: "偏好设置更新成功",
       saveError: "更新偏好设置时出错",
+    },
+    dashboard: {
+      welcome: "欢迎",
+      access: "进入",
+      propertiesTitle: "房产组合",
+      propertiesDesc: "管理您的房产、查看检查历史记录并创建新的报告。",
+      tenantsTitle: "租户管理",
+      tenantsDesc: "管理租户数据库、跟踪其状态及关联 of 房产分配。",
+      adminTitle: "系统管理",
+      adminDesc: "管理用户、配置文件、角色及平台访问权限。",
+      agenciesTitle: "机构 / 分支",
+      agenciesDesc: "管理本地分支机构、办公室和区域代理。",
     }
   },
   ar: {
@@ -217,6 +265,18 @@ export const dictionaries = {
       languageDescription: "اختر لغة العرض العامة الخاصة بك.",
       saveSuccess: "تم تحديث التفضيلات بنجاح",
       saveError: "حدث خطأ أثناء تحديث التفضيلات",
+    },
+    dashboard: {
+      welcome: "مرحباً",
+      access: "الدخول",
+      propertiesTitle: "المحفظة العقارية",
+      propertiesDesc: "إدارة عقاراتك، والاطلاع على سجل المعاينات، وبدء تقارير جديدة لحالة العقارات.",
+      tenantsTitle: "الموقعين / المستأجرين",
+      tenantsDesc: "إدارة قاعدة بيانات الموقعين، وتتبع حالتهم وارتباطات العقارات الخاصة بهم.",
+      adminTitle: "الإدارة العامة",
+      adminDesc: "إدارة المستخدمين، والملفات الشخصية، والأدوار، وصلاحيات الوصول إلى المنصة.",
+      agenciesTitle: "الوكالات / الفروع",
+      agenciesDesc: "إدارة المكاتب المحلية، وفروع الوكالات العقارية الإقليمية.",
     }
   }
 };
