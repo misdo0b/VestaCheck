@@ -108,7 +108,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
+      if (trigger === "update" && session?.user) {
+        if (session.user.name) token.name = session.user.name;
+        if (session.user.email) token.email = session.user.email;
+        if (session.user.role) token.role = session.user.role;
+        if (session.user.agencyId) token.agencyId = session.user.agencyId;
+        if (session.user.organizationId) token.organizationId = session.user.organizationId;
+      }
       if (user) {
         if (account && account.provider === 'google') {
           const email = user.email?.toLowerCase();
@@ -147,6 +154,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.organizationId = token.organizationId as string;
         session.user.agencyId = token.agencyId as string;
+        if (token.name) session.user.name = token.name;
+        if (token.email) session.user.email = token.email;
       }
       return session;
     }
