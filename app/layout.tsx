@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { StoreInitializer } from "@/components/providers/StoreInitializer";
 import { Navbar } from "@/components/layout/Navbar";
 import { Toaster } from "sonner";
@@ -18,12 +19,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="dark">
+    <html lang="fr">
       <body className="antialiased font-sans bg-slate-950 text-slate-200 min-h-screen">
         <AuthProvider>
-          <StoreInitializer />
-          <Navbar />
-          {children}
+          <ThemeProvider>
+            <StoreInitializer />
+            <Navbar />
+            {children}
           <Analytics />
           <SpeedInsights />
           <Toaster 
@@ -40,6 +42,7 @@ export default function RootLayout({
               },
             }}
           />
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>

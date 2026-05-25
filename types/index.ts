@@ -162,3 +162,6 @@ export interface User {
   lastModified: string;
   syncStatus: SyncStatus;
 }
+
+export * from './preferences';
+

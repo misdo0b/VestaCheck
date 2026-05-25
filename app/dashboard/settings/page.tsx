@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useUserStore } from '@/store/useUserStore';
 import { Settings, Save, User as UserIcon, Mail, Key } from 'lucide-react';
 import { toast } from 'sonner';
+import PreferencesForm from '@/components/settings/PreferencesForm';
 
 export default function SettingsPage() {
   const { data: session, update: updateSession } = useSession();
@@ -130,6 +131,10 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+
+        <div className="mt-8">
+          <PreferencesForm />
+        </div>
       </main>
     </div>
   );
