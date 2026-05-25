@@ -4,6 +4,7 @@ import { getSupabase } from '@/lib/supabase';
 import { camelToSnake } from '@/lib/utils/mapping';
 import { registerSchema } from '@/lib/validations/auth';
 import { verifyTurnstileToken } from '@/lib/utils/security';
+import { sendWelcomeEmail } from '@/lib/mail';
 
 export async function POST(request: Request) {
   try {
@@ -85,6 +86,15 @@ export async function POST(request: Request) {
       }));
 
     if (userError) throw userError;
+
+    // 6. Envoi asynchrone non-bloquant du mail de bienvenue
+    const welcomeName = `${validatedData.admin.firstName} ${validatedData.admin.lastName}`;
+    const welcomeEmailAddress = validatedData.admin.email.toLowerCase();
+    const agencyName = validatedData.agency.name;
+    
+    sendWelcomeEmail(welcomeEmailAddress, welcomeName, agencyName).catch((err) => {
+      console.error("[Mail] Échec d'envoi du mail de bienvenue lors de l'inscription:", err);
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

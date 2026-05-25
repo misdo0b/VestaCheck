@@ -118,12 +118,31 @@ export async function POST(req: Request) {
         }
       } else {
         // Autres types d'entités (propriétés, etc.) - Traitement générique simplifié
-        const tableName = entity === 'property' ? 'properties' :
+        const tableName = 
+          entity === 'property' ? 'properties' :
           entity === 'tenant' ? 'tenants' :
-            entity === 'user' ? 'users' : null;
+          entity === 'user' ? 'users' :
+          entity === 'template' ? 'templates' :
+          entity === 'agency' ? 'agencies' :
+          entity === 'organization' ? 'organizations' : null;
 
         if (tableName) {
-          const { error } = await supabase.from(tableName).upsert(data);
+          const { camelToSnake } = await import('@/lib/utils/mapping');
+          
+          // On s'assure d'inclure l'identifiant pour que l'upsert fonctionne comme un update/insert ciblé.
+          // On convertit également les clés camelCase en snake_case pour la base de données.
+          const payload = camelToSnake({
+            id: entityId,
+            ...data
+          });
+
+          // Si c'est un utilisateur et qu'un mot de passe en clair est fourni, on le hache
+          if (entity === 'user' && payload.password && !payload.password.startsWith('$2a$')) {
+            const { hashPassword } = await import('@/lib/utils/password');
+            payload.password = await hashPassword(payload.password);
+          }
+
+          const { error } = await supabase.from(tableName).upsert(payload);
           results.push({
             id: mutation.id,
             status: error ? 'error' : 'success',
