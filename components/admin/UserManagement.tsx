@@ -27,7 +27,7 @@ import ResetPasswordModal from '@/components/admin/ResetPasswordModal';
 import { hashPassword } from '@/lib/utils/password';
 
 export default function UserManagement() {
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
   const currentUser = session?.user as any;
 
   const { users, initStore: initUsers, addUser, updateUser, deleteUser } = useUserStore();
@@ -48,7 +48,7 @@ export default function UserManagement() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [confirmAction, setConfirmAction] = useState<'delete' | 'reset' | null>(null);
-
+ 
   // Filtering
   const filteredUsers = useMemo(() => {
     return (users || []).filter(user => {
@@ -73,10 +73,24 @@ export default function UserManagement() {
 
     if (selectedUser) {
       // If password was provided in normalizedData (edit mode)
-      if (normalizedData.password) {
+      if (normalizedData.password && normalizedData.password.trim() !== '') {
         normalizedData.password = await hashPassword(normalizedData.password);
+      } else {
+        delete normalizedData.password;
       }
       await updateUser(selectedUser.id, normalizedData);
+
+      // Si l'utilisateur modifié est l'utilisateur connecté actuellement, on met à jour sa session
+      if (selectedUser.id === currentUser?.id) {
+        await updateSession({
+          ...session,
+          user: {
+            ...session?.user,
+            name: normalizedData.name || currentUser.name,
+            email: normalizedData.email || currentUser.email
+          }
+        });
+      }
     } else {
       // Create
       const hashedPassword = await hashPassword(normalizedData.password || 'password123');
