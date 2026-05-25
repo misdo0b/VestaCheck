@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useUserStore } from '@/store/useUserStore';
 import { useTenantStore } from '@/store/useTenantStore';
 import { useAgencyStore } from '@/store/useAgencyStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface PropertyCardProps {
   property: Property;
@@ -15,6 +16,7 @@ interface PropertyCardProps {
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
+  const { t } = useTranslation();
   const { tenants } = useTenantStore();
   const isOccupied = tenants.some(t => (t.propertyIds || []).includes(property.id) && t.status === 'Actuel');
   const { users } = useUserStore();
@@ -38,7 +40,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
             ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
             : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
         }`}>
-          {isOccupied ? 'Occupé' : 'Vacant'}
+          {isOccupied ? t('properties.statusOccupied') : t('properties.statusVacant')}
         </span>
       </div>
 
@@ -59,7 +61,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
             </div>
             <div className="flex items-center gap-1">
               <Layers className="w-4 h-4" />
-              <span>{property.roomCount} pièces</span>
+              <span>{property.roomCount} {t('properties.roomsSuffix')}</span>
             </div>
           </div>
         </div>
@@ -67,21 +69,21 @@ export function PropertyCard({ property }: PropertyCardProps) {
 
       <div className="pt-4 border-t border-white/5 flex flex-col gap-1 mt-auto">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Propriétaire</span>
+          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{t('properties.ownerLabel')}</span>
           <span className="text-xs text-slate-300 font-semibold">{owner?.name || property.ownerId}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Agent associé</span>
-          <span className="text-xs text-blue-400 font-semibold">{agent?.name || property.agentId || 'Non assigné'}</span>
+          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{t('properties.agentLabel')}</span>
+          <span className="text-xs text-blue-400 font-semibold">{agent?.name || property.agentId || t('properties.unassigned')}</span>
         </div>
         {agency && (
           <div className="flex items-center justify-between border-t border-white/5 pt-1 mt-1">
-            <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Agence</span>
+            <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{t('properties.agencyLabel')}</span>
             <span className="text-[10px] text-slate-400 font-bold">{agency.name}</span>
           </div>
         )}
         <div className="flex items-center gap-1 text-blue-400 text-sm font-medium mt-3 self-end">
-          Détails <ChevronRight className="w-4 h-4" />
+          {t('properties.detailsBtn')} <ChevronRight className="w-4 h-4" />
         </div>
       </div>
     </Link>

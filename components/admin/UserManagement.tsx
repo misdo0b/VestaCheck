@@ -12,7 +12,6 @@ import {
   ArrowLeft,
   Mail,
   Building,
-  MoreVertical,
   Filter,
   Pencil
 } from 'lucide-react';
@@ -25,8 +24,10 @@ import UserModal from '@/components/admin/UserModal';
 import ConfirmationDialog from '@/components/admin/ConfirmationDialog';
 import ResetPasswordModal from '@/components/admin/ResetPasswordModal';
 import { hashPassword } from '@/lib/utils/password';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function UserManagement() {
+  const { t } = useTranslation();
   const { data: session, update: updateSession } = useSession();
   const currentUser = session?.user as any;
 
@@ -48,7 +49,7 @@ export default function UserManagement() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [confirmAction, setConfirmAction] = useState<'delete' | 'reset' | null>(null);
- 
+  
   // Filtering
   const filteredUsers = useMemo(() => {
     return (users || []).filter(user => {
@@ -144,13 +145,13 @@ export default function UserManagement() {
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
       case 'Administrateur':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">Administrateur</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">{t('roles.Administrateur')}</span>;
       case 'Agent':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">Agent</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">{t('roles.Agent')}</span>;
       case 'Propriétaire':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Propriétaire</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{t('roles.Propriétaire')}</span>;
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400">Utilisateur</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400">{t('roles.Agent')}</span>;
     }
   };
 
@@ -179,8 +180,8 @@ export default function UserManagement() {
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-95 font-medium text-sm"
           >
             <UserPlus className="w-4 h-4" />
-            <span className="hidden sm:inline">Ajouter un utilisateur</span>
-            <span className="sm:hidden">Ajouter</span>
+            <span className="hidden sm:inline">{t('adminUsers.addUserBtn')}</span>
+            <span className="sm:hidden">{t('adminUsers.addUserBtnShort')}</span>
           </button>
         </div>
       </nav>
@@ -190,9 +191,9 @@ export default function UserManagement() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-500" />
-            Gestion des Utilisateurs
+            {t('adminUsers.title')}
           </h1>
-          <p className="text-slate-400">Gérez les accès, les rôles et les paramètres de sécurité de la plateforme.</p>
+          <p className="text-slate-400">{t('adminUsers.subtitle')}</p>
         </div>
 
         {/* Filters bar */}
@@ -201,7 +202,7 @@ export default function UserManagement() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
             <input 
               type="text" 
-              placeholder="Rechercher par nom ou email..."
+              placeholder={t('adminUsers.searchPlaceholder')}
               className="w-full bg-slate-900 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -215,14 +216,14 @@ export default function UserManagement() {
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as any)}
               >
-                <option value="All">Tous les rôles</option>
-                <option value="Administrateur">Administrateur</option>
-                <option value="Agent">Agent</option>
-                <option value="Propriétaire">Propriétaire</option>
+                <option value="All">{t('adminUsers.filterRoleAll')}</option>
+                <option value="Administrateur">{t('roles.Administrateur')}</option>
+                <option value="Agent">{t('roles.Agent')}</option>
+                <option value="Propriétaire">{t('roles.Propriétaire')}</option>
               </select>
             </div>
             <div className="px-4 py-2.5 bg-slate-800 text-slate-400 rounded-xl text-sm font-medium border border-white/5">
-              {filteredUsers.length} Utilisateurs
+              {t('adminUsers.usersCountSuffix').replace('{count}', String(filteredUsers.length))}
             </div>
           </div>
         </div>
@@ -233,10 +234,10 @@ export default function UserManagement() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/[0.02] border-b border-white/5">
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Utilisateur</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:table-cell">Rôle</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden lg:table-cell">Agence</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">{t('adminUsers.tableHeaderUser')}</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:table-cell">{t('adminUsers.tableHeaderRole')}</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden lg:table-cell">{t('adminUsers.tableHeaderAgency')}</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">{t('adminUsers.tableHeaderActions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -271,21 +272,21 @@ export default function UserManagement() {
                         <button 
                           onClick={() => { setSelectedUser(user); setIsModalOpen(true); }}
                           className="p-2 rounded-lg text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 transition-all border border-transparent hover:border-blue-500/20"
-                          title="Modifier l'utilisateur"
+                          title={t('adminUsers.editTooltip')}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => openConfirm(user, 'reset')}
                           className="p-2 rounded-lg text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 transition-all border border-transparent hover:border-amber-500/20"
-                          title="Réinitialiser le mot de passe"
+                          title={t('adminUsers.resetPasswordTooltip')}
                         >
                           <Key className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => openConfirm(user, 'delete')}
                           className="p-2 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
-                          title="Supprimer l'utilisateur"
+                          title={t('adminUsers.deleteTooltip')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -295,7 +296,7 @@ export default function UserManagement() {
                 )) : (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
-                      Aucun utilisateur trouvé correspondant à vos critères.
+                      {t('adminUsers.emptyStateText')}
                     </td>
                   </tr>
                 )}
@@ -318,14 +319,16 @@ export default function UserManagement() {
       {isConfirmOpen && selectedUser && (
         <ConfirmationDialog 
           isOpen={isConfirmOpen}
-          title={confirmAction === 'delete' ? 'Supprimer l\'utilisateur' : 'Réinitialiser le mot de passe'}
+          title={confirmAction === 'delete' ? t('adminUsers.deleteConfirmTitle') : t('adminUsers.resetPasswordConfirmTitle')}
           message={confirmAction === 'delete' 
-            ? `Êtes-vous sûr de vouloir supprimer définitivement ${selectedUser.name} ? Cette action est irréversible.`
-            : `Confirmez-vous l'envoi d'un email de réinitialisation à ${selectedUser.email} ?`
+            ? t('adminUsers.deleteConfirmMsg').replace('{name}', selectedUser.name)
+            : t('adminUsers.resetPasswordConfirmMsg').replace('{email}', selectedUser.email)
           }
           onClose={() => setIsConfirmOpen(false)}
           onConfirm={handleDelete}
           type="danger"
+          confirmText={confirmAction === 'delete' ? t('adminUsers.deleteTooltip') : t('adminUsers.resetPasswordTooltip')}
+          cancelText={t('adminUsers.cancelBtn')}
         />
       )}
 

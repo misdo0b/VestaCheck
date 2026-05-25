@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Tenant } from '@/types';
 import { toast } from 'sonner';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Composant Modale de Gestion (Création / Édition)
 interface TenantModalProps {
@@ -21,6 +22,7 @@ interface TenantModalProps {
 }
 
 const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSubmit }) => {
+  const { t } = useTranslation();
   const { properties } = usePropertyStore();
   const [formData, setFormData] = useState({
     name: tenant?.name || '',
@@ -52,9 +54,9 @@ const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSu
             </div>
             <div>
               <h2 className="text-2xl font-bold text-white tracking-tight">
-                {tenant ? 'Modifier le Locataire' : 'Nouveau Locataire'}
+                {tenant ? t('tenants.modalEditTitle') : t('tenants.modalNewTitle')}
               </h2>
-              <p className="text-sm text-slate-500">Remplissez les informations du locataire et ses rattachements.</p>
+              <p className="text-sm text-slate-500">{t('tenants.modalSubtitle')}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-slate-500 transition-all">
@@ -66,44 +68,44 @@ const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSu
           {/* Infos de base */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nom Complet</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('tenants.fullNameLabel')}</label>
               <input 
                 value={formData.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
-                placeholder="Ex: Martin Durand"
+                placeholder={t('tenants.fullNamePlaceholder')}
                 className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Statut</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('tenants.statusLabel')}</label>
               <select 
                 value={formData.status}
                 onChange={e => setFormData({...formData, status: e.target.value as any})}
-                className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all cursor-pointer appearance-none"
+                className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all cursor-pointer appearance-none animate-none"
               >
-                <option value="Actuel" className="bg-slate-900">Actuel (Occupant)</option>
-                <option value="Sorti" className="bg-slate-900">Sorti (Ancien locataire)</option>
+                <option value="Actuel" className="bg-slate-900">{t('tenants.statusActiveOption')}</option>
+                <option value="Sorti" className="bg-slate-900">{t('tenants.statusInactiveOption')}</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('tenants.emailLabel')}</label>
               <input 
                 type="email"
                 value={formData.email}
                 onChange={e => setFormData({...formData, email: e.target.value})}
-                placeholder="email@exemple.com"
+                placeholder={t('tenants.emailPlaceholder')}
                 className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Téléphone</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('tenants.phoneLabel')}</label>
               <input 
                 value={formData.phone}
                 onChange={e => setFormData({...formData, phone: e.target.value})}
-                placeholder="06 12 34 56 78"
+                placeholder={t('tenants.phonePlaceholder')}
                 className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
               />
             </div>
@@ -112,8 +114,8 @@ const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSu
           {/* Rattachements de biens */}
           <div className="space-y-4">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
-              Biens Immobilier Rattachés
-              <span className="text-blue-500">{(formData.propertyIds || []).length} sélectionné(s)</span>
+              {t('tenants.assignedPropertiesLabel')}
+              <span className="text-blue-500">{t('tenants.selectedCountSuffix').replace('{count}', String((formData.propertyIds || []).length))}</span>
             </label>
             <div className="grid grid-cols-1 gap-2">
               {properties.map(prop => (
@@ -143,13 +145,13 @@ const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSu
             onClick={onClose}
             className="flex-1 py-4 rounded-xl font-bold text-slate-400 hover:bg-white/5 transition-all text-sm uppercase tracking-widest"
           >
-            Annuler
+            {t('tenants.cancelBtn')}
           </button>
           <button 
             onClick={() => onSubmit(formData)}
             className="flex-[2] py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-xl shadow-blue-600/20 text-sm uppercase tracking-widest active:scale-95"
           >
-            {tenant ? 'Enregistrer les modifications' : 'Créer le locataire'}
+            {tenant ? t('tenants.submitEditBtn') : t('tenants.submitCreateBtn')}
           </button>
         </div>
       </div>
@@ -160,6 +162,7 @@ const TenantModal: React.FC<TenantModalProps> = ({ tenant, isOpen, onClose, onSu
 import { Suspense } from 'react';
 
 function TenantsPageContent() {
+  const { t } = useTranslation();
   const { tenants, loading, addTenant, updateTenant, deleteTenant, fetchTenants } = useTenantStore();
   const { properties } = usePropertyStore();
   const { data: session } = useSession();
@@ -223,7 +226,7 @@ function TenantsPageContent() {
     try {
       if (selectedTenant) {
         await updateTenant(selectedTenant.id, data);
-        toast.success("Locataire mis à jour avec succès");
+        toast.success(t('tenants.updateSuccess'));
       } else {
         const currentUser = session?.user as any;
         await addTenant({
@@ -236,12 +239,12 @@ function TenantsPageContent() {
           agencyId: currentUser?.agencyId,
           organizationId: currentUser?.organizationId
         });
-        toast.success("Locataire créé avec succès");
+        toast.success(t('tenants.createSuccess'));
       }
       setIsModalOpen(false);
       setSelectedTenant(undefined);
     } catch (err) {
-      toast.error("Une erreur est survenue");
+      toast.error(t('tenants.errorGeneric'));
     }
   };
 
@@ -251,9 +254,9 @@ function TenantsPageContent() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
+    if (window.confirm(t('tenants.deleteConfirm').replace('{name}', name))) {
       await deleteTenant(id);
-      toast.success("Locataire supprimé");
+      toast.success(t('tenants.deleteSuccess'));
     }
   };
 
@@ -272,10 +275,10 @@ function TenantsPageContent() {
           <div>
             <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
               <Users className="text-blue-500" size={36} />
-              Locataires
+              {t('tenants.title')}
             </h1>
             <p className="text-slate-400">
-              Gérez votre base de locataires et suivez leur historique d'occupation.
+              {t('tenants.subtitle')}
             </p>
           </div>
           
@@ -284,7 +287,7 @@ function TenantsPageContent() {
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/20"
           >
             <Plus size={20} />
-            Nouveau Locataire
+            {t('tenants.newTenantBtn')}
           </button>
         </header>
 
@@ -295,7 +298,7 @@ function TenantsPageContent() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
               <input
                 type="text"
-                placeholder="Rechercher par nom ou email..."
+                placeholder={t('tenants.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-950/50 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-slate-600 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 outline-none transition-all"
@@ -310,19 +313,19 @@ function TenantsPageContent() {
                   onChange={(e) => setStatusFilter(e.target.value as any)}
                   className="bg-transparent text-sm text-slate-300 outline-none cursor-pointer"
                 >
-                  <option value="Tous" className="bg-slate-900">Tous les statuts</option>
-                  <option value="Actuel" className="bg-slate-900">Actuels</option>
-                  <option value="Sorti" className="bg-slate-900">Sortis</option>
+                  <option value="Tous" className="bg-slate-900">{t('tenants.statusFilterAll')}</option>
+                  <option value="Actuel" className="bg-slate-900">{t('tenants.statusFilterActive')}</option>
+                  <option value="Sorti" className="bg-slate-900">{t('tenants.statusFilterInactive')}</option>
                 </select>
               </div>
 
               <button 
                 onClick={() => setSortBy(sortBy === 'name' ? 'lastModified' : 'name')}
                 className="flex items-center gap-2 bg-slate-950/50 border border-white/10 rounded-xl px-4 py-2 hover:bg-white/5 transition-colors"
-                title="Changer le tri"
+                title={t('tenants.sortBy')}
               >
                 <ArrowUpDown size={16} className="text-slate-500" />
-                <span className="text-sm text-slate-300">{sortBy === 'name' ? 'Nom' : 'Date'}</span>
+                <span className="text-sm text-slate-300">{sortBy === 'name' ? t('tenants.sortByName') : t('tenants.sortByDate')}</span>
               </button>
             </div>
           </div>
@@ -346,20 +349,20 @@ function TenantsPageContent() {
                         ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
                         : 'bg-slate-800 text-slate-400 border border-white/5'
                     }`}>
-                      {tenant.status}
+                      {tenant.status === 'Actuel' ? t('tenants.statusActive') : t('tenants.statusInactive')}
                     </span>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => handleEdit(tenant)}
                         className="p-1.5 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-all shadow-lg shadow-blue-500/10"
-                        title="Modifier"
+                        title={t('tenants.editTooltip')}
                       >
                         <Pencil size={14} />
                       </button>
                       <button 
                         onClick={() => handleDelete(tenant.id, tenant.name)}
                         className="p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10"
-                        title="Supprimer"
+                        title={t('tenants.deleteTooltip')}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -385,7 +388,7 @@ function TenantsPageContent() {
                 <div className="border-t border-white/5 pt-4 mt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Home size={14} className="text-slate-500" />
-                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Biens Rattachés</span>
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{t('tenants.linkedPropertiesTitle')}</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {(tenant.propertyIds || []).map(propId => {
@@ -401,7 +404,7 @@ function TenantsPageContent() {
                       );
                     })}
                     {(!tenant.propertyIds || tenant.propertyIds.length === 0) && (
-                      <span className="text-xs italic text-slate-600">Aucun bien rattaché</span>
+                      <span className="text-xs italic text-slate-600">{t('tenants.noLinkedProperties')}</span>
                     )}
                   </div>
                 </div>
@@ -410,8 +413,8 @@ function TenantsPageContent() {
           ) : (
             <div className="col-span-full py-20 text-center bg-slate-900/20 border border-dashed border-white/10 rounded-3xl">
               <Users className="mx-auto text-slate-700 mb-4" size={48} />
-              <h3 className="text-xl font-semibold text-white mb-2">Aucun locataire trouvé</h3>
-              <p className="text-slate-500">Essayez d'ajuster vos filtres ou effectuez une nouvelle recherche.</p>
+              <h3 className="text-xl font-semibold text-white mb-2">{t('tenants.emptyStateTitle')}</h3>
+              <p className="text-slate-500">{t('tenants.emptyStateDesc')}</p>
             </div>
           )}
         </div>
@@ -432,7 +435,7 @@ function TenantsPageContent() {
 
 export default function TenantsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Chargement...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>}>
       <TenantsPageContent />
     </Suspense>
   );
