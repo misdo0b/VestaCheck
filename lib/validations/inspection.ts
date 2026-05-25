@@ -106,48 +106,55 @@ const BaseReportSchema = z.object({
   lastModified: z.string(),
 });
 
-// Schéma avec raffinements pour la validation RUNTIME
-export const InspectionReportSchema = BaseReportSchema
-  .refine((data) => {
-    // Si finalisé, le locataire est requis
-    if (data.isFinalized) {
-      const hasTenant = !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
-      if (data.type === 'Sortie') return !!data.tenantId;
-      return hasTenant;
-    }
-    return true;
-  }, {
-    message: "Le locataire est requis (sélection ou saisie manuelle complète) pour finaliser le rapport.",
-    path: ['tenantId']
-  })
-  .refine((data) => {
-    // Si finalisé, on exige que tout soit rempli
-    if (data.isFinalized) {
-      if (data.rooms.length === 0) return false;
-      for (const room of data.rooms) {
-        if (!room.name || room.name.trim() === '') return false;
-        if (room.items.length === 0) return false;
-        for (const item of room.items) {
-          if (!item.label || item.label.trim() === '') return false;
+// Schéma avec raffinements pour la validation RUNTIME dynamique
+export const getInspectionReportSchema = (t: (key: string) => string) => {
+  return BaseReportSchema
+    .refine((data) => {
+      // Si finalisé, le locataire est requis
+      if (data.isFinalized) {
+        const hasTenant = !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
+        if (data.type === 'Sortie') return !!data.tenantId;
+        return hasTenant;
+      }
+      return true;
+    }, {
+      message: t('validation.tenantRequired'),
+      path: ['tenantId']
+    })
+    .refine((data) => {
+      // Si finalisé, on exige que tout soit rempli
+      if (data.isFinalized) {
+        if (data.rooms.length === 0) return false;
+        for (const room of data.rooms) {
+          if (!room.name || room.name.trim() === '') return false;
+          if (room.items.length === 0) return false;
+          for (const item of room.items) {
+            if (!item.label || item.label.trim() === '') return false;
+          }
         }
       }
-    }
-    return true;
-  }, {
-    message: "Le rapport doit être complet (noms des pièces et éléments) pour être finalisé.",
-    path: ['isFinalized']
+      return true;
+    }, {
+      message: t('validation.reportIncomplete'),
+      path: ['isFinalized']
+    });
+};
+
+// Schéma de Template dynamique
+export const getPropertyTemplateSchema = (t: (key: string) => string) => {
+  return z.object({
+    id: ensureStringId,
+    name: z.string().min(1, t('validation.templateNameRequired')),
+    propertyId: z.string(),
+    agencyId: z.string().optional(),
+    organizationId: z.string().optional(),
+    rooms: z.array(RoomSchema).default([]),
+    lastModified: z.string(),
   });
+};
 
-// Schéma de Template
-export const PropertyTemplateSchema = z.object({
-  id: ensureStringId,
-  name: z.string().min(1, "Nom du modèle requis"),
-  propertyId: z.string(),
-  agencyId: z.string().optional(),
-  organizationId: z.string().optional(),
-  rooms: z.array(RoomSchema).default([]),
-  lastModified: z.string(),
-});
+// Types dérivés des schémas dynamiques pour garantir la compatibilité
+export type InspectionFormData = z.infer<ReturnType<typeof getInspectionReportSchema>>;
+export type TemplateFormData = z.infer<ReturnType<typeof getPropertyTemplateSchema>>;
+export type InspectionReportType = InspectionFormData; // Alias pour compatibilité descendante
 
-export type InspectionFormData = z.infer<typeof InspectionReportSchema>;
-export type TemplateFormData = z.infer<typeof PropertyTemplateSchema>;

@@ -2,6 +2,7 @@ import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { InspectionFormData } from '@/lib/validations/inspection';
 import { Droplets, Zap, Flame, Activity } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface CounterSectionProps {
   isTemplateMode?: boolean;
@@ -9,6 +10,7 @@ interface CounterSectionProps {
 
 export const CounterSection: React.FC<CounterSectionProps> = ({ isTemplateMode = false }) => {
   const { register, watch, getValues, formState: { errors } } = useFormContext<InspectionFormData>();
+  const { t } = useTranslation();
   
   const tenantSig = watch('signatures.tenant.drawData') || getValues('signatures.tenant.drawData');
   const inspectorSig = watch('signatures.inspector.drawData') || getValues('signatures.inspector.drawData');
@@ -24,7 +26,7 @@ export const CounterSection: React.FC<CounterSectionProps> = ({ isTemplateMode =
           <Activity className="text-indigo-400" size={24} />
         </div>
         <h2 className="text-xl font-bold text-white tracking-tight">
-          Relevé des Compteurs
+          {t('inspection.countersTitle')}
         </h2>
       </div>
       
@@ -34,7 +36,7 @@ export const CounterSection: React.FC<CounterSectionProps> = ({ isTemplateMode =
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-blue-500/5 p-5 rounded-2xl border border-blue-500/10 hover:border-blue-500/20 transition-colors group">
               <label className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">
-                <Droplets size={16} className="group-hover:scale-110 transition-transform" /> Eau (m³)
+                <Droplets size={16} className="group-hover:scale-110 transition-transform" /> {t('pdf.water')} (m³)
               </label>
               <input
                 type="number"
@@ -48,7 +50,7 @@ export const CounterSection: React.FC<CounterSectionProps> = ({ isTemplateMode =
 
             <div className="bg-amber-500/5 p-5 rounded-2xl border border-amber-500/10 hover:border-amber-500/20 transition-colors group">
               <label className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-widest mb-3">
-                <Zap size={16} className="group-hover:scale-110 transition-transform" /> Électricité (kWh)
+                <Zap size={16} className="group-hover:scale-110 transition-transform" /> {t('pdf.electricity')} (kWh)
               </label>
               <input
                 type="number"
@@ -62,7 +64,7 @@ export const CounterSection: React.FC<CounterSectionProps> = ({ isTemplateMode =
 
             <div className="bg-orange-500/5 p-5 rounded-2xl border border-orange-500/10 hover:border-orange-500/20 transition-colors group">
               <label className="flex items-center gap-2 text-xs font-bold text-orange-400 uppercase tracking-widest mb-3">
-                <Flame size={16} className="group-hover:scale-110 transition-transform" /> Gaz (m³)
+                <Flame size={16} className="group-hover:scale-110 transition-transform" /> {t('pdf.gas')} (m³)
               </label>
               <input
                 type="number"

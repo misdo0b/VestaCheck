@@ -5,11 +5,13 @@ import { InspectionFormData } from '@/lib/validations/inspection';
 import { SignaturePad } from '../../ui/SignaturePad';
 import { PenTool, Lock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export const SignatureSection: React.FC = () => {
   const { data: session } = useSession();
   const { register, trigger, setValue, watch, formState: { errors } } = useFormContext<InspectionFormData>();
   const [activePad, setActivePad] = React.useState<'tenant' | 'inspector' | null>(null);
+  const { t } = useTranslation();
 
   const agentName = session?.user?.name || "Agent VestaCheck";
   const tenantSig = watch('signatures.tenant');
@@ -31,24 +33,24 @@ export const SignatureSection: React.FC = () => {
       // Diagnostic précis pour l'utilisateur
       const missingFields = new Set<string>();
       
-      if (errors.propertyAddress) missingFields.add("ADRESSE");
-      if (errors.tenantId || errors.manualTenant) missingFields.add("LOCATAIRE");
-      if (errors.date) missingFields.add("DATE");
-      if (errors.rooms) missingFields.add("PIÈCES");
-      if (errors.counters) missingFields.add("COMPTEURS");
-      if (errors.keyInventories) missingFields.add("CLÉS/ACCÈS");
+      if (errors.propertyAddress) missingFields.add(t('inspection.propertyAddress').toUpperCase());
+      if (errors.tenantId || errors.manualTenant) missingFields.add(t('inspection.tenant').toUpperCase());
+      if (errors.date) missingFields.add(t('inspection.date').toUpperCase());
+      if (errors.rooms) missingFields.add(t('inspection.addRoomCardTitle').toUpperCase());
+      if (errors.counters) missingFields.add(t('pdf.counterType').toUpperCase());
+      if (errors.keyInventories) missingFields.add(t('inspection.keysTitle').toUpperCase());
       
       // Cas spécifique pour les sous-champs des compteurs si l'objet parent n'est pas marqué
       if (!errors.counters && (errors as any).counters) {
-        missingFields.add("COMPTEURS");
+        missingFields.add(t('pdf.counterType').toUpperCase());
       }
 
       const message = missingFields.size > 0 
-        ? `Champs manquants : ${Array.from(missingFields).join(', ')}`
-        : "Certaines informations du formulaire sont invalides.";
+        ? `${t('inspection.missingFields')} : ${Array.from(missingFields).join(', ')}`
+        : t('inspection.invalidFormInfo');
 
       // Si aucune catégorie n'est trouvée mais qu'il y a des erreurs, on affiche la première erreur brute pour aider
-      let detailMessage = "Veuillez compléter ces sections avant de pouvoir signer le rapport.";
+      let detailMessage = t('inspection.completeRequiredSections');
       if (missingFields.size === 0 && Object.keys(errors).length > 0) {
         const firstErrorKey = Object.keys(errors)[0];
         const error = (errors as any)[firstErrorKey];
@@ -96,9 +98,9 @@ export const SignatureSection: React.FC = () => {
               className="flex items-center gap-3 px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-500 transition-all text-sm font-black shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50 disabled:scale-100"
             >
               <PenTool size={18} />
-              <span>Signer le rapport</span>
+              <span>{t('inspection.signBtn')}</span>
             </button>
-            <p className="mt-4 text-[9px] text-slate-600 font-bold uppercase tracking-wider">Capture locale sécurisée</p>
+            <p className="mt-4 text-[9px] text-slate-600 font-bold uppercase tracking-wider">{t('inspection.secureCaptureNote')}</p>
           </div>
         )}
       </div>
@@ -109,13 +111,13 @@ export const SignatureSection: React.FC = () => {
     <div className="bg-slate-900/50 p-8 rounded-2xl shadow-xl border border-white/5 mb-8 overflow-hidden relative backdrop-blur-sm">
       {isDataLocked && !isLocked && (
         <div className="absolute top-6 right-8 flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20 text-[10px] font-bold uppercase tracking-wider animate-pulse transition-all">
-          <Lock size={12} /> Données Verrouillées - Signatures en cours
+          <Lock size={12} /> {t('inspection.signaturesLocked')}
         </div>
       )}
 
       {isLocked && (
         <div className="absolute top-6 right-8 flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider transition-all">
-          <CheckCircle2 size={12} className="text-emerald-400" /> Signatures Complètes
+          <CheckCircle2 size={12} className="text-emerald-400" /> {t('inspection.signaturesComplete')}
         </div>
       )}
 
@@ -124,13 +126,13 @@ export const SignatureSection: React.FC = () => {
           <PenTool className="text-blue-400" size={24} />
         </div>
         <h2 className="text-xl font-bold text-white tracking-tight">
-          Finalisation & Signatures
+          {t('inspection.signaturesTitle')}
         </h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        <SignatureBox role="tenant" label="Le Locataire" data={tenantSig?.drawData} />
-        <SignatureBox role="inspector" label={`${agentName} (Agent)`} data={inspectorSig?.drawData} />
+        <SignatureBox role="tenant" label={t('pdf.tenantRole')} data={tenantSig?.drawData} />
+        <SignatureBox role="inspector" label={`${agentName} (${t('roles.Agent')})`} data={inspectorSig?.drawData} />
       </div>
 
       <div className="mt-10 pt-8 border-t border-white/5">
@@ -150,8 +152,8 @@ export const SignatureSection: React.FC = () => {
           <span className={`text-sm font-medium leading-relaxed transition-colors ${
             isFinalized ? 'text-slate-500' : 'text-slate-300 group-hover:text-white'
           }`}>
-            Je certifie que les informations saisies sont exactes et conformes à l'état réel du logement au jour de l'inspection. 
-            <span className="block text-xs text-slate-500 mt-1 font-normal italic">Ce document a valeur légale une fois signé et finalisé.</span>
+            {t('inspection.certifyAccuracy')}
+            <span className="block text-xs text-slate-500 mt-1 font-normal italic">{t('inspection.legalValueNote')}</span>
           </span>
         </label>
       </div>
@@ -165,7 +167,7 @@ export const SignatureSection: React.FC = () => {
           />
           <div className="relative w-full max-w-2xl transform transition-all animate-in zoom-in-95 duration-300">
             <SignaturePad
-              title={activePad === 'tenant' ? 'Signature du Locataire' : `Signature de : ${agentName}`}
+              title={activePad === 'tenant' ? t('inspection.signatureTenantTitle') : t('inspection.signatureInspectorTitle').replace('{name}', agentName)}
               onSave={(base64) => handleSaveSignature(activePad, base64)}
               onClose={() => setActivePad(null)}
             />
@@ -173,7 +175,7 @@ export const SignatureSection: React.FC = () => {
                onClick={() => setActivePad(null)}
                className="absolute -top-12 right-0 p-2 text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest"
             >
-               Fermer <Lock size={14} />
+               {t('inspection.closeBtn')} <Lock size={14} />
             </button>
           </div>
         </div>

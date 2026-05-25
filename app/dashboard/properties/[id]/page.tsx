@@ -18,8 +18,10 @@ import { PhotoBlobStorage } from '@/lib/utils/blob-storage';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useUserStore } from '@/store/useUserStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function PropertyDetailPage() {
+  const { t, language } = useTranslation();
   const { id } = useParams();
   const router = useRouter();
   const { properties, templates, getTemplatesByProperty, fetchTemplates } = usePropertyStore();
@@ -95,11 +97,11 @@ export default function PropertyDetailPage() {
         .toLowerCase();
       
       const fileName = `Rapport_${safeTenantName}_${inspection.date.replace(/\//g, '-')}.pdf`;
-      await generatePDF('inspection-report-pdf-history', fileName, enrichedInspection);
-      toast.success("PDF généré avec succès !");
+      await generatePDF('inspection-report-pdf-history', fileName, enrichedInspection, t, language);
+      toast.success(t('inspection.toastSuccessPDF'));
     } catch (error) {
       console.error("Erreur lors de l'export PDF:", error);
-      toast.error("Une erreur est survenue lors de la génération du PDF.");
+      toast.error(t('inspection.toastErrorPDF'));
     } finally {
       setExportingId(null);
     }

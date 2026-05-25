@@ -4,10 +4,12 @@ import { InspectionFormData } from '@/lib/validations/inspection';
 import { Home, User, Mail, Phone, Plus, Search, UserPlus, CheckCircle2, UserCheck, AlertCircle } from 'lucide-react';
 import { useTenantStore } from '@/store/useTenantStore';
 import { toast } from 'sonner';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export const HeaderSection: React.FC = () => {
   const { register, watch, setValue, formState: { errors }, resetField } = useFormContext<InspectionFormData>();
   const { tenants } = useTenantStore();
+  const { t } = useTranslation();
   
   const selectedPropertyId = watch('propertyId');
   const selectedTenantId = watch('tenantId');
@@ -51,16 +53,16 @@ export const HeaderSection: React.FC = () => {
 
     const existing = tenants.find(t => t.email.toLowerCase() === email.toLowerCase());
     if (existing) {
-      toast.info("Locataire existant détecté", {
-        description: `${existing.name} est déjà dans votre base. Voulez-vous utiliser sa fiche existante ?`,
+      toast.info(t('inspection.duplicateTenantTitle'), {
+        description: t('inspection.duplicateTenantMsg').replace('{name}', existing.name),
         duration: 10000,
         action: {
-          label: "Rattacher",
+          label: t('inspection.duplicateTenantAction'),
           onClick: () => {
             setValue('tenantId', existing.id, { shouldValidate: true });
             setIsManualMode(false);
             resetField('manualTenant');
-            toast.success(`C'est fait ! ${existing.name} est maintenant sélectionné.`);
+            toast.success(t('inspection.duplicateTenantSuccess').replace('{name}', existing.name));
           }
         }
       });
@@ -75,7 +77,7 @@ export const HeaderSection: React.FC = () => {
             <Home className="text-blue-400" size={24} />
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">
-            Informations Générales
+            {t('inspection.generalInfo')}
           </h2>
         </div>
         
@@ -86,7 +88,7 @@ export const HeaderSection: React.FC = () => {
             onClick={() => setValue('type', 'Entrée')}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${type === 'Entrée' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'} disabled:opacity-50`}
           >
-            ENTRÉE
+            {t('inspection.types.Entrée').toUpperCase()}
           </button>
           <button 
             type="button"
@@ -94,7 +96,7 @@ export const HeaderSection: React.FC = () => {
             onClick={() => setValue('type', 'Sortie')}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${type === 'Sortie' ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'} disabled:opacity-50`}
           >
-            SORTIE
+            {t('inspection.types.Sortie').toUpperCase()}
           </button>
         </div>
       </div>
@@ -103,7 +105,7 @@ export const HeaderSection: React.FC = () => {
         {/* Adresse */}
         <div className="space-y-1.5 opacity-80">
           <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-            Adresse de la propriété
+            {t('inspection.propertyAddress')}
           </label>
           <div className="relative">
             <Home className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
@@ -119,7 +121,7 @@ export const HeaderSection: React.FC = () => {
         <div className="space-y-1.5">
           <div className="flex justify-between items-center mb-1">
             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-              Locataire
+              {t('inspection.tenant')}
             </label>
             {type === 'Entrée' && !isFinalized && (
               <div className="flex bg-slate-950/50 border border-white/10 rounded-lg p-0.5">
@@ -131,7 +133,7 @@ export const HeaderSection: React.FC = () => {
                   }}
                   className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all ${!isManualMode ? 'bg-slate-800 text-blue-400 shadow-sm' : 'text-slate-600 hover:text-slate-400'}`}
                 >
-                  SÉLECTION
+                  {t('inspection.tenantSelection')}
                 </button>
                 <button 
                   type="button"
@@ -141,7 +143,7 @@ export const HeaderSection: React.FC = () => {
                   }}
                   className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all ${isManualMode ? 'bg-slate-800 text-blue-400 shadow-sm' : 'text-slate-600 hover:text-slate-400'}`}
                 >
-                  SAISIE LIBRE
+                  {t('inspection.tenantManual')}
                 </button>
               </div>
             )}
@@ -153,7 +155,7 @@ export const HeaderSection: React.FC = () => {
                 <UserCheck className="text-blue-400" size={20} />
               </div>
               <div>
-                <p className="text-white font-bold text-sm">{selectedTenant?.name || "Locataire inconnu"}</p>
+                <p className="text-white font-bold text-sm">{selectedTenant?.name || t('pdf.unspecified')}</p>
                 <div className="flex gap-4 mt-1">
                   {selectedTenant?.email && (
                     <span className="text-[10px] text-slate-400 flex items-center gap-1">
@@ -177,7 +179,7 @@ export const HeaderSection: React.FC = () => {
                   errors.tenantId ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 focus:border-blue-500/50'
                 }`}
               >
-                <option value="">-- Sélectionner le locataire {type === 'Sortie' ? 'occupant' : ''} --</option>
+                <option value="">{t('inspection.selectTenantPlaceholder')}</option>
                 {filteredTenants.map(t => (
                   <option key={t.id} value={t.id} className="bg-slate-900 tracking-wide text-white font-medium">
                     {t.name}
@@ -186,8 +188,8 @@ export const HeaderSection: React.FC = () => {
                 {filteredTenants.length === 0 && (
                    <option disabled className="bg-slate-900 text-slate-500 italic">
                      {type === 'Sortie' 
-                       ? "Aucun locataire 'Actuel' trouvé pour ce bien" 
-                       : "Aucun locataire historiquement rattaché"}
+                       ? t('inspection.noActiveTenant') 
+                       : t('inspection.noLinkedTenant')}
                    </option>
                 )}
               </select>
@@ -202,7 +204,7 @@ export const HeaderSection: React.FC = () => {
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                 <input 
-                  placeholder="Nom du nouveau locataire"
+                  placeholder={t('inspection.newTenantName')}
                   {...register('manualTenant.name')}
                   className="w-full bg-slate-950/50 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white outline-none focus:border-blue-500/50"
                 />
@@ -211,7 +213,7 @@ export const HeaderSection: React.FC = () => {
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                   <input 
-                    placeholder="Email"
+                    placeholder={t('inspection.email')}
                     {...register('manualTenant.email')}
                     onBlur={handleEmailBlur}
                     className="w-full bg-slate-950/50 border border-white/10 rounded-xl pl-10 pr-3 py-3 text-xs text-white outline-none focus:border-blue-500/50"
@@ -220,14 +222,14 @@ export const HeaderSection: React.FC = () => {
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                   <input 
-                    placeholder="Téléphone"
+                    placeholder={t('inspection.phone')}
                     {...register('manualTenant.phone')}
                     className="w-full bg-slate-950/50 border border-white/10 rounded-xl pl-10 pr-3 py-3 text-xs text-white outline-none focus:border-blue-500/50"
                   />
                 </div>
               </div>
               <p className="text-[9px] text-blue-500/60 ml-1 italic font-medium">
-                * Le locataire sera créé automatiquement lors de la finalisation.
+                {t('inspection.manualTenantNote')}
               </p>
             </div>
           )}
@@ -236,7 +238,7 @@ export const HeaderSection: React.FC = () => {
         {/* Date */}
         <div className="space-y-1.5 md:col-span-2 lg:col-span-1">
           <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-            Date de l'inspection
+            {t('inspection.date')}
           </label>
           <input
             type="date"
