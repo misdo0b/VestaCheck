@@ -109,10 +109,10 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       rooms: (initialData?.rooms || [
         {
           id: crypto.randomUUID(),
-          name: 'Salon',
+          name: t('inspection.defaultRoomSalon'),
           items: [
-            { id: crypto.randomUUID(), label: 'Murs', condition: 'Bon', comment: '', photos: [] },
-            { id: crypto.randomUUID(), label: 'Sols', condition: 'Bon', comment: '', photos: [] }
+            { id: crypto.randomUUID(), label: t('inspection.defaultItemMurs'), condition: 'Bon', comment: '', photos: [] },
+            { id: crypto.randomUUID(), label: t('inspection.defaultItemSols'), condition: 'Bon', comment: '', photos: [] }
           ]
         }
       ]).map(room => ({

@@ -325,7 +325,13 @@ export const dictionaries = {
       addElementBtn: "Ajouter un élément",
       elementNamePlaceholder: "Désignation de l'élément...",
       observationPlaceholder: "Ajouter une observation rapide...",
-      deleteElementTooltip: "Supprimer l'élément"
+      deleteElementTooltip: "Supprimer l'élément",
+      clearSignature: "Effacer",
+      signInstruction: "Signez à l'aide de votre doigt ou d'un stylet",
+      validateSignature: "Valider",
+      defaultRoomSalon: "Salon",
+      defaultItemMurs: "Murs",
+      defaultItemSols: "Sols"
     },
     validation: {
       tenantRequired: "Le locataire est requis (sélection ou saisie manuelle complète) pour finaliser le rapport.",
@@ -752,7 +758,13 @@ export const dictionaries = {
       addElementBtn: "Add Element",
       elementNamePlaceholder: "Element designation...",
       observationPlaceholder: "Add quick observation...",
-      deleteElementTooltip: "Delete Element"
+      deleteElementTooltip: "Delete Element",
+      clearSignature: "Clear",
+      signInstruction: "Sign with your finger or a stylus",
+      validateSignature: "Confirm",
+      defaultRoomSalon: "Living Room",
+      defaultItemMurs: "Walls",
+      defaultItemSols: "Floors"
     },
     validation: {
       tenantRequired: "Tenant is required (select one or complete manual entry) to finalize the report.",
@@ -1179,7 +1191,13 @@ export const dictionaries = {
       addElementBtn: "Añadir Elemento",
       elementNamePlaceholder: "Designación del elemento...",
       observationPlaceholder: "Añadir observación rápida...",
-      deleteElementTooltip: "Eliminar Elemento"
+      deleteElementTooltip: "Eliminar Elemento",
+      clearSignature: "Borrar",
+      signInstruction: "Firme con su dedo o lápiz óptico",
+      validateSignature: "Confirmar",
+      defaultRoomSalon: "Salón",
+      defaultItemMurs: "Paredes",
+      defaultItemSols: "Suelos"
     },
     validation: {
       tenantRequired: "Se requiere el inquilino (selección o entrada manual completa) para finalizar el informe.",
@@ -1606,7 +1624,13 @@ export const dictionaries = {
       addElementBtn: "添加检查项",
       elementNamePlaceholder: "检查项名称...",
       observationPlaceholder: "添加快速观察备注...",
-      deleteElementTooltip: "删除此项"
+      deleteElementTooltip: "删除此项",
+      clearSignature: "清除",
+      signInstruction: "使用手指或触控笔签名",
+      validateSignature: "确认签名",
+      defaultRoomSalon: "客厅",
+      defaultItemMurs: "墙壁",
+      defaultItemSols: "地板"
     },
     validation: {
       tenantRequired: "必须选择或完整手动输入租客信息以提交归档报告。",
@@ -2033,7 +2057,13 @@ export const dictionaries = {
       addElementBtn: "إضافة عنصر",
       elementNamePlaceholder: "تسمية العنصر...",
       observationPlaceholder: "إضافة ملاحظة سريعة...",
-      deleteElementTooltip: "حذف العنصر"
+      deleteElementTooltip: "حذف العنصر",
+      clearSignature: "مسح",
+      signInstruction: "وقع باستخدام إصبعك أو قلم إلكتروني",
+      validateSignature: "تأكيد التوقيع",
+      defaultRoomSalon: "غرفة المعيشة",
+      defaultItemMurs: "الجدران",
+      defaultItemSols: "الأرضيات"
     },
     validation: {
       tenantRequired: "المستأجر مطلوب (اختر مستأجر أو أكمل الإدخال اليدوي) لإنهاء التقرير.",
