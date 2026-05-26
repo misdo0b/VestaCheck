@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { SignaturePad } from '@/components/ui/SignaturePad';
 import { CheckCircle, ShieldCheck, FileText, AlertTriangle } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function MagicLinkSignPage() {
   const params = useParams();
@@ -11,6 +12,7 @@ export default function MagicLinkSignPage() {
   const [isSigned, setIsSigned] = useState(false);
   const [showPad, setShowPad] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
+  const { t, language } = useTranslation();
 
   // Simulation de chargement des données du rapport
   const reportId = params.id as string;
@@ -27,8 +29,8 @@ export default function MagicLinkSignPage() {
       <div className="w-full max-w-xl bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
         <div className="bg-blue-600 p-8 text-white text-center">
           <ShieldCheck size={48} className="mx-auto mb-4 opacity-90" />
-          <h1 className="text-2xl font-bold">Signature de votre État des Lieux</h1>
-          <p className="text-blue-100 mt-2 text-sm">VestaCheck - Sécurisé & Certifié</p>
+          <h1 className="text-2xl font-bold">{t('magicLink.title')}</h1>
+          <p className="text-blue-100 mt-2 text-sm">{t('magicLink.subtitle')}</p>
         </div>
 
         <div className="p-8">
@@ -38,14 +40,14 @@ export default function MagicLinkSignPage() {
                 <CheckCircle size={40} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-800">Merci ! Votre signature a été enregistrée.</h2>
-                <p className="text-gray-500 mt-2">Le rapport final vous sera envoyé par email sous peu.</p>
+                <h2 className="text-xl font-bold text-gray-800">{t('magicLink.thankYou')}</h2>
+                <p className="text-gray-500 mt-2">{t('magicLink.emailNotificationSent')}</p>
               </div>
-              <button 
+              <button
                 onClick={() => window.close()}
                 className="w-full py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-900 transition-all"
               >
-                Fermer cette fenêtre
+                {t('magicLink.closeWindow')}
               </button>
             </div>
           ) : (
@@ -53,21 +55,20 @@ export default function MagicLinkSignPage() {
               <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex gap-3 text-amber-800">
                 <FileText className="shrink-0" />
                 <p className="text-sm">
-                  En signant ce document, vous validez l'état général du logement tel que décrit par l'inspecteur. 
-                  Vous ne pourrez plus apporter de modifications après cette étape.
+                  {t('magicLink.legalDisclaimer')}
                 </p>
               </div>
 
               <div className="space-y-4">
-                <h3 className="font-bold text-gray-700">Récapitulatif du Dossier</h3>
+                <h3 className="font-bold text-gray-700">{t('magicLink.dossierSummary')}</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">Rapport ID</span>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t('magicLink.reportId')}</span>
                     <span className="font-medium">#{reportId.slice(0, 8)}</span>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">Date</span>
-                    <span className="font-medium">{new Date().toLocaleDateString('fr-FR')}</span>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t('magicLink.date')}</span>
+                    <span className="font-medium">{new Date().toLocaleDateString(language)}</span>
                   </div>
                 </div>
               </div>
@@ -76,7 +77,7 @@ export default function MagicLinkSignPage() {
                 onClick={() => setShowPad(true)}
                 className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.98]"
               >
-                Signer le document maintenant
+                {t('magicLink.signNow')}
               </button>
             </div>
           )}
@@ -84,16 +85,27 @@ export default function MagicLinkSignPage() {
       </div>
 
       <p className="mt-8 text-gray-400 text-xs flex items-center gap-2">
-        <AlertTriangle size={12} /> Signature électronique à valeur probante conforme eIDAS
+        <AlertTriangle size={12} /> {t('magicLink.eidasDescription')}
       </p>
 
       {showPad && (
-        <SignaturePad
-          title="Apposez votre signature manuscrite"
-          onSave={handleSave}
-          onClose={() => setShowPad(false)}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-905/85 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-4 border border-slate-205">
+            <SignaturePad
+              title={t('magicLink.apposeSignature')}
+              onSave={handleSave}
+              onClose={() => setShowPad(false)}
+            />
+            <button 
+              onClick={() => setShowPad(false)} 
+              className="mt-3 w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors uppercase tracking-wider text-center"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
 }
+

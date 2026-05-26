@@ -402,6 +402,28 @@ export const dictionaries = {
       unauthorizedTitle: "Accès non autorisé",
       backToProperties: "Retour aux biens",
       loading: "Chargement..."
+    },
+    sync: {
+      online: "Online",
+      offline: "Offline",
+      syncing: "Synchronisation...",
+      synced: "À jour",
+      startSync: "Démarrer la synchronisation",
+      waitingNetwork: "Attente réseau"
+    },
+    magicLink: {
+      title: "Signature de votre État des Lieux",
+      subtitle: "VestaCheck - Sécurisé & Certifié",
+      thankYou: "Merci ! Votre signature a été enregistrée.",
+      emailNotificationSent: "Le rapport final vous sera envoyé par email sous peu.",
+      closeWindow: "Fermer cette fenêtre",
+      legalDisclaimer: "En signant ce document, vous validez l'état général du logement tel que décrit par l'inspecteur. Vous ne pourrez plus apporter de modifications après cette étape.",
+      dossierSummary: "Récapitulatif du Dossier",
+      reportId: "Rapport ID",
+      date: "Date",
+      signNow: "Signer le document maintenant",
+      eidasDescription: "Signature électronique à valeur probante conforme eIDAS",
+      apposeSignature: "Apposez votre signature manuscrite"
     }
   },
   en: {
@@ -807,6 +829,28 @@ export const dictionaries = {
       unauthorizedTitle: "Unauthorized access",
       backToProperties: "Back to properties",
       loading: "Loading..."
+    },
+    sync: {
+      online: "Online",
+      offline: "Offline",
+      syncing: "Syncing...",
+      synced: "Up to date",
+      startSync: "Start synchronization",
+      waitingNetwork: "Waiting for network"
+    },
+    magicLink: {
+      title: "Signature of your Inspection Report",
+      subtitle: "VestaCheck - Secure & Certified",
+      thankYou: "Thank you! Your signature has been recorded.",
+      emailNotificationSent: "The final report will be sent to you by email shortly.",
+      closeWindow: "Close this window",
+      legalDisclaimer: "By signing this document, you validate the general condition of the property as described by the inspector. You will not be able to make any changes after this step.",
+      dossierSummary: "File Summary",
+      reportId: "Report ID",
+      date: "Date",
+      signNow: "Sign the document now",
+      eidasDescription: "Timestamped electronic signature compliant with eIDAS regulation",
+      apposeSignature: "Appose your handwritten signature"
     }
   },
   es: {
@@ -1200,11 +1244,11 @@ export const dictionaries = {
       agent: "Agente responsable"
     },
     newInspection: {
-      newInspectionTitle: "Nueva Inspección de Propiedad",
+      newInspectionTitle: "Nueva Inspección",
       forProperty: "Para la propiedad:",
       optionBlankTitle: "Desde cero",
-      optionBlankDesc: "Comience con una estructura vacía por defecto.",
-      optionTemplateTitle: "A partir de plantilla",
+      optionBlankDesc: "Comience con una estructura predeterminada vacía.",
+      optionTemplateTitle: "Desde una plantilla",
       optionTemplateDesc: "Reutilice una configuración pre-registrada para esta propiedad.",
       noTemplatesAvailable: "No hay plantillas disponibles para esta propiedad.",
       backToChoice: "Volver a la selección",
@@ -1212,6 +1256,28 @@ export const dictionaries = {
       unauthorizedTitle: "Acceso no autorizado",
       backToProperties: "Volver a propiedades",
       loading: "Cargando..."
+    },
+    sync: {
+      online: "Online",
+      offline: "Offline",
+      syncing: "Sincronizando...",
+      synced: "Al día",
+      startSync: "Iniciar sincronización",
+      waitingNetwork: "Esperando red"
+    },
+    magicLink: {
+      title: "Firma de su Inventario",
+      subtitle: "VestaCheck - Seguro y Certificado",
+      thankYou: "¡Gracias! Su firma ha sido registrada.",
+      emailNotificationSent: "El informe final le será enviado por correo electrónico en breve.",
+      closeWindow: "Cerrar esta ventana",
+      legalDisclaimer: "Al firmar este documento, valida el estado general de la propiedad descrito por el inspector. No podrá realizar modificaciones después de este paso.",
+      dossierSummary: "Resumen del Expediente",
+      reportId: "ID del Informe",
+      date: "Fecha",
+      signNow: "Firmar el documento ahora",
+      eidasDescription: "Firma electrónica con valor probatorio conforme a eIDAS",
+      apposeSignature: "Escriba su firma manuscrita"
     }
   },
   zh: {
@@ -1617,6 +1683,28 @@ export const dictionaries = {
       unauthorizedTitle: "未授权访问",
       backToProperties: "返回房产列表",
       loading: "加载中..."
+    },
+    sync: {
+      online: "在线",
+      offline: "离线",
+      syncing: "同步中...",
+      synced: "已是最新",
+      startSync: "开始同步",
+      waitingNetwork: "等待网络"
+    },
+    magicLink: {
+      title: "签署您的房屋状况验收报告",
+      subtitle: "VestaCheck - 安全与认证",
+      thankYou: "谢谢！您的签名已成功记录。",
+      emailNotificationSent: "最终报告将很快通过电子邮件发送给您。",
+      closeWindow: "关闭此窗口",
+      legalDisclaimer: "签署此文件即表示您认可检验员所述的房屋整体状况。此步骤后将无法进行任何修改。",
+      dossierSummary: "档案摘要",
+      reportId: "报告 ID",
+      date: "日期",
+      signNow: "立即签署文件",
+      eidasDescription: "符合 eIDAS 法规的高效电子签名",
+      apposeSignature: "请在此处手写签名"
     }
   },
   ar: {
@@ -2022,6 +2110,28 @@ export const dictionaries = {
       unauthorizedTitle: "وصول غير مصرح به",
       backToProperties: "العودة إلى العقارات",
       loading: "جاري التحميل..."
+    },
+    sync: {
+      online: "متصل",
+      offline: "غير متصل",
+      syncing: "جاري المزامنة...",
+      synced: "محدث",
+      startSync: "بدء المزامنة",
+      waitingNetwork: "بانتظار الشبكة"
+    },
+    magicLink: {
+      title: "توقيع تقرير معاينة العقار الخاص بك",
+      subtitle: "VestaCheck - آمن ومعتمد",
+      thankYou: "شكراً لك! تم تسجيل توقيعك بنجاح.",
+      emailNotificationSent: "سيتم إرسال التقرير النهائي إليك عبر البريد الإلكتروني قريباً.",
+      closeWindow: "إغلاق هذه النافذة",
+      legalDisclaimer: "بتوقيعك على هذا المستند، فإنك تصادق على الحالة العامة للعقار كما وصفها المفتش. لن تتمكن من إجراء أي تعديلات بعد هذه الخطوة.",
+      dossierSummary: "ملخص الملف",
+      reportId: "معرف التقرير",
+      date: "التاريخ",
+      signNow: "توقيع المستند الآن",
+      eidasDescription: "توقيع إلكتروني ذو قيمة إثباتية متوافق مع لوائح eIDAS",
+      apposeSignature: "ضع توقيعك بخط اليد"
     }
   },
 };
