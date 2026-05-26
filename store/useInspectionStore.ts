@@ -310,28 +310,61 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
 
   finalizeInspection: async (id, data) => {
     const current = get().inspections.find(i => i.id === id);
-    if (!current) return;
+    
+    // Si l'état des lieux n'existe pas en local (cas d'une création directe), on initialise une structure par défaut
+    const baseReport = current || {
+      id,
+      propertyId: data.propertyId || '',
+      propertyAddress: data.propertyAddress || '',
+      date: data.date || new Date().toISOString().split('T')[0],
+      type: data.type || 'Entrée',
+      ownerId: data.ownerId || '',
+      inspectorId: data.inspectorId || '',
+      tenantId: data.tenantId || '',
+      agencyId: data.agencyId || '',
+      organizationId: data.organizationId || '',
+      counters: data.counters || { water: 0, electricity: 0, gas: 0 },
+      keyInventories: data.keyInventories || [],
+      generalObservations: data.generalObservations || '',
+      signatures: data.signatures || {
+        tenant: { type: 'Aucune' },
+        inspector: { type: 'Aucune' }
+      },
+      rooms: data.rooms || [],
+      isFinalized: false,
+      serverVersion: 0,
+      syncStatus: 'pending' as const
+    };
 
     const updated = fixInvalidIds({
-      ...current,
+      ...baseReport,
       ...data,
+      agencyId: data.agencyId || baseReport.agencyId || '',
+      organizationId: data.organizationId || baseReport.organizationId || '',
       isFinalized: true,
       syncStatus: 'pending' as const,
       lastModified: new Date().toISOString()
-    });
+    } as InspectionReport);
 
     await db.inspections.put(updated);
     await db.enqueueMutation({
-      type: 'UPDATE',
+      type: current ? 'UPDATE' : 'CREATE',
       entity: 'inspection',
       entityId: id,
       data: updated
     });
 
-    set(state => ({
-      inspections: state.inspections.map(i => i.id === id ? updated : i),
-      currentInspection: state.currentInspection?.id === id ? updated : state.currentInspection
-    }));
+    set(state => {
+      const exists = state.inspections.some(i => i.id === id);
+      const nextInspections = exists
+        ? state.inspections.map(i => i.id === id ? updated : i)
+        : [updated, ...state.inspections];
+
+      return {
+        inspections: nextInspections,
+        currentInspection: state.currentInspection?.id === id ? updated : state.currentInspection
+      };
+    });
 
     // Lancer la synchronisation des photos HD en arrière-plan
     get().syncPendingPhotos(id).catch(err => {
