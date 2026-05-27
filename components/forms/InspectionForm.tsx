@@ -79,6 +79,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
   const methods = useForm<InspectionFormData>({
     resolver: zodResolver(schema) as any,
     defaultValues: {
+      name: initialData?.templateName || '',
       id: initialData?.id || crypto.randomUUID(),
       propertyId: initialData?.propertyId || 'prop1',
       date: initialData?.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0],
@@ -360,8 +361,12 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
                     <input
                       type="text"
                       placeholder={t('inspection.templateNamePlaceholder')}
+                      {...methods.register('name')}
                       value={templateName}
-                      onChange={(e) => setTemplateName(e.target.value)}
+                      onChange={(e) => {
+                        setTemplateName(e.target.value);
+                        methods.setValue('name', e.target.value, { shouldValidate: true });
+                      }}
                       className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-semibold"
                     />
                   </div>

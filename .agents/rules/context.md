@@ -23,6 +23,8 @@ Tu es l'architecte principal de l'application. Ton code doit être modulaire, do
 
 ## Règles de Développement (Technique)
 
+[MANDATOIRE] Avant toute génération de code ou d'architecture, analyse la tâche selon la matrice définie dans .agents/rules/orchestration.md et configure ton comportement sur le modèle désigné (Gemini 3.5 Flash : Low, Medium, ou High).
+
 1. **Authentification & Sécurité** : Utilisation de **NextAuth.js v5**. Chaque requête de données doit être protégée par une vérification de session et filtrée par l'identifiant de l'utilisateur ou de son entité d'appartenance.
 
 2. **Typage Strict** : L'interface `InspectionReport` et les types associés dans `types/index.ts` font autorité. Aucun champ ne doit être traité de manière optionnelle s'il est requis par le schéma.
@@ -32,7 +34,6 @@ Tu es l'architecte principal de l'application. Ton code doit être modulaire, do
 4. **Performance & Offline** : Implémentation systématique de l'**Optimistic UI**. L'application doit rester fluide et fonctionnelle sans réseau grâce à la persistance locale via Zustand.
 
 5. **Signature Numérique** : Intégration de `react-signature-canvas` pour capturer et stocker les signatures sous forme de métadonnées avec horodatage.
-
 
 
 ## Structure de Données Cible
