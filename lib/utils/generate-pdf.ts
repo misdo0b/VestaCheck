@@ -36,6 +36,28 @@ const getBase64ImageFromUrl = async (url: string): Promise<string> => {
  * @param filename Nom du fichier de sortie
  * @param data Données du rapport d'inspection
  */
+/**
+ * Récupère une image depuis une URL locale et la convertit en chaîne Base64.
+ */
+const getBase64ImageFromUrl = async (url: string): Promise<string> => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+/**
+ * Génère un rapport d'état des lieux PDF haut de gamme, 100% vectoriel et net.
+ * Utilise jsPDF et jspdf-autotable pour la mise en page et la pagination automatique.
+ *
+ * @param elementId Identifiant de l'élément DOM (inutilisé désormais mais conservé pour compatibilité)
+ * @param filename Nom du fichier de sortie
+ * @param data Données du rapport d'inspection
+ */
 export const generatePDF = async (
   elementId: string,
   filename: string = 'rapport-vestacheck.pdf',
