@@ -122,7 +122,7 @@ export async function POST(req: Request) {
           entity === 'property' ? 'properties' :
           entity === 'tenant' ? 'tenants' :
           entity === 'user' ? 'users' :
-          entity === 'template' ? 'templates' :
+          entity === 'template' ? 'property_templates' :
           entity === 'agency' ? 'agencies' :
           entity === 'organization' ? 'organizations' : null;
 
@@ -142,7 +142,33 @@ export async function POST(req: Request) {
             payload.password = await hashPassword(payload.password);
           }
 
+          // Extraire les property_ids pour la table de jointure et nettoyer le payload
+          const propertyIds = data.propertyIds || [];
+          delete payload.property_ids;
+          delete payload.property_ids_list;
+          delete payload.template_ids;
+          delete payload.template_ids_list;
+
           const { error } = await supabase.from(tableName).upsert(payload);
+          
+          if (!error && entity === 'tenant') {
+            try {
+              // Nettoyage des anciennes associations
+              await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
+              
+              // Insertion des nouvelles associations
+              if (propertyIds.length > 0) {
+                const relations = propertyIds.map((pid: string) => ({
+                  tenant_id: entityId,
+                  property_id: pid
+                }));
+                await supabase.from('property_tenants').insert(relations);
+              }
+            } catch (relationErr) {
+              console.error(`[Sync] Erreur lors de la synchronisation des relations property_tenants pour le locataire ${entityId}:`, relationErr);
+            }
+          }
+
           results.push({
             id: mutation.id,
             status: error ? 'error' : 'success',

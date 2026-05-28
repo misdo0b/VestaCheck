@@ -76,7 +76,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     setMounted(true);
   }, []);
 
-  const methods = useForm<InspectionFormData>({
+  const methods = useForm<any>({
     resolver: zodResolver(schema) as any,
     defaultValues: {
       name: initialData?.templateName || '',

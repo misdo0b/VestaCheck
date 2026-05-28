@@ -148,10 +148,16 @@ export function useSync() {
 
       const result = await response.json();
       
-      if (result.success) {
-        // Suppression des mutations traitées avec succès
-        const processedIds = mutations.map(m => m.id);
-        await db.mutationQueue.bulkDelete(processedIds);
+      if (result.success && Array.isArray(result.results)) {
+        const successfulIds = result.results
+          .filter((res: any) => res.status === 'success')
+          .map((res: any) => res.id);
+
+        const failedMutations = result.results.filter((res: any) => res.status === 'error');
+
+        if (successfulIds.length > 0) {
+          await db.mutationQueue.bulkDelete(successfulIds);
+        }
         
         // Rafraîchissement des données locales pour s'assurer de la cohérence avec le serveur
         await Promise.all([
@@ -159,8 +165,13 @@ export function useSync() {
           fetchTenants()
         ]);
 
-        setSyncStatus('synced');
-        console.log('[Sync] Synchronisation réussie');
+        if (failedMutations.length > 0) {
+          console.warn(`[Sync] ${failedMutations.length} mutations ont échoué en base : ` + JSON.stringify(failedMutations));
+          setSyncStatus('error');
+        } else {
+          setSyncStatus('synced');
+          console.log('[Sync] Synchronisation réussie');
+        }
       } else {
         setSyncStatus('error');
       }
