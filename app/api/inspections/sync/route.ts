@@ -151,7 +151,7 @@ export async function POST(req: Request) {
 
           const { error } = await supabase.from(tableName).upsert(payload);
           
-          if (!error && entity === 'tenant') {
+          if (!error && entity === 'tenant' && data.propertyIds !== undefined) {
             try {
               // Nettoyage des anciennes associations
               await supabase.from('property_tenants').delete().eq('tenant_id', entityId);

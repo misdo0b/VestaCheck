@@ -32,7 +32,7 @@ export const useTenantStore = create<TenantState>((set, get) => ({
       
       // Segmentation des données
       const filteredTenants = allLocalTenants.filter(tenant => {
-        if (user.role === 'Administrateur') {
+        if (user.role === 'Administrateur' || user.role === 'Propriétaire') {
           return tenant.organizationId === user.organizationId;
         }
         return tenant.agencyId === user.agencyId;

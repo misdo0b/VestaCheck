@@ -47,6 +47,9 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
         if (user.role === 'Administrateur') {
           return (property as any).organizationId === user.organizationId;
         }
+        if (user.role === 'Propriétaire') {
+          return property.ownerId === user.id;
+        }
         return property.agencyId === user.agencyId;
       });
 
