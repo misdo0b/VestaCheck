@@ -26,8 +26,8 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const { properties, templates, getTemplatesByProperty, fetchTemplates } = usePropertyStore();
   const { inspections, fetchInspections } = useInspectionStore();
-  const { tenants } = useTenantStore();
-  const { users } = useUserStore();
+  const { tenants, fetchTenants } = useTenantStore();
+  const { users, fetchUsers } = useUserStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
 
@@ -35,8 +35,10 @@ export default function PropertyDetailPage() {
     if (id) {
       fetchInspections(id as string);
       fetchTemplates(id as string);
+      fetchUsers();
+      fetchTenants();
     }
-  }, [id, fetchInspections, fetchTemplates]);
+  }, [id, fetchInspections, fetchTemplates, fetchUsers, fetchTenants]);
 
   const property = properties.find(p => p.id === id);
   const owner = users.find(u => u.id === property?.ownerId);

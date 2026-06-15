@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { useTenantStore } from '@/store/useTenantStore';
+import { useUserStore } from '@/store/useUserStore';
 import { PropertyCard } from '@/components/properties/PropertyCard';
 import { PropertyListItem } from '@/components/properties/PropertyListItem';
 import { PropertyModal } from '@/components/properties/PropertyModal';
@@ -26,12 +27,14 @@ export default function PropertiesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   
   const { fetchProperties } = usePropertyStore();
+  const { fetchUsers } = useUserStore();
 
   React.useEffect(() => {
     if (session) {
       fetchProperties();
+      fetchUsers();
     }
-  }, [session, fetchProperties]);
+  }, [session, fetchProperties, fetchUsers]);
   
   // New States
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');

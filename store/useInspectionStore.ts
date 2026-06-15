@@ -108,6 +108,9 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
           if (user.role === 'Administrateur') {
             return (inspection as any).organizationId === user.organizationId;
           }
+          if (user.role === 'Propriétaire') {
+            return inspection.ownerId === user.id;
+          }
           return inspection.agencyId === user.agencyId;
         })
         .map(inspection => fixInvalidIds(inspection));

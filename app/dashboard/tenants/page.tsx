@@ -164,7 +164,7 @@ import { Suspense } from 'react';
 function TenantsPageContent() {
   const { t } = useTranslation();
   const { tenants, loading, addTenant, updateTenant, deleteTenant, fetchTenants } = useTenantStore();
-  const { properties } = usePropertyStore();
+  const { properties, fetchProperties } = usePropertyStore();
   const { data: session } = useSession();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -172,7 +172,8 @@ function TenantsPageContent() {
   
   React.useEffect(() => {
     fetchTenants();
-  }, [fetchTenants]);
+    fetchProperties();
+  }, [fetchTenants, fetchProperties]);
 
   const [sortBy, setSortBy] = useState<'name' | 'lastModified'>('name');
   
