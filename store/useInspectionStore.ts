@@ -24,7 +24,7 @@ const fixInvalidIds = (inspection: InspectionReport): InspectionReport => {
     }
     seenIds.add(roomId);
 
-    const updatedItems = room.items.map(item => {
+    const updatedItems = (room.items || []).map(item => {
       let itemChanged = false;
       let itemId = item.id;
       
@@ -35,7 +35,7 @@ const fixInvalidIds = (inspection: InspectionReport): InspectionReport => {
       }
       seenIds.add(itemId);
 
-      const updatedPhotos = item.photos.map(photo => {
+      const updatedPhotos = (item.photos || []).map(photo => {
         if (!isUUID(photo.id) || seenIds.has(photo.id)) {
           changed = true;
           const newPhotoId = crypto.randomUUID();
