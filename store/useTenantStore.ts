@@ -53,15 +53,36 @@ export const useTenantStore = create<TenantState>((set, get) => ({
         const data = await response.json();
         const serverTenants = data.tenants || [];
         
-        // Mise à jour de la base globale avec les données serveur
-        // syncStatus est 'synced' car cela vient directement du serveur
-        const syncedTenants = serverTenants.map((t: any) => ({
-          ...t,
-          syncStatus: 'synced'
-        }));
+        // On récupère les locataires locaux pour préserver les modifications non synchronisées
+        const localTenants = await db.tenants.toArray();
+        const localPendingOrError = new Map(
+          localTenants
+            .filter(t => t.syncStatus === 'pending' || t.syncStatus === 'error')
+            .map(t => [t.id, t])
+        );
 
-        await db.tenants.bulkPut(syncedTenants);
-        set({ tenants: syncedTenants, loading: false });
+        const mergedTenants = serverTenants.map((st: any) => {
+          const local = localPendingOrError.get(st.id);
+          if (local) {
+            // On conserve la version locale non synchronisée
+            return local;
+          }
+          return {
+            ...st,
+            syncStatus: 'synced'
+          };
+        });
+
+        // Ajouter aussi les locataires créés localement qui ne sont pas encore sur le serveur
+        const serverIds = new Set(serverTenants.map((t: any) => t.id));
+        localTenants.forEach(lt => {
+          if ((lt.syncStatus === 'pending' || lt.syncStatus === 'error') && !serverIds.has(lt.id)) {
+            mergedTenants.push(lt);
+          }
+        });
+
+        await db.tenants.bulkPut(mergedTenants);
+        set({ tenants: mergedTenants, loading: false });
       }
     } catch (err) {
       console.error('Failed to fetch tenants:', err);
