@@ -186,7 +186,7 @@ export function useSync() {
         setSyncStatus('synced');
       }
     }
-  }, [session, syncStatus, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, isOnline]);
+  }, [session, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, isOnline]);
 
   // Déclenchement automatique de la synchro au montage et quand on repasse online
   useEffect(() => {

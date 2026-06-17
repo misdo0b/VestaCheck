@@ -81,21 +81,36 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        await db.properties.bulkPut(data);
         
-        const currentProperties = get().properties;
-        const newProperties = [...currentProperties];
+        // On récupère les biens locaux pour préserver les modifications non synchronisées
+        const localProperties = await db.properties.toArray();
+        const localPendingOrError = new Map(
+          localProperties
+            .filter(p => p.syncStatus === 'pending' || p.syncStatus === 'error')
+            .map(p => [p.id, p])
+        );
 
-        data.forEach((newProp: Property) => {
-          const index = newProperties.findIndex(p => p.id === newProp.id);
-          if (index !== -1) {
-            newProperties[index] = newProp;
-          } else {
-            newProperties.push(newProp);
+        const mergedProperties = data.map((sp: Property) => {
+          const local = localPendingOrError.get(sp.id);
+          if (local) {
+            return local;
+          }
+          return {
+            ...sp,
+            syncStatus: 'synced' as const
+          };
+        });
+
+        // Ajouter aussi les biens créés localement qui ne sont pas encore sur le serveur
+        const serverIds = new Set(data.map((p: Property) => p.id));
+        localProperties.forEach(lp => {
+          if ((lp.syncStatus === 'pending' || lp.syncStatus === 'error') && !serverIds.has(lp.id)) {
+            mergedProperties.push(lp);
           }
         });
 
-        set({ properties: newProperties, loading: false });
+        await db.properties.bulkPut(mergedProperties);
+        set({ properties: mergedProperties, loading: false });
       }
     } catch (err) {
       console.error('Fetch properties failed:', err);

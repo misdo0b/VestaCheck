@@ -151,10 +151,12 @@ export async function POST(req: Request) {
 
           const { error } = await supabase.from(tableName).upsert(payload);
           
+          let relationError = null;
           if (!error && entity === 'tenant' && data.propertyIds !== undefined) {
             try {
               // Nettoyage des anciennes associations
-              await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
+              const { error: deleteErr } = await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
+              if (deleteErr) throw deleteErr;
               
               // Insertion des nouvelles associations
               if (propertyIds.length > 0) {
@@ -162,17 +164,19 @@ export async function POST(req: Request) {
                   tenant_id: entityId,
                   property_id: pid
                 }));
-                await supabase.from('property_tenants').insert(relations);
+                const { error: insertErr } = await supabase.from('property_tenants').insert(relations);
+                if (insertErr) throw insertErr;
               }
-            } catch (relationErr) {
+            } catch (relationErr: any) {
               console.error(`[Sync] Erreur lors de la synchronisation des relations property_tenants pour le locataire ${entityId}:`, relationErr);
+              relationError = relationErr;
             }
           }
 
           results.push({
             id: mutation.id,
-            status: error ? 'error' : 'success',
-            error: error?.message
+            status: (error || relationError) ? 'error' : 'success',
+            error: error?.message || relationError?.message
           });
         }
       }
