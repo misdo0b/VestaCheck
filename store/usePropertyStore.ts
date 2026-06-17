@@ -200,6 +200,17 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
 
     try {
       await db.properties.delete(id);
+      
+      // Nettoyer les relations dans les locataires locaux et enqueuer la mise à jour
+      const { useTenantStore } = await import('@/store/useTenantStore');
+      const tenantStore = useTenantStore.getState();
+      const affectedTenants = tenantStore.tenants.filter(t => (t.propertyIds || []).includes(id));
+      
+      for (const tenant of affectedTenants) {
+        const updatedPropertyIds = tenant.propertyIds.filter(pid => pid !== id);
+        await tenantStore.updateTenant(tenant.id, { propertyIds: updatedPropertyIds });
+      }
+
       await db.enqueueMutation({
         type: 'DELETE',
         entity: 'property',

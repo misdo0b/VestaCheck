@@ -127,57 +127,66 @@ export async function POST(req: Request) {
           entity === 'organization' ? 'organizations' : null;
 
         if (tableName) {
-          const { camelToSnake } = await import('@/lib/utils/mapping');
-          
-          // On s'assure d'inclure l'identifiant pour que l'upsert fonctionne comme un update/insert ciblé.
-          // On convertit également les clés camelCase en snake_case pour la base de données.
-          const payload = camelToSnake({
-            id: entityId,
-            ...data
-          });
+          if (type === 'DELETE') {
+            const { error } = await supabase.from(tableName).delete().eq('id', entityId);
+            results.push({
+              id: mutation.id,
+              status: error ? 'error' : 'success',
+              error: error?.message
+            });
+          } else {
+            const { camelToSnake } = await import('@/lib/utils/mapping');
+            
+            // On s'assure d'inclure l'identifiant pour que l'upsert fonctionne comme un update/insert ciblé.
+            // On convertit également les clés camelCase en snake_case pour la base de données.
+            const payload = camelToSnake({
+              id: entityId,
+              ...data
+            });
 
-          // Si c'est un utilisateur et qu'un mot de passe en clair est fourni, on le hache
-          if (entity === 'user' && payload.password && !payload.password.startsWith('$2a$')) {
-            const { hashPassword } = await import('@/lib/utils/password');
-            payload.password = await hashPassword(payload.password);
-          }
-
-          // Extraire les property_ids pour la table de jointure et nettoyer le payload
-          const propertyIds = data.propertyIds || [];
-          delete payload.property_ids;
-          delete payload.property_ids_list;
-          delete payload.template_ids;
-          delete payload.template_ids_list;
-
-          const { error } = await supabase.from(tableName).upsert(payload);
-          
-          let relationError = null;
-          if (!error && entity === 'tenant' && data.propertyIds !== undefined) {
-            try {
-              // Nettoyage des anciennes associations
-              const { error: deleteErr } = await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
-              if (deleteErr) throw deleteErr;
-              
-              // Insertion des nouvelles associations
-              if (propertyIds.length > 0) {
-                const relations = propertyIds.map((pid: string) => ({
-                  tenant_id: entityId,
-                  property_id: pid
-                }));
-                const { error: insertErr } = await supabase.from('property_tenants').insert(relations);
-                if (insertErr) throw insertErr;
-              }
-            } catch (relationErr: any) {
-              console.error(`[Sync] Erreur lors de la synchronisation des relations property_tenants pour le locataire ${entityId}:`, relationErr);
-              relationError = relationErr;
+            // Si c'est un utilisateur et qu'un mot de passe en clair est fourni, on le hache
+            if (entity === 'user' && payload.password && !payload.password.startsWith('$2a$')) {
+              const { hashPassword } = await import('@/lib/utils/password');
+              payload.password = await hashPassword(payload.password);
             }
-          }
 
-          results.push({
-            id: mutation.id,
-            status: (error || relationError) ? 'error' : 'success',
-            error: error?.message || relationError?.message
-          });
+            // Extraire les property_ids pour la table de jointure et nettoyer le payload
+            const propertyIds = data.propertyIds || [];
+            delete payload.property_ids;
+            delete payload.property_ids_list;
+            delete payload.template_ids;
+            delete payload.template_ids_list;
+
+            const { error } = await supabase.from(tableName).upsert(payload);
+            
+            let relationError = null;
+            if (!error && entity === 'tenant' && data.propertyIds !== undefined) {
+              try {
+                // Nettoyage des anciennes associations
+                const { error: deleteErr } = await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
+                if (deleteErr) throw deleteErr;
+                
+                // Insertion des nouvelles associations
+                if (propertyIds.length > 0) {
+                  const relations = propertyIds.map((pid: string) => ({
+                    tenant_id: entityId,
+                    property_id: pid
+                  }));
+                  const { error: insertErr } = await supabase.from('property_tenants').insert(relations);
+                  if (insertErr) throw insertErr;
+                }
+              } catch (relationErr: any) {
+                console.error(`[Sync] Erreur lors de la synchronisation des relations property_tenants pour le locataire ${entityId}:`, relationErr);
+                relationError = relationErr;
+              }
+            }
+
+            results.push({
+              id: mutation.id,
+              status: (error || relationError) ? 'error' : 'success',
+              error: error?.message || relationError?.message
+            });
+          }
         }
       }
     }
