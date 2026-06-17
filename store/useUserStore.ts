@@ -53,9 +53,35 @@ export const useUserStore = create<UserStore>((set, get) => ({
       const serverUsers = await res.json();
       
       if (Array.isArray(serverUsers)) {
-        // Mise à jour de la base de données locale
-        await db.users.bulkPut(serverUsers);
-        set({ users: serverUsers, loading: false });
+        // On récupère les utilisateurs locaux pour préserver les modifications non synchronisées
+        const localUsers = await db.users.toArray();
+        const localPendingOrError = new Map(
+          localUsers
+            .filter(u => u.syncStatus === 'pending' || u.syncStatus === 'error')
+            .map(u => [u.id, u])
+        );
+
+        const mergedUsers = serverUsers.map((su: User) => {
+          const local = localPendingOrError.get(su.id);
+          if (local) {
+            return local;
+          }
+          return {
+            ...su,
+            syncStatus: 'synced' as const
+          };
+        });
+
+        // Ajouter aussi les utilisateurs créés localement qui ne sont pas encore sur le serveur
+        const serverIds = new Set(serverUsers.map((u: User) => u.id));
+        localUsers.forEach(lu => {
+          if ((lu.syncStatus === 'pending' || lu.syncStatus === 'error') && !serverIds.has(lu.id)) {
+            mergedUsers.push(lu);
+          }
+        });
+
+        await db.users.bulkPut(mergedUsers);
+        set({ users: mergedUsers, loading: false });
       }
     } catch (error) {
       console.warn('Fetch users failed, using local data:', error);
