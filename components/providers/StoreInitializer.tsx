@@ -39,15 +39,23 @@ export function StoreInitializer() {
       // 1.5 Lancer la migration des locataires si nécessaire
       await runTenantMigration();
 
-      // 2. Synchronisation descendante : Toujours récupérer les derniers utilisateurs, organisations et agences du serveur
+      // 2. Synchronisation descendante : Toujours récupérer les dernières données du serveur
       const fetchUsers = useUserStore.getState().fetchUsers;
       const fetchOrganizations = useOrganizationStore.getState().fetchOrganizations;
       const fetchAgencies = useAgencyStore.getState().fetchAgencies;
+      const fetchProperties = usePropertyStore.getState().fetchProperties;
+      const fetchTenants = useTenantStore.getState().fetchTenants;
+      const fetchInspections = useInspectionStore.getState().fetchInspections;
+      const fetchTemplates = usePropertyStore.getState().fetchTemplates;
       
       await Promise.all([
         fetchUsers(),
         fetchOrganizations(),
-        fetchAgencies()
+        fetchAgencies(),
+        fetchProperties(),
+        fetchTenants(),
+        fetchInspections(),
+        fetchTemplates()
       ]);
 
       // 3. Vérifier si on a des données. Si le cache est vide ou incomplet (migration), on fait un bootstrap complet.

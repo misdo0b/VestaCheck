@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
@@ -9,13 +10,16 @@ import { useTenantStore } from '@/store/useTenantStore';
 
 export function useSync() {
   const { data: session } = useSession();
-  const { syncStatus, setSyncStatus } = useInspectionStore();
-  const { fetchProperties } = usePropertyStore();
+  const { syncStatus, setSyncStatus, fetchInspections } = useInspectionStore();
+  const { fetchProperties, fetchTemplates } = usePropertyStore();
   const { fetchTenants } = useTenantStore();
   const isOnline = typeof window !== 'undefined' ? navigator.onLine : true;
 
   // Verrou pour empêcher des exécutions concurrentes du processQueue
   const isProcessingRef = useRef(false);
+
+  // Écoute réactive de la file d'attente des mutations locales
+  const mutationCount = useLiveQuery(() => db.mutationQueue.count());
 
   /**
    * Upload des photos HD qui n'ont pas encore été synchronisées.
@@ -115,65 +119,69 @@ export function useSync() {
       // 1. Upload des photos HD d'abord
       await uploadUnsyncedPhotos();
 
-      // 2. Traitement de la file de mutations SQL
+      // 2. Traitement de la file de mutations SQL (s'il y en a)
       const rawMutations = await db.mutationQueue.toArray();
+      let hasMutationErrors = false;
       
-      // Si rien à synchroniser, on s'arrête là
-      if (rawMutations.length === 0) {
-        if (syncStatus !== 'synced') setSyncStatus('synced');
-        return;
-      }
+      if (rawMutations.length > 0) {
+        setSyncStatus('syncing');
 
-      setSyncStatus('syncing');
+        // Préparation du batch
+        const mutations = rawMutations.map(m => ({
+          ...m,
+          // On s'assure que les données sont propres pour JSON
+          data: typeof m.data === 'string' ? JSON.parse(m.data) : m.data
+        }));
 
-      // Préparation du batch
-      const mutations = rawMutations.map(m => ({
-        ...m,
-        // On s'assure que les données sont propres pour JSON
-        data: typeof m.data === 'string' ? JSON.parse(m.data) : m.data
-      }));
+        console.log(`[Sync] Envoi de ${mutations.length} mutations...`);
 
-      console.log(`[Sync] Envoi de ${mutations.length} mutations...`);
+        const response = await fetch('/api/inspections/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mutations })
+        });
 
-      const response = await fetch('/api/inspections/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mutations })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Sync failed');
-      }
-
-      const result = await response.json();
-      
-      if (result.success && Array.isArray(result.results)) {
-        const successfulIds = result.results
-          .filter((res: any) => res.status === 'success')
-          .map((res: any) => res.id);
-
-        const failedMutations = result.results.filter((res: any) => res.status === 'error');
-
-        if (successfulIds.length > 0) {
-          await db.mutationQueue.bulkDelete(successfulIds);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Sync failed');
         }
+
+        const result = await response.json();
         
-        // Rafraîchissement des données locales pour s'assurer de la cohérence avec le serveur
-        await Promise.all([
-          fetchProperties(),
-          fetchTenants()
-        ]);
+        if (result.success && Array.isArray(result.results)) {
+          const successfulIds = result.results
+            .filter((res: any) => res.status === 'success')
+            .map((res: any) => res.id);
 
-        if (failedMutations.length > 0) {
-          console.warn(`[Sync] ${failedMutations.length} mutations ont échoué en base : ` + JSON.stringify(failedMutations));
-          setSyncStatus('error');
+          const failedMutations = result.results.filter((res: any) => res.status === 'error');
+
+          if (successfulIds.length > 0) {
+            await db.mutationQueue.bulkDelete(successfulIds);
+          }
+          
+          if (failedMutations.length > 0) {
+            console.warn(`[Sync] ${failedMutations.length} mutations ont échoué en base : ` + JSON.stringify(failedMutations));
+            hasMutationErrors = true;
+          }
         } else {
-          setSyncStatus('synced');
-          console.log('[Sync] Synchronisation réussie');
+          hasMutationErrors = true;
         }
-      } else {
+      }
+
+      // 3. Synchronisation descendante : Toujours récupérer les dernières données
+      setSyncStatus('syncing');
+      await Promise.all([
+        fetchProperties(),
+        fetchTenants(),
+        fetchInspections(),
+        fetchTemplates()
+      ]);
+
+      if (hasMutationErrors) {
         setSyncStatus('error');
+      } else {
+        setSyncStatus('synced');
+        console.log('[Sync] Synchronisation réussie');
       }
     } catch (error) {
       console.error('[Sync] Erreur critique:', error);
@@ -186,7 +194,7 @@ export function useSync() {
         setSyncStatus('synced');
       }
     }
-  }, [session, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, isOnline]);
+  }, [session, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, fetchInspections, fetchTemplates, isOnline]);
 
   // Déclenchement automatique de la synchro au montage et quand on repasse online
   useEffect(() => {
@@ -194,6 +202,13 @@ export function useSync() {
       processQueue();
     }
   }, [isOnline, session, processQueue]);
+
+  // Déclenchement automatique de la synchro si de nouvelles mutations locales sont en attente
+  useEffect(() => {
+    if (mutationCount !== undefined && mutationCount > 0 && isOnline && session) {
+      processQueue();
+    }
+  }, [mutationCount, isOnline, session, processQueue]);
 
   // Intervalle de sécurité (toutes les 2 minutes)
   useEffect(() => {
