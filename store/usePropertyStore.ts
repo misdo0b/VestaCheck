@@ -7,6 +7,7 @@ interface PropertyState {
   templates: PropertyTemplate[];
   loading: boolean;
   error: string | null;
+  currentUser?: { id: string; role: string; agencyId: string; organizationId: string };
 
   // Actions
   initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
@@ -30,9 +31,10 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
   templates: [],
   loading: false,
   error: null,
+  currentUser: undefined,
 
   initStore: async (user) => {
-    set({ loading: true });
+    set({ loading: true, currentUser: user });
     try {
       const [allLocalProps, localTemplates] = await Promise.all([
         db.properties.toArray(),
@@ -83,13 +85,27 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
         const data = await response.json();
         
         const localProperties = await db.properties.toArray();
+        const user = get().currentUser;
+        
+        // Cloisonnement : filtrer les propriétés locales par rapport au périmètre de l'utilisateur
+        const filteredLocal = user ? localProperties.filter(lp => {
+          if ('propertyId' in lp) return false;
+          if (user.role === 'Administrateur') {
+            return (lp as any).organizationId === user.organizationId;
+          }
+          if (user.role === 'Propriétaire') {
+            return lp.ownerId === user.id;
+          }
+          return lp.agencyId === user.agencyId;
+        }) : localProperties.filter(lp => !('propertyId' in lp));
+
         const serverPropsMap = new Map<string, Property>(data.map((p: Property) => [p.id, p]));
         
         const mergedProperties: Property[] = [];
         const toUpload: Property[] = [];
 
-        // 1. Parcourir les propriétés locales
-        for (const lp of localProperties) {
+        // 1. Parcourir les propriétés locales filtrées
+        for (const lp of filteredLocal) {
           // Filtrer les templates pollués
           if ('propertyId' in lp) continue;
           

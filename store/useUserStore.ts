@@ -6,6 +6,7 @@ interface UserStore {
   users: User[];
   loading: boolean;
   error: string | null;
+  currentUser?: { id: string; role: string; agencyId: string; organizationId: string };
 
   // Actions
   initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
@@ -19,9 +20,10 @@ export const useUserStore = create<UserStore>((set, get) => ({
   users: [],
   loading: false,
   error: null,
+  currentUser: undefined,
 
   initStore: async (user) => {
-    set({ loading: true });
+    set({ loading: true, currentUser: user });
     try {
       const allLocalUsers = await db.users.toArray();
       
@@ -54,13 +56,23 @@ export const useUserStore = create<UserStore>((set, get) => ({
       
       if (Array.isArray(serverUsers)) {
         const localUsers = await db.users.toArray();
+        const user = get().currentUser;
+
+        // Cloisonnement : filtrer les utilisateurs locaux par rapport au périmètre de l'utilisateur
+        const filteredLocal = user ? localUsers.filter(u => {
+          if (user.role === 'Administrateur' || user.role === 'Agent') {
+            return u.organizationId === user.organizationId;
+          }
+          return u.id === user.id;
+        }) : localUsers;
+
         const serverUsersMap = new Map<string, User>(serverUsers.map((u: User) => [u.id, u]));
         
         const mergedUsers: User[] = [];
         const toUpload: User[] = [];
 
-        // 1. Parcourir les utilisateurs locaux
-        for (const lu of localUsers) {
+        // 1. Parcourir les utilisateurs locaux filtrés
+        for (const lu of filteredLocal) {
           const su = serverUsersMap.get(lu.id);
           if (!su) {
             // Existe localement mais pas sur le serveur -> Upload requis

@@ -6,6 +6,7 @@ interface TenantState {
   tenants: Tenant[];
   loading: boolean;
   error: string | null;
+  currentUser?: { id: string; role: string; agencyId: string; organizationId: string };
 
   // Actions
   initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
@@ -24,9 +25,10 @@ export const useTenantStore = create<TenantState>((set, get) => ({
   tenants: [],
   loading: false,
   error: null,
+  currentUser: undefined,
 
   initStore: async (user) => {
-    set({ loading: true });
+    set({ loading: true, currentUser: user });
     try {
       const allLocalTenants = await db.tenants.toArray();
       
@@ -54,13 +56,23 @@ export const useTenantStore = create<TenantState>((set, get) => ({
         const serverTenants = data.tenants || [];
         
         const localTenants = await db.tenants.toArray();
+        const user = get().currentUser;
+
+        // Cloisonnement : filtrer les locataires locaux par rapport au périmètre de l'utilisateur
+        const filteredLocal = user ? localTenants.filter(lt => {
+          if (user.role === 'Administrateur' || user.role === 'Propriétaire') {
+            return lt.organizationId === user.organizationId;
+          }
+          return lt.agencyId === user.agencyId;
+        }) : localTenants;
+
         const serverTenantsMap = new Map<string, Tenant>(serverTenants.map((t: Tenant) => [t.id, t]));
         
         const mergedTenants: Tenant[] = [];
         const toUpload: Tenant[] = [];
 
-        // 1. Parcourir les locataires locaux
-        for (const lt of localTenants) {
+        // 1. Parcourir les locataires locaux filtrés
+        for (const lt of filteredLocal) {
           const st = serverTenantsMap.get(lt.id);
           if (!st) {
             // Existe localement mais pas sur le serveur -> Upload requis

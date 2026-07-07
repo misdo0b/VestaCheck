@@ -6,6 +6,7 @@ interface AgencyStore {
   agencies: Agency[];
   loading: boolean;
   error: string | null;
+  currentUser?: { role: string; organizationId: string };
 
   // Actions
   initStore: (user: { role: string; organizationId: string }) => Promise<void>;
@@ -20,9 +21,10 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
   agencies: [],
   loading: false,
   error: null,
+  currentUser: undefined,
 
   initStore: async (user) => {
-    set({ loading: true });
+    set({ loading: true, currentUser: user });
     try {
       const allLocalAgencies = await db.agencies.toArray();
       
@@ -48,13 +50,20 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
         const filtered = Array.isArray(data) ? (organizationId ? data.filter((a: any) => a.organizationId === organizationId) : data) : [];
         
         const localAgencies = await db.agencies.toArray();
+        const user = get().currentUser;
+
+        // Cloisonnement : filtrer les agences locales par rapport au périmètre de l'utilisateur
+        const filteredLocal = user ? localAgencies.filter(agency => {
+          return agency.organizationId === user.organizationId;
+        }) : localAgencies;
+
         const serverAgenciesMap = new Map<string, Agency>(filtered.map((a: Agency) => [a.id, a]));
         
         const mergedAgencies: Agency[] = [];
         const toUpload: Agency[] = [];
 
-        // 1. Parcourir les agences locales
-        for (const la of localAgencies) {
+        // 1. Parcourir les agences locales filtrées
+        for (const la of filteredLocal) {
           const sa = serverAgenciesMap.get(la.id);
           if (!sa) {
             // Existe localement mais pas sur le serveur -> Upload requis
