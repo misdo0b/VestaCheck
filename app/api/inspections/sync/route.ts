@@ -158,6 +158,9 @@ export async function POST(req: Request) {
             delete payload.template_ids_list;
 
             const { error } = await supabase.from(tableName).upsert(payload);
+            if (error) {
+              console.error(`[Sync] Erreur upsert ${entity} ${entityId}:`, error);
+            }
             
             let relationError = null;
             if (!error && entity === 'tenant' && data.propertyIds !== undefined) {

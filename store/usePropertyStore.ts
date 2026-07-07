@@ -82,32 +82,71 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
       if (response.ok) {
         const data = await response.json();
         
-        // On récupère les biens locaux pour préserver les modifications non synchronisées
         const localProperties = await db.properties.toArray();
-        const localPendingOrError = new Map(
-          localProperties
-            .filter(p => p.syncStatus === 'pending' || p.syncStatus === 'error')
-            .map(p => [p.id, p])
-        );
+        const serverPropsMap = new Map<string, Property>(data.map((p: Property) => [p.id, p]));
+        
+        const mergedProperties: Property[] = [];
+        const toUpload: Property[] = [];
 
-        const mergedProperties = data.map((sp: Property) => {
-          const local = localPendingOrError.get(sp.id);
-          if (local) {
-            return local;
+        // 1. Parcourir les propriétés locales
+        for (const lp of localProperties) {
+          // Filtrer les templates pollués
+          if ('propertyId' in lp) continue;
+          
+          const sp = serverPropsMap.get(lp.id);
+          if (!sp) {
+            // Existe localement mais pas sur le serveur -> Upload requis
+            toUpload.push(lp);
+            mergedProperties.push({
+              ...lp,
+              syncStatus: 'pending'
+            });
+          } else {
+            // Existe des deux côtés -> Comparer les dates
+            const localTime = new Date(lp.lastModified).getTime();
+            const serverTime = new Date(sp.lastModified).getTime();
+            
+            if (localTime > serverTime || lp.syncStatus === 'pending' || lp.syncStatus === 'error') {
+              toUpload.push(lp);
+              mergedProperties.push({
+                ...lp,
+                syncStatus: 'pending'
+              });
+            } else {
+              mergedProperties.push({
+                ...sp,
+                syncStatus: 'synced'
+              });
+            }
           }
-          return {
-            ...sp,
-            syncStatus: 'synced' as const
-          };
-        });
+        }
 
-        // Ajouter aussi les biens créés localement qui ne sont pas encore sur le serveur
-        const serverIds = new Set(data.map((p: Property) => p.id));
-        localProperties.forEach(lp => {
-          if ((lp.syncStatus === 'pending' || lp.syncStatus === 'error') && !serverIds.has(lp.id)) {
-            mergedProperties.push(lp);
+        // 2. Ajouter les biens du serveur inexistants localement
+        const localIds = new Set(localProperties.map(p => p.id));
+        for (const sp of data) {
+          if (!localIds.has(sp.id)) {
+            mergedProperties.push({
+              ...sp,
+              syncStatus: 'synced'
+            });
           }
-        });
+        }
+
+        // 3. Enregistrer les mutations manquantes pour l'upload
+        if (toUpload.length > 0) {
+          console.log(`[Sync] ${toUpload.length} propriétés détectées pour réconciliation vers le serveur.`);
+          for (const prop of toUpload) {
+            const queueItems = await db.mutationQueue.where('entityId').equals(prop.id).toArray();
+            if (queueItems.length === 0) {
+              await db.enqueueMutation({
+                type: 'CREATE',
+                entity: 'property',
+                entityId: prop.id,
+                data: prop
+              });
+            }
+          }
+        }
 
         await db.properties.bulkPut(mergedProperties);
         set({ properties: mergedProperties, loading: false });

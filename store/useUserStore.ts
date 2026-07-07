@@ -53,32 +53,68 @@ export const useUserStore = create<UserStore>((set, get) => ({
       const serverUsers = await res.json();
       
       if (Array.isArray(serverUsers)) {
-        // On récupère les utilisateurs locaux pour préserver les modifications non synchronisées
         const localUsers = await db.users.toArray();
-        const localPendingOrError = new Map(
-          localUsers
-            .filter(u => u.syncStatus === 'pending' || u.syncStatus === 'error')
-            .map(u => [u.id, u])
-        );
+        const serverUsersMap = new Map<string, User>(serverUsers.map((u: User) => [u.id, u]));
+        
+        const mergedUsers: User[] = [];
+        const toUpload: User[] = [];
 
-        const mergedUsers = serverUsers.map((su: User) => {
-          const local = localPendingOrError.get(su.id);
-          if (local) {
-            return local;
+        // 1. Parcourir les utilisateurs locaux
+        for (const lu of localUsers) {
+          const su = serverUsersMap.get(lu.id);
+          if (!su) {
+            // Existe localement mais pas sur le serveur -> Upload requis
+            toUpload.push(lu);
+            mergedUsers.push({
+              ...lu,
+              syncStatus: 'pending'
+            });
+          } else {
+            // Existe des deux côtés -> Comparer les dates
+            const localTime = new Date(lu.lastModified).getTime();
+            const serverTime = new Date(su.lastModified).getTime();
+            
+            if (localTime > serverTime || lu.syncStatus === 'pending' || lu.syncStatus === 'error') {
+              toUpload.push(lu);
+              mergedUsers.push({
+                ...lu,
+                syncStatus: 'pending'
+              });
+            } else {
+              mergedUsers.push({
+                ...su,
+                syncStatus: 'synced'
+              });
+            }
           }
-          return {
-            ...su,
-            syncStatus: 'synced' as const
-          };
-        });
+        }
 
-        // Ajouter aussi les utilisateurs créés localement qui ne sont pas encore sur le serveur
-        const serverIds = new Set(serverUsers.map((u: User) => u.id));
-        localUsers.forEach(lu => {
-          if ((lu.syncStatus === 'pending' || lu.syncStatus === 'error') && !serverIds.has(lu.id)) {
-            mergedUsers.push(lu);
+        // 2. Ajouter les utilisateurs du serveur inexistants localement
+        const localIds = new Set(localUsers.map(u => u.id));
+        for (const su of serverUsers) {
+          if (!localIds.has(su.id)) {
+            mergedUsers.push({
+              ...su,
+              syncStatus: 'synced'
+            });
           }
-        });
+        }
+
+        // 3. Enregistrer les mutations manquantes pour l'upload
+        if (toUpload.length > 0) {
+          console.log(`[Sync] ${toUpload.length} utilisateurs détectés pour réconciliation vers le serveur.`);
+          for (const user of toUpload) {
+            const queueItems = await db.mutationQueue.where('entityId').equals(user.id).toArray();
+            if (queueItems.length === 0) {
+              await db.enqueueMutation({
+                type: 'CREATE',
+                entity: 'user',
+                entityId: user.id,
+                data: user
+              });
+            }
+          }
+        }
 
         await db.users.bulkPut(mergedUsers);
         set({ users: mergedUsers, loading: false });

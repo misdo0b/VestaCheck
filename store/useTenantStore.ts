@@ -53,33 +53,68 @@ export const useTenantStore = create<TenantState>((set, get) => ({
         const data = await response.json();
         const serverTenants = data.tenants || [];
         
-        // On récupère les locataires locaux pour préserver les modifications non synchronisées
         const localTenants = await db.tenants.toArray();
-        const localPendingOrError = new Map(
-          localTenants
-            .filter(t => t.syncStatus === 'pending' || t.syncStatus === 'error')
-            .map(t => [t.id, t])
-        );
+        const serverTenantsMap = new Map<string, Tenant>(serverTenants.map((t: Tenant) => [t.id, t]));
+        
+        const mergedTenants: Tenant[] = [];
+        const toUpload: Tenant[] = [];
 
-        const mergedTenants = serverTenants.map((st: any) => {
-          const local = localPendingOrError.get(st.id);
-          if (local) {
-            // On conserve la version locale non synchronisée
-            return local;
+        // 1. Parcourir les locataires locaux
+        for (const lt of localTenants) {
+          const st = serverTenantsMap.get(lt.id);
+          if (!st) {
+            // Existe localement mais pas sur le serveur -> Upload requis
+            toUpload.push(lt);
+            mergedTenants.push({
+              ...lt,
+              syncStatus: 'pending'
+            });
+          } else {
+            // Existe des deux côtés -> Comparer les dates
+            const localTime = new Date(lt.lastModified).getTime();
+            const serverTime = new Date(st.lastModified).getTime();
+            
+            if (localTime > serverTime || lt.syncStatus === 'pending' || lt.syncStatus === 'error') {
+              toUpload.push(lt);
+              mergedTenants.push({
+                ...lt,
+                syncStatus: 'pending'
+              });
+            } else {
+              mergedTenants.push({
+                ...st,
+                syncStatus: 'synced'
+              });
+            }
           }
-          return {
-            ...st,
-            syncStatus: 'synced'
-          };
-        });
+        }
 
-        // Ajouter aussi les locataires créés localement qui ne sont pas encore sur le serveur
-        const serverIds = new Set(serverTenants.map((t: any) => t.id));
-        localTenants.forEach(lt => {
-          if ((lt.syncStatus === 'pending' || lt.syncStatus === 'error') && !serverIds.has(lt.id)) {
-            mergedTenants.push(lt);
+        // 2. Ajouter les locataires du serveur inexistants localement
+        const localIds = new Set(localTenants.map(t => t.id));
+        for (const st of serverTenants) {
+          if (!localIds.has(st.id)) {
+            mergedTenants.push({
+              ...st,
+              syncStatus: 'synced'
+            });
           }
-        });
+        }
+
+        // 3. Enregistrer les mutations manquantes pour l'upload
+        if (toUpload.length > 0) {
+          console.log(`[Sync] ${toUpload.length} locataires détectés pour réconciliation vers le serveur.`);
+          for (const tenant of toUpload) {
+            const queueItems = await db.mutationQueue.where('entityId').equals(tenant.id).toArray();
+            if (queueItems.length === 0) {
+              await db.enqueueMutation({
+                type: 'CREATE',
+                entity: 'tenant',
+                entityId: tenant.id,
+                data: tenant
+              });
+            }
+          }
+        }
 
         await db.tenants.bulkPut(mergedTenants);
         set({ tenants: mergedTenants, loading: false });
