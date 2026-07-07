@@ -12,6 +12,7 @@ import {
 import { Tenant } from '@/types';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useSync } from '@/hooks/useSync';
 
 // Composant Modale de Gestion (Création / Édition)
 interface TenantModalProps {
@@ -170,10 +171,13 @@ function TenantsPageContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Actuel' | 'Sorti' | 'Tous'>('Actuel');
   
+  const { processQueue } = useSync();
+  
   React.useEffect(() => {
-    fetchTenants();
-    fetchProperties();
-  }, [fetchTenants, fetchProperties]);
+    if (session) {
+      processQueue();
+    }
+  }, [session, processQueue]);
 
   const [sortBy, setSortBy] = useState<'name' | 'lastModified'>('name');
   

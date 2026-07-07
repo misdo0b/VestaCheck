@@ -2,17 +2,25 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useTenantStore } from '@/store/useTenantStore';
+import { useUserStore } from '@/store/useUserStore';
+import { useAgencyStore } from '@/store/useAgencyStore';
+import { useOrganizationStore } from '@/store/useOrganizationStore';
 
 export function useSync() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const { syncStatus, setSyncStatus, fetchInspections } = useInspectionStore();
   const { fetchProperties, fetchTemplates } = usePropertyStore();
   const { fetchTenants } = useTenantStore();
+  const { fetchUsers } = useUserStore();
+  const { fetchAgencies } = useAgencyStore();
+  const { fetchOrganizations } = useOrganizationStore();
   const isOnline = typeof window !== 'undefined' ? navigator.onLine : true;
 
   // Verrou pour empêcher des exécutions concurrentes du processQueue
@@ -174,7 +182,10 @@ export function useSync() {
         fetchProperties(),
         fetchTenants(),
         fetchInspections(),
-        fetchTemplates()
+        fetchTemplates(),
+        fetchUsers(),
+        fetchAgencies(),
+        fetchOrganizations()
       ]);
 
       if (hasMutationErrors) {
@@ -194,14 +205,14 @@ export function useSync() {
         setSyncStatus('synced');
       }
     }
-  }, [session, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, fetchInspections, fetchTemplates, isOnline]);
+  }, [session, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, fetchInspections, fetchTemplates, fetchUsers, fetchAgencies, fetchOrganizations, isOnline]);
 
-  // Déclenchement automatique de la synchro au montage et quand on repasse online
+  // Déclenchement automatique de la synchro au montage, quand on repasse online ou change de page
   useEffect(() => {
     if (isOnline && session) {
       processQueue();
     }
-  }, [isOnline, session, processQueue]);
+  }, [isOnline, session, processQueue, pathname]);
 
   // Déclenchement automatique de la synchro si de nouvelles mutations locales sont en attente
   useEffect(() => {

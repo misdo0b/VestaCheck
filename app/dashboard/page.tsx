@@ -8,6 +8,7 @@ import { LogOut, User as UserIcon, ShieldCheck, Building2, Users, MapPin, Briefc
 import { useAgencyStore } from '@/store/useAgencyStore';
 import { useOrganizationStore } from '@/store/useOrganizationStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useSync } from '@/hooks/useSync';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -15,6 +16,13 @@ export default function DashboardPage() {
   const { agencies } = useAgencyStore();
   const { organizations } = useOrganizationStore();
   const { t } = useTranslation();
+  const { processQueue } = useSync();
+
+  React.useEffect(() => {
+    if (status === 'authenticated' && session) {
+      processQueue();
+    }
+  }, [status, session, processQueue]);
 
   if (status === 'loading') {
     return (

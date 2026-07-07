@@ -11,6 +11,7 @@ import { PropertyListItem } from '@/components/properties/PropertyListItem';
 import { PropertyModal } from '@/components/properties/PropertyModal';
 import { Plus, Search, Building2, Filter, LayoutGrid, List, X } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useSync } from '@/hooks/useSync';
 
 export default function PropertiesPage() {
   const { t } = useTranslation();
@@ -26,15 +27,13 @@ export default function PropertiesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  const { fetchProperties } = usePropertyStore();
-  const { fetchUsers } = useUserStore();
+  const { processQueue } = useSync();
 
   React.useEffect(() => {
     if (session) {
-      fetchProperties();
-      fetchUsers();
+      processQueue();
     }
-  }, [session, fetchProperties, fetchUsers]);
+  }, [session, processQueue]);
   
   // New States
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
