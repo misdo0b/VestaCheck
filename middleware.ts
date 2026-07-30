@@ -7,32 +7,35 @@ export default auth((req) => {
 
   const isLoginPage = pathname === "/login";
   const isRegisterPage = pathname === "/register";
+  const isOnboardingPage = pathname === "/onboarding";
   const isApiRoute = pathname.startsWith("/api");
   const isPublicAsset = pathname.startsWith("/_next") || 
                         pathname.startsWith("/assets") || 
                         pathname.includes("favicon.ico");
 
-  // On laisse passer les routes publiques (login, register, api, assets)
-  if (isLoginPage || isRegisterPage || isApiRoute || isPublicAsset) {
-    // Si on est déjà connecté et qu'on va sur le login ou register, redirection dashboard
-    if (isLoggedIn && (isLoginPage || isRegisterPage)) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-    return NextResponse.next();
-  }
-
-  // 1. Redirection si non connecté pour TOUT le reste
-  if (!isLoggedIn) {
-     const loginUrl = new URL("/login", req.url);
-     loginUrl.searchParams.set("callbackUrl", pathname);
-     return NextResponse.redirect(loginUrl);
-  }
-
-  // 1.bis Vérification du rattachement à une agence (Sécurité Pivot)
   const sessionUser = req.auth?.user as any;
-  if (!sessionUser?.agencyId && !isLoginPage && !isRegisterPage) {
-    console.error("Accès refusé : utilisateur sans agence rattachée.");
-    return NextResponse.redirect(new URL("/login?error=NoAgency", req.url));
+
+  // 1. Utilisateur non connecté : rediriger vers /login sauf routes publiques
+  if (!isLoggedIn) {
+    if (isLoginPage || isRegisterPage || isApiRoute || isPublicAsset) {
+      return NextResponse.next();
+    }
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // 2. Utilisateur connecté mais SANS agence (nouveau compte OAuth SSO)
+  if (!sessionUser?.agencyId) {
+    if (isOnboardingPage || isApiRoute || isPublicAsset) {
+      return NextResponse.next();
+    }
+    return NextResponse.redirect(new URL("/onboarding", req.url));
+  }
+
+  // 3. Utilisateur connecté AVEC agence tentant d'accéder aux pages d'auth/onboarding
+  if (isLoginPage || isRegisterPage || isOnboardingPage) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   // 2. Gestion des accès par rôle (basé sur l'existant)

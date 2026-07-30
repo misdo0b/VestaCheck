@@ -22,7 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         try {
           const supabase = await getSupabase(true); // Service role pour bypass RLS lors du login
-          
+
           const { data: user, error } = await supabase
             .from('users')
             .select('*')
@@ -64,17 +64,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         try {
           const supabase = await getSupabase(true);
-          const { data: dbUser } = await supabase
+          const { data: dbUser, error: fetchError } = await supabase
             .from('users')
             .select('id')
             .eq('email', email)
-            .single();
+            .maybeSingle();
+
+          if (fetchError) {
+            console.error("SSO Signin Fetch Error:", fetchError);
+          }
 
           if (!dbUser) {
             const { randomUUID } = await import('crypto');
             const newUserId = randomUUID();
-            const defaultOrgId = "00000000-0000-0000-0000-000000000002";
-            const defaultAgencyId = "00000000-0000-0000-0000-000000000001";
 
             const { error: insertError } = await supabase
               .from('users')
@@ -82,9 +84,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 id: newUserId,
                 email: email,
                 name: user.name || email.split('@')[0],
-                role: 'Agent',
-                organization_id: defaultOrgId,
-                agency_id: defaultAgencyId,
+                role: 'Administrateur',
+                organization_id: null,
+                agency_id: null,
                 server_version: 1,
                 last_modified: new Date().toISOString(),
                 sync_status: 'synced'
@@ -94,12 +96,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               console.error("SSO Signin Auto-Create Error:", insertError);
               return false;
             }
-
-            // Envoi asynchrone non-bloquant du mail de bienvenue pour le nouvel Agent SSO
-            const welcomeName = user.name || email.split('@')[0];
-            sendWelcomeEmail(email, welcomeName, "Agence Principale").catch((err) => {
-              console.error("[Mail] Échec d'envoi du mail de bienvenue SSO:", err);
-            });
           }
         } catch (err) {
           console.error("SSO Signin Callback Error:", err);
@@ -116,34 +112,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (session.user.agencyId) token.agencyId = session.user.agencyId;
         if (session.user.organizationId) token.organizationId = session.user.organizationId;
       }
-      if (user) {
-        if (account && account.provider === 'google') {
-          const email = user.email?.toLowerCase();
-          if (email) {
-            try {
-              const supabase = await getSupabase(true);
-              const { data: dbUser } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', email)
-                .single();
+      
+      // Récupération ou rafraîchissement des infos utilisateur en BDD
+      if (token.email) {
+        try {
+          const supabase = await getSupabase(true);
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', (token.email as string).toLowerCase())
+            .maybeSingle();
 
-              if (dbUser) {
-                token.id = dbUser.id;
-                token.role = dbUser.role as UserRole;
-                token.organizationId = dbUser.organization_id;
-                token.agencyId = dbUser.agency_id;
-              }
-            } catch (err) {
-              console.error("SSO JWT Error:", err);
-            }
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.role = dbUser.role as UserRole;
+            token.organizationId = dbUser.organization_id || undefined;
+            token.agencyId = dbUser.agency_id || undefined;
           }
-        } else {
-          // For Credentials login, user is already returned from authorize() with camelCase mapped fields
-          token.id = user.id;
-          token.role = user.role;
-          token.organizationId = user.organizationId;
-          token.agencyId = user.agencyId;
+        } catch (err) {
+          console.error("SSO JWT Error:", err);
         }
       }
       return token;

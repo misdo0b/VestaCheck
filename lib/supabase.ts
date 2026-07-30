@@ -17,7 +17,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
  * @returns Client Supabase
  */
 export async function getSupabase(useServiceRole = false) {
-  const key = useServiceRole ? supabaseServiceKey : supabaseAnonKey;
+  const key = (useServiceRole && supabaseServiceKey) ? supabaseServiceKey : supabaseAnonKey;
   
   return createClient(supabaseUrl, key, {
     auth: {
