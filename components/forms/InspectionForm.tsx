@@ -126,7 +126,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       isFinalized: initialData?.isFinalized || false,
       lastModified: new Date().toISOString(),
     },
-    mode: 'onTouched'
+    mode: 'all'
   });
 
   const { isValid, errors: formErrors } = methods.formState;
@@ -135,16 +135,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
   const inspectorSig = methods.watch('signatures.inspector');
 
   const bothSignaturesPresent = !!(tenantSig?.drawData && inspectorSig?.drawData);
-  const isLocked = !!(
-    initialData?.isFinalized || 
-    isFinalized || 
-    tenantSig?.drawData || 
-    inspectorSig?.drawData ||
-    methods.getValues('isFinalized') ||
-    methods.getValues('signatures.tenant.drawData') ||
-    methods.getValues('signatures.inspector.drawData')
-  );
-  const canFinalize = isValid && bothSignaturesPresent && (initialData?.isFinalized || isFinalized);
+  const isLocked = !!initialData?.isFinalized;
 
   const nextStep = async () => {
     if (isLocked) {
@@ -156,11 +147,27 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       return;
     }
 
+    if (!isTemplateMode && currentStep === 0) {
+      const values = methods.getValues();
+      const hasTenant = !!(values.tenantId && values.tenantId.trim() !== '') || !!(values.manualTenant?.name && values.manualTenant.name.trim() !== '');
+      if (!hasTenant) {
+        methods.setError('tenantId', {
+          type: 'manual',
+          message: t('validation.tenantRequired') || "Veuillez sélectionner ou renseigner un locataire."
+        });
+        toast.error("Veuillez sélectionner ou renseigner un locataire avant de continuer.", { duration: 5000 });
+        return;
+      } else {
+        methods.clearErrors('tenantId');
+      }
+    }
+
     let fieldsToValidate: any[] = [];
     if (isTemplateMode) {
-      if (currentStep === 0) fieldsToValidate = ['counters'];
+      if (currentStep === 0) fieldsToValidate = ['name', 'counters'];
+      if (currentStep === 1) fieldsToValidate = ['rooms', 'keyInventories'];
     } else {
-      if (currentStep === 0) fieldsToValidate = ['propertyAddress', 'tenantId', 'manualTenant', 'counters'];
+      if (currentStep === 0) fieldsToValidate = ['propertyAddress', 'tenantId', 'manualTenant', 'date', 'counters'];
       if (currentStep === 1) fieldsToValidate = ['rooms'];
       if (currentStep === 2) fieldsToValidate = ['keyInventories'];
     }
@@ -174,7 +181,49 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       console.warn("[VestaCheck Validation Debug] Erreurs sur l'étape courante:", methods.formState.errors);
-      toast.error(t('inspection.toastErrorSubmit'));
+      const stepErrors = methods.formState.errors;
+      const errorList: string[] = [];
+
+      if (currentStep === 0) {
+        if (stepErrors.propertyAddress) errorList.push("Adresse du bien");
+        if (stepErrors.tenantId || stepErrors.manualTenant) errorList.push("Locataire (sélectionnez ou renseignez le locataire)");
+        if (stepErrors.date) errorList.push("Date de l'état des lieux");
+        if (stepErrors.counters) errorList.push("Compteurs");
+      } else if (currentStep === 1) {
+        if (stepErrors.rooms) {
+          const roomsVal = methods.getValues('rooms') || [];
+          if (roomsVal.length === 0) {
+            errorList.push("Aucune pièce ajoutée");
+          } else {
+            roomsVal.forEach((room: any, rIdx: number) => {
+              const roomLabel = room.name && room.name.trim() !== '' ? `"${room.name}"` : `n°${rIdx + 1}`;
+              if (!room.name || room.name.trim() === '') {
+                errorList.push(`Nom de la pièce ${roomLabel}`);
+              }
+              if (!room.items || room.items.length === 0) {
+                errorList.push(`Aucun élément dans ${roomLabel}`);
+              } else {
+                room.items.forEach((item: any, iIdx: number) => {
+                  if (!item.label || item.label.trim() === '') {
+                    errorList.push(`Nom de l'élément n°${iIdx + 1} dans ${roomLabel}`);
+                  }
+                });
+              }
+            });
+          }
+          if (errorList.length === 0) {
+            errorList.push("Nom de pièce ou élément manquant");
+          }
+        }
+      } else if (currentStep === 2) {
+        if (stepErrors.keyInventories) errorList.push("Inventaire des clés");
+      }
+
+      const msg = errorList.length > 0
+        ? `Veuillez corriger : ${errorList.join(', ')}`
+        : (t('inspection.toastErrorSubmit') || "Certains champs de cette étape sont mal renseignés.");
+
+      toast.error(msg, { duration: 5000 });
     }
   };
 
@@ -186,7 +235,103 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const onFormError = (errors: any) => {
+    console.warn("[VestaCheck Validation Debug] Erreurs lors de la finalisation:", errors);
+    
+    // Identifier les étapes contenant des erreurs et naviguer vers la première étape invalide
+    const errorSections: { step: number; label: string; fields: string[] }[] = [];
+    const values = methods.getValues();
+
+    // Étape 0 (Synthèse / Général)
+    const step0Fields: string[] = [];
+    const hasTenant = !!(values.tenantId && values.tenantId.trim() !== '') || !!(values.manualTenant?.name && values.manualTenant.name.trim() !== '');
+    if (errors.propertyAddress) step0Fields.push("Adresse du bien");
+    if (errors.tenantId || errors.manualTenant || !hasTenant) step0Fields.push("Locataire (sélectionnez ou renseignez un locataire)");
+    if (errors.date) step0Fields.push("Date");
+    if (errors.counters) step0Fields.push("Compteurs");
+    if (step0Fields.length > 0) {
+      errorSections.push({ step: 0, label: "Étape 1 : Synthèse & Général", fields: step0Fields });
+    }
+
+    // Étape 1 (Pièces & Éléments)
+    if (errors.rooms) {
+      const roomFields: string[] = [];
+      const roomsVal = values.rooms || [];
+
+      if (roomsVal.length === 0) {
+        roomFields.push("Aucune pièce créée dans le rapport");
+      } else {
+        roomsVal.forEach((room: any, rIdx: number) => {
+          const roomLabel = room.name && room.name.trim() !== '' ? `"${room.name}"` : `n°${rIdx + 1}`;
+          if (!room.name || room.name.trim() === '') {
+            roomFields.push(`Nom de la pièce ${roomLabel}`);
+          }
+          if (!room.items || room.items.length === 0) {
+            roomFields.push(`Aucun élément dans la pièce ${roomLabel}`);
+          } else {
+            room.items.forEach((item: any, iIdx: number) => {
+              if (!item.label || item.label.trim() === '') {
+                roomFields.push(`Nom de l'élément n°${iIdx + 1} dans la pièce ${roomLabel}`);
+              }
+            });
+          }
+        });
+      }
+
+      if (roomFields.length === 0) {
+        roomFields.push("Veuillez vérifier les noms des pièces et des éléments");
+      }
+
+      errorSections.push({ step: 1, label: "Étape 2 : Pièces et Éléments", fields: roomFields });
+    }
+
+    // Étape 2 (Clés)
+    if (errors.keyInventories) {
+      errorSections.push({ step: 2, label: "Étape 3 : Inventaire des clés", fields: ["Clés"] });
+    }
+
+    // Étape 3 (Signatures) - Vérification basée sur les valeurs effectives
+    const tenantSig = values.signatures?.tenant?.drawData;
+    const inspectorSig = values.signatures?.inspector?.drawData;
+    const isCert = values.isFinalized;
+
+    if (!tenantSig || !inspectorSig || !isCert) {
+      const sigFields: string[] = [];
+      if (!tenantSig) sigFields.push("Signature du locataire");
+      if (!inspectorSig) sigFields.push("Signature de l'inspecteur");
+      if (!isCert) sigFields.push("Case à cocher de certification");
+      errorSections.push({ step: 3, label: "Étape 4 : Signatures et certification", fields: sigFields });
+    }
+
+    if (errorSections.length > 0) {
+      const firstError = errorSections[0];
+      // Redirection automatique vers l'étape où se trouve l'erreur
+      setCurrentStep(firstError.step);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      toast.error(`Informations manquantes dans ${firstError.label}`, {
+        description: `Champs concernés : ${firstError.fields.join(', ')}`,
+        duration: 7000
+      });
+    } else {
+      toast.error("Le formulaire contient des erreurs. Veuillez vérifier vos données.", { duration: 5000 });
+    }
+  };
+
   const onSubmit = async (data: InspectionFormData) => {
+    if (!isTemplateMode) {
+      if (!bothSignaturesPresent) {
+        setCurrentStep(3);
+        toast.error(t('inspection.signaturesRequired') || "Veuillez apposer les deux signatures (locataire et inspecteur) avant de finaliser.");
+        return;
+      }
+      if (!data.isFinalized) {
+        setCurrentStep(3);
+        toast.error(t('inspection.certifyRequired') || "Veuillez cocher la case certifiant l'exactitude des informations.");
+        return;
+      }
+    }
+
     let finalTenantId = data.tenantId;
 
     if (!finalTenantId && data.manualTenant?.name && data.manualTenant?.email) {
@@ -308,7 +453,15 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(onSubmit)} className="max-w-5xl mx-auto pb-32 min-h-screen bg-slate-950">
+      <form 
+        onSubmit={methods.handleSubmit(onSubmit, onFormError)} 
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+            e.preventDefault();
+          }
+        }}
+        className="max-w-5xl mx-auto pb-32 min-h-screen bg-slate-950"
+      >
         <div className="sticky top-4 z-40 flex justify-between items-center bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/5 mb-8 mx-2">
           <div className="flex items-center gap-4">
             <div className={`${isTemplateMode ? 'bg-emerald-600' : 'bg-blue-600'} p-2.5 rounded-xl text-white shadow-lg`}>
@@ -335,10 +488,11 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
               </button>
             )}
 
-            {(isTemplateMode || (currentStep === steps.length - 1 && !initialData?.isFinalized)) && (
+            {currentStep === steps.length - 1 && (
               <button
-                type="submit"
-                disabled={isTemplateMode ? false : !canFinalize}
+                type="button"
+                onClick={methods.handleSubmit(onSubmit, onFormError)}
+                disabled={isExporting}
                 className={`flex items-center gap-2 px-6 py-2 ${isTemplateMode ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-blue-600 hover:bg-blue-500'} text-white rounded-xl font-bold shadow-lg transition-all active:scale-95 disabled:opacity-40`}
               >
                 {isTemplateMode ? <Save size={18} /> : <CheckCircle2 size={18} />}
@@ -432,7 +586,15 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
                 <ArrowRight size={20} />
               </button>
             ) : (
-              <div className="flex-1 max-w-[400px]" />
+              <button
+                type="button"
+                onClick={methods.handleSubmit(onSubmit, onFormError)}
+                disabled={isExporting}
+                className={`flex-1 max-w-[400px] flex items-center justify-center gap-2 py-4 px-6 rounded-2xl ${isTemplateMode ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'} text-white font-bold shadow-xl transition-all active:scale-95 disabled:opacity-40`}
+              >
+                {isTemplateMode ? <Save size={20} /> : <CheckCircle2 size={20} />}
+                <span>{isTemplateMode ? t('inspection.saveBtn') : t('inspection.finalizeBtn')}</span>
+              </button>
             )}
           </div>
         </div>

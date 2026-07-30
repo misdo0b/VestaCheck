@@ -12,10 +12,8 @@ export const KeyInventorySection: React.FC = () => {
     name: 'keyInventories'
   });
 
-  const tenantSig = watch('signatures.tenant.drawData') || getValues('signatures.tenant.drawData');
-  const inspectorSig = watch('signatures.inspector.drawData') || getValues('signatures.inspector.drawData');
   const isFinalized = watch('isFinalized') || getValues('isFinalized');
-  const isLocked = !!(isFinalized || tenantSig || inspectorSig);
+  const isLocked = !!isFinalized;
 
   return (
     <div className={`mb-12 ${isLocked ? 'opacity-75' : ''}`}>

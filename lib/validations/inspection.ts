@@ -58,14 +58,14 @@ export const RoomSchema = z.object({
 const BaseReportSchema = z.object({
   id: ensureStringId,
   propertyId: z.string(),
-  propertyAddress: z.string(),
-  date: z.string(),
-  type: z.enum(['Entrée', 'Sortie']),
-  ownerId: z.string(),
-  inspectorId: z.string(),
+  propertyAddress: z.preprocess(val => val ?? '', z.string().default('')),
+  date: z.preprocess(val => val ?? new Date().toISOString().split('T')[0], z.string().default('')),
+  type: z.preprocess(val => val || 'Entrée', z.enum(['Entrée', 'Sortie']).default('Entrée')),
+  ownerId: z.preprocess(val => val ?? '', z.string().default('')),
+  inspectorId: z.preprocess(val => val ?? '', z.string().default('')),
   tenantId: z.preprocess(val => val ?? undefined, z.string().optional()),
-  agencyId: z.string(),
-  organizationId: z.string(),
+  agencyId: z.preprocess(val => val ?? '', z.string().default('')),
+  organizationId: z.preprocess(val => val ?? '', z.string().default('')),
 
   // Locataire manuel si pas sélectionné
   manualTenant: z.object({
@@ -110,15 +110,10 @@ const BaseReportSchema = z.object({
 export const getInspectionReportSchema = (t: (key: string) => string) => {
   return BaseReportSchema
     .refine((data) => {
-      // Si finalisé, le locataire est requis
-      if (data.isFinalized) {
-        const hasTenant = !!data.tenantId || (!!data.manualTenant?.name && !!data.manualTenant?.email && !!data.manualTenant?.phone);
-        if (data.type === 'Sortie') return !!data.tenantId;
-        return hasTenant;
-      }
-      return true;
+      const hasTenant = !!(data.tenantId && data.tenantId.trim() !== '') || !!(data.manualTenant?.name && data.manualTenant.name.trim() !== '');
+      return hasTenant;
     }, {
-      message: t('validation.tenantRequired'),
+      message: t('validation.tenantRequired') || "Veuillez sélectionner ou renseigner un locataire.",
       path: ['tenantId']
     })
     .refine((data) => {
@@ -136,7 +131,7 @@ export const getInspectionReportSchema = (t: (key: string) => string) => {
       return true;
     }, {
       message: t('validation.reportIncomplete'),
-      path: ['isFinalized']
+      path: ['rooms']
     });
 };
 
@@ -149,7 +144,25 @@ export const getPropertyTemplateSchema = (t: (key: string) => string) => {
     agencyId: z.string().optional(),
     organizationId: z.string().optional(),
     rooms: z.array(RoomSchema).default([]),
-    lastModified: z.string(),
+    keyInventories: z.preprocess(val => val ?? [], z.array(z.object({
+      id: ensureStringId,
+      type: z.preprocess(val => val ?? 'Clés du logement', z.string().default('Clés du logement')),
+      count: z.preprocess(val => val ?? 1, z.number().default(1)),
+    })).default([])),
+    lastModified: z.string().optional(),
+  }).refine((data) => {
+    if (!data.rooms || data.rooms.length === 0) return false;
+    for (const room of data.rooms) {
+      if (!room.name || room.name.trim() === '') return false;
+      if (!room.items || room.items.length === 0) return false;
+      for (const item of room.items) {
+        if (!item.label || item.label.trim() === '') return false;
+      }
+    }
+    return true;
+  }, {
+    message: t('validation.reportIncomplete') || "Chaque pièce doit avoir un nom et des éléments nommés.",
+    path: ['rooms']
   });
 };
 

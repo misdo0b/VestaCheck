@@ -201,31 +201,58 @@ export const HeaderSection: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                <input 
-                  placeholder={t('inspection.newTenantName')}
-                  {...register('manualTenant.name')}
-                  className="w-full bg-slate-950/50 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-white outline-none focus:border-blue-500/50"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                   <input 
-                    placeholder={t('inspection.email')}
-                    {...register('manualTenant.email')}
-                    onBlur={handleEmailBlur}
-                    className="w-full bg-slate-950/50 border border-white/10 rounded-xl pl-10 pr-3 py-3 text-xs text-white outline-none focus:border-blue-500/50"
+                    placeholder={t('inspection.newTenantName')}
+                    {...register('manualTenant.name')}
+                    className={`w-full bg-slate-950/50 border rounded-xl pl-12 pr-4 py-3 text-sm text-white outline-none transition-all ${
+                      errors.manualTenant?.name ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 focus:border-blue-500/50'
+                    }`}
                   />
                 </div>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                  <input 
-                    placeholder={t('inspection.phone')}
-                    {...register('manualTenant.phone')}
-                    className="w-full bg-slate-950/50 border border-white/10 rounded-xl pl-10 pr-3 py-3 text-xs text-white outline-none focus:border-blue-500/50"
-                  />
+                {errors.manualTenant?.name && (
+                  <p className="text-red-400 text-[10px] mt-1 ml-1 font-medium flex items-center gap-1">
+                    <AlertCircle size={10} /> {errors.manualTenant.name.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                    <input 
+                      placeholder={t('inspection.email')}
+                      {...register('manualTenant.email')}
+                      onBlur={handleEmailBlur}
+                      className={`w-full bg-slate-950/50 border rounded-xl pl-10 pr-3 py-3 text-xs text-white outline-none transition-all ${
+                        errors.manualTenant?.email ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 focus:border-blue-500/50'
+                      }`}
+                    />
+                  </div>
+                  {errors.manualTenant?.email && (
+                    <p className="text-red-400 text-[10px] mt-1 ml-1 font-medium flex items-center gap-1">
+                      <AlertCircle size={10} /> {errors.manualTenant.email.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                    <input 
+                      placeholder={t('inspection.phone')}
+                      {...register('manualTenant.phone')}
+                      className={`w-full bg-slate-950/50 border rounded-xl pl-10 pr-3 py-3 text-xs text-white outline-none transition-all ${
+                        errors.manualTenant?.phone ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 focus:border-blue-500/50'
+                      }`}
+                    />
+                  </div>
+                  {errors.manualTenant?.phone && (
+                    <p className="text-red-400 text-[10px] mt-1 ml-1 font-medium flex items-center gap-1">
+                      <AlertCircle size={10} /> {errors.manualTenant.phone.message}
+                    </p>
+                  )}
                 </div>
               </div>
               <p className="text-[9px] text-blue-500/60 ml-1 italic font-medium">
@@ -244,8 +271,15 @@ export const HeaderSection: React.FC = () => {
             type="date"
             {...register('date')}
             disabled={isFinalized}
-            className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className={`w-full bg-slate-950/50 border rounded-xl px-4 py-3 text-white text-sm outline-none transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+              errors.date ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 focus:border-blue-500/50'
+            }`}
           />
+          {errors.date && (
+            <p className="text-red-400 text-[10px] mt-1 ml-1 font-medium flex items-center gap-1">
+              <AlertCircle size={10} /> {errors.date.message}
+            </p>
+          )}
         </div>
       </div>
     </div>

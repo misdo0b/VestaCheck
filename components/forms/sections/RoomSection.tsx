@@ -11,10 +11,8 @@ export const RoomSection: React.FC = () => {
   const { register, control, watch, getValues, formState: { errors } } = useFormContext<InspectionFormData>();
   const { t } = useTranslation();
   
-  const tenantSig = watch('signatures.tenant.drawData') || getValues('signatures.tenant.drawData');
-  const inspectorSig = watch('signatures.inspector.drawData') || getValues('signatures.inspector.drawData');
   const isFinalized = watch('isFinalized') || getValues('isFinalized');
-  const isLocked = !!(isFinalized || tenantSig || inspectorSig);
+  const isLocked = !!isFinalized;
 
   const { fields: roomFields, append: appendRoom, remove: removeRoom } = useFieldArray({
     control,
@@ -73,26 +71,35 @@ export const RoomSection: React.FC = () => {
 };
 
 const RoomCard: React.FC<{ roomIndex: number; onRemove: () => void; isLocked: boolean }> = ({ roomIndex, onRemove, isLocked }) => {
-  const { register, control } = useFormContext<InspectionFormData>();
+  const { register, control, formState: { errors } } = useFormContext<InspectionFormData>();
   const { t } = useTranslation();
   const { fields: itemFields, append: appendItem, remove: removeItem } = useFieldArray({
     control,
     name: `rooms.${roomIndex}.items` as const
   });
 
+  const roomError = (errors.rooms as any)?.[roomIndex];
+
   return (
-    <div className="bg-slate-900/40 rounded-3xl shadow-xl border border-white/5 overflow-hidden backdrop-blur-sm group/room transition-all hover:border-white/10 mx-2">
+    <div className={`bg-slate-900/40 rounded-3xl shadow-xl border ${roomError ? 'border-red-500/50 ring-1 ring-red-500/30' : 'border-white/5'} overflow-hidden backdrop-blur-sm group/room transition-all hover:border-white/10 mx-2`}>
       {/* En-tête de la pièce */}
       <div className="bg-slate-950/40 px-6 py-5 border-b border-white/5 flex justify-between items-center sm:gap-4 flex-wrap">
-        <div className="flex items-center gap-4 flex-1 min-w-[200px]">
-          <div className="p-2 bg-blue-500/10 rounded-xl">
-             <LayoutGrid className="text-blue-400" size={18} />
+        <div className="flex-1 min-w-[200px]">
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-blue-500/10 rounded-xl">
+               <LayoutGrid className="text-blue-400" size={18} />
+            </div>
+            <input
+              {...register(`rooms.${roomIndex}.name`)}
+              placeholder={t('inspection.roomNamePlaceholder')}
+              className={`bg-transparent font-bold text-white outline-none border-b w-full text-lg placeholder:text-slate-600 focus:placeholder:text-slate-700 transition-all ${
+                roomError?.name ? 'border-red-500 bg-red-500/10 px-2 rounded' : 'border-transparent focus:border-blue-500/50'
+              }`}
+            />
           </div>
-          <input
-            {...register(`rooms.${roomIndex}.name`)}
-            placeholder={t('inspection.roomNamePlaceholder')}
-            className="bg-transparent font-bold text-white outline-none border-b border-transparent focus:border-blue-500/50 w-full text-lg placeholder:text-slate-600 focus:placeholder:text-slate-700 transition-all"
-          />
+          {roomError?.name && (
+            <p className="text-red-400 text-xs font-semibold mt-1 ml-10">⚠️ {roomError.name.message || t('validation.roomNameRequired') || 'Veuillez saisir un nom de pièce'}</p>
+          )}
         </div>
         {!isLocked && (
           <button
@@ -138,9 +145,10 @@ const InspectionItemCard: React.FC<{
   isLocked: boolean;
   onRemove: () => void 
 }> = ({ roomIndex, itemIndex, isLocked, onRemove }) => {
-  const { register, watch } = useFormContext<InspectionFormData>();
+  const { register, watch, formState: { errors } } = useFormContext<InspectionFormData>();
   const { t } = useTranslation();
   const condition = watch(`rooms.${roomIndex}.items.${itemIndex}.condition`);
+  const itemError = (errors.rooms as any)?.[roomIndex]?.items?.[itemIndex];
 
   // Couleurs conditionnelles pour l'UX
   const getConditionStyles = (c: string) => {
@@ -159,16 +167,23 @@ const InspectionItemCard: React.FC<{
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Colonne 1 : Label & État */}
         <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-2">
-            <input
-              {...register(`rooms.${roomIndex}.items.${itemIndex}.label` as const)}
-              list={`suggestions-${roomIndex}`}
-              className="flex-1 bg-transparent border-b border-white/10 focus:border-blue-500/50 outline-none text-sm font-bold text-white placeholder:text-slate-700"
-              placeholder={t('inspection.elementNamePlaceholder')}
-            />
-            <datalist id={`suggestions-${roomIndex}`}>
-               {ITEM_SUGGESTIONS.map(s => <option key={s} value={s} />)}
-            </datalist>
+          <div>
+            <div className="flex items-center gap-2">
+              <input
+                {...register(`rooms.${roomIndex}.items.${itemIndex}.label` as const)}
+                list={`suggestions-${roomIndex}`}
+                className={`flex-1 bg-transparent border-b outline-none text-sm font-bold text-white placeholder:text-slate-700 ${
+                  itemError?.label ? 'border-red-500 bg-red-500/10 px-2 rounded' : 'border-white/10 focus:border-blue-500/50'
+                }`}
+                placeholder={t('inspection.elementNamePlaceholder')}
+              />
+              <datalist id={`suggestions-${roomIndex}`}>
+                 {ITEM_SUGGESTIONS.map(s => <option key={s} value={s} />)}
+              </datalist>
+            </div>
+            {itemError?.label && (
+              <p className="text-red-400 text-[10px] font-semibold mt-1">⚠️ Nom de l'élément requis</p>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
