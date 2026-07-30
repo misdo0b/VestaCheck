@@ -3,6 +3,8 @@ import autoTable from 'jspdf-autotable';
 import { InspectionFormData } from '../validations/inspection';
 import { useTenantStore } from '@/store/useTenantStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useAgencyStore } from '@/store/useAgencyStore';
+import { useOrganizationStore } from '@/store/useOrganizationStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { dictionaries } from '@/lib/i18n/dictionaries';
 
@@ -84,8 +86,26 @@ export const generatePDF = async (
     const tenantPhone = tenant?.phone || activeData.manualTenant?.phone || '-';
 
     const users = useUserStore.getState().users;
+    const agencies = useAgencyStore.getState().agencies;
+    const organizations = useOrganizationStore.getState().organizations;
+
+    const owner = users.find(u => u.id === activeData.ownerId);
+    const ownerName = owner?.name || activeT('pdf.unspecified');
+    const ownerAddress = owner?.address || activeT('pdf.unspecifiedAddress');
+    const ownerSiret = owner?.siret || '-';
+    const ownerEmail = owner?.email || '-';
+    const ownerPhone = owner?.phone || '-';
+
     const inspector = users.find(u => u.id === activeData.inspectorId);
     const inspectorName = inspector?.name || activeT('pdf.unspecified');
+
+    const agency = agencies.find(a => a.id === activeData.agencyId || a.id === inspector?.agencyId);
+    const organization = organizations.find(o => o.id === activeData.organizationId || o.id === agency?.organizationId || o.id === inspector?.organizationId);
+    const companyName = organization?.raisonSociale || agency?.name || 'VestaCheck';
+    const companyAddress = agency?.address || organization?.adressePostale || '-';
+    const companySiret = organization?.siret || '-';
+    const companyPhone = agency?.phone || '-';
+    const companyEmail = agency?.email || inspector?.email || '-';
 
     // 4. Tracé de l'en-tête (Logo premium de l'application ou repli vectoriel)
     let logoLoaded = false;
@@ -153,24 +173,34 @@ export const generatePDF = async (
     pdf.setLineWidth(0.4);
     pdf.line(margin, 32, pdfWidth - margin, 32);
 
-    // 5. Bloc "Propriété & Date" et "Parties concernées" via une table invisible stylisée
+    // 5. Blocs "Propriété & Date", "Bailleur", "Locataire", "Inspecteur & Société/Agence" (grille 2x2 stylisée)
     autoTable(pdf, {
-      startY: 38,
+      startY: 36,
       margin: { left: margin, right: margin },
       theme: 'plain',
-      styles: { cellPadding: 6, fontSize: 9.5, textColor: [17, 24, 39], font: 'Helvetica' },
+      styles: { cellPadding: 5, fontSize: 8.5, textColor: [17, 24, 39], font: 'Helvetica' },
       columnStyles: {
-        0: { cellWidth: usableWidth / 2 - 2 },
-        1: { cellWidth: usableWidth / 2 - 2 }
+        0: { cellWidth: usableWidth / 2 - 3 },
+        1: { cellWidth: usableWidth / 2 - 3 }
       },
       body: [
         [
           {
-            content: `${activeT('pdf.propertyAndDate').toUpperCase()}\n\n${activeT('inspection.propertyAddress')} : ${activeData.propertyAddress}\n${activeT('inspection.date')} : ${formattedDate}\n${activeT('adminAgencies.typeLabel')} : ${translatedType}`,
+            content: `${activeT('pdf.propertyAndDate').toUpperCase()}\n\n${activeT('inspection.propertyAddress')} :\n${activeData.propertyAddress}\n\n${activeT('inspection.date')} : ${formattedDate}\n${activeT('adminAgencies.typeLabel')} : ${translatedType}`,
             styles: { fillColor: [249, 250, 251], textColor: [17, 24, 39] }
           },
           {
-            content: `${activeT('pdf.tenantConcerned').toUpperCase()}\n\n${activeT('pdf.tenantRole')} : ${tenantName}\n${activeT('inspection.email')} : ${tenantEmail}\n${activeT('inspection.phone')} : ${tenantPhone}\n\n${activeT('pdf.inspectorRole')} : ${inspectorName}`,
+            content: `${activeT('pdf.lessorConcerned').toUpperCase()}\n\n${ownerName}\n${activeT('pdf.address')} : ${ownerAddress}\n${ownerSiret !== '-' ? `${activeT('pdf.siret')} : ${ownerSiret}\n` : ''}${activeT('inspection.email')} : ${ownerEmail}\n${activeT('inspection.phone')} : ${ownerPhone}`,
+            styles: { fillColor: [249, 250, 251], textColor: [17, 24, 39] }
+          }
+        ],
+        [
+          {
+            content: `${activeT('pdf.tenantConcerned').toUpperCase()}\n\n${tenantName}\n${activeT('inspection.email')} : ${tenantEmail}\n${activeT('inspection.phone')} : ${tenantPhone}`,
+            styles: { fillColor: [249, 250, 251], textColor: [17, 24, 39] }
+          },
+          {
+            content: `${activeT('pdf.inspectorAndCompany').toUpperCase()}\n\n${companyName}\n${activeT('pdf.inspectorRole')} : ${inspectorName}\n${activeT('pdf.address')} : ${companyAddress}\n${companySiret !== '-' ? `${activeT('pdf.siret')} : ${companySiret}\n` : ''}${activeT('pdf.companyContact')} : ${companyEmail} • ${companyPhone}`,
             styles: { fillColor: [249, 250, 251], textColor: [17, 24, 39] }
           }
         ]

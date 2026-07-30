@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useSession } from 'next-auth/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { X, UserPlus, Save, Mail, User as UserIcon, Building } from 'lucide-react';
+import { X, UserPlus, Save, Mail, User as UserIcon, Building, MapPin, Phone, CreditCard } from 'lucide-react';
 import { User, UserRole } from '@/types';
 import { useAgencyStore } from '@/store/useAgencyStore';
 import { useEffect } from 'react';
@@ -17,6 +17,9 @@ type UserFormData = {
   password?: string;
   role: 'Administrateur' | 'Agent' | 'Propriétaire';
   agencyId?: string;
+  address?: string;
+  siret?: string;
+  phone?: string;
 };
 
 interface UserModalProps {
@@ -38,6 +41,9 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
     password: z.string().min(8, t('adminUsers.validationPasswordMin')).optional().or(z.literal('')),
     role: z.enum(['Administrateur', 'Agent', 'Propriétaire']),
     agencyId: z.string().optional(),
+    address: z.string().optional(),
+    siret: z.string().optional(),
+    phone: z.string().optional(),
   }), [t]);
 
   const {
@@ -52,6 +58,9 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
       email: user?.email || '',
       role: user?.role || 'Agent',
       agencyId: user?.agencyId || '',
+      address: user?.address || '',
+      siret: user?.siret || '',
+      phone: user?.phone || '',
     },
   });
 
@@ -166,6 +175,45 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
                     <option key={agency.id} value={agency.id}>{agency.name}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Adresse postale (optionnel)</label>
+            <div className="relative group">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input 
+                {...register('address')}
+                placeholder="Ex: 12 Rue de la Paix, 75002 Paris"
+                className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* SIRET & Phone Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">N° SIRET (optionnel)</label>
+              <div className="relative group">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input 
+                  {...register('siret')}
+                  placeholder="Ex: 12345678900012"
+                  className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Téléphone (optionnel)</label>
+              <div className="relative group">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input 
+                  {...register('phone')}
+                  placeholder="Ex: 06 12 34 56 78"
+                  className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                />
               </div>
             </div>
           </div>

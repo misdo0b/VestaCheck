@@ -1,12 +1,14 @@
 import { InspectionFormData } from '@/lib/validations/inspection';
-import { ShieldCheck, Mail, Phone, MapPin, Calendar, ClipboardCheck, Info } from 'lucide-react';
+import { ShieldCheck, Mail, Phone, MapPin, Calendar, ClipboardCheck, Info, Building, User as UserIcon, CreditCard } from 'lucide-react';
 import { useTenantStore } from '@/store/useTenantStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useAgencyStore } from '@/store/useAgencyStore';
+import { useOrganizationStore } from '@/store/useOrganizationStore';
 import { useTranslation } from '@/hooks/useTranslation';
 
 const STYLE = {
   BG_PAPER: 'bg-white',
-  CARD_BG: 'bg-slate-50/50 border-[0.5pt] border-slate-200 h-full flex flex-col justify-center',
+  CARD_BG: 'bg-slate-50/50 border-[0.5pt] border-slate-200 h-full flex flex-col justify-start',
   SECTION_HEADER_BG: 'bg-slate-50 border-b-[0.5pt] border-slate-200',
   ACCENT_TEXT: 'text-blue-600',
   PRIMARY_BLUE: 'bg-blue-700',
@@ -43,8 +45,26 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
   const tenantPhone = tenant?.phone || data.manualTenant?.phone || '-';
   
   const { users } = useUserStore();
+  const { agencies } = useAgencyStore();
+  const { organizations } = useOrganizationStore();
+
+  const owner = users.find(u => u.id === data.ownerId);
+  const ownerName = owner?.name || t('pdf.unspecified');
+  const ownerAddress = owner?.address || t('pdf.unspecifiedAddress');
+  const ownerSiret = owner?.siret || '-';
+  const ownerEmail = owner?.email || '-';
+  const ownerPhone = owner?.phone || '-';
+
   const inspector = users.find(u => u.id === data.inspectorId);
   const inspectorName = inspector?.name || t('pdf.unspecified');
+
+  const agency = agencies.find(a => a.id === data.agencyId || a.id === inspector?.agencyId);
+  const organization = organizations.find(o => o.id === data.organizationId || o.id === agency?.organizationId || o.id === inspector?.organizationId);
+  const companyName = organization?.raisonSociale || agency?.name || 'VestaCheck';
+  const companyAddress = agency?.address || organization?.adressePostale || '-';
+  const companySiret = organization?.siret || '-';
+  const companyPhone = agency?.phone || '-';
+  const companyEmail = agency?.email || inspector?.email || '-';
 
   return (
     <div 
@@ -54,7 +74,7 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
     >
       <InterFontStyle />
       {/* Header Répétable - Identifié par .pdf-header */}
-      <div className="pdf-header flex justify-between items-center mb-10 pb-6 border-b-[0.5pt] border-slate-200 bg-white">
+      <div className="pdf-header flex justify-between items-center mb-8 pb-6 border-b-[0.5pt] border-slate-200 bg-white">
         <div className="flex items-center gap-3">
           <img 
             src="/assets/vestacheck-logo.png" 
@@ -70,31 +90,66 @@ export const PDFTemplate: React.FC<PDFTemplateProps> = ({ data, id = 'inspection
         </div>
       </div>
 
-      {/* Infos Générales */}
-      <div className="pdf-section grid grid-cols-2 gap-10 mb-12">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-blue-600 mb-2">
+      {/* Infos Générales en 4 blocs d'informations légales (2x2) */}
+      <div className="pdf-section grid grid-cols-2 gap-6 mb-10">
+        {/* Card 1: Propriété & Date */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-blue-600 mb-1">
             <MapPin size={14} className="text-blue-500" />
             <h3 className="font-black uppercase text-[10px] tracking-widest">{t('pdf.propertyAndDate')}</h3>
           </div>
-          <div className={`${STYLE.CARD_BG} p-5 rounded-2xl`}>
-            <p className="text-lg font-black text-slate-900 mb-1 leading-tight">{data.propertyAddress}</p>
-            <div className="flex items-center gap-4 text-xs text-slate-500 font-medium">
+          <div className={`${STYLE.CARD_BG} p-4 rounded-2xl`}>
+            <p className="text-sm font-black text-slate-900 mb-1 leading-tight">{data.propertyAddress}</p>
+            <div className="flex items-center gap-4 text-xs text-slate-500 font-medium mt-2">
               <span className="flex items-center gap-1.5"><Calendar size={12} className="text-blue-400" /> {new Date(data.date).toLocaleDateString(language)}</span>
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-blue-600 mb-2">
+        {/* Card 2: Bailleur (Propriétaire) */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-blue-600 mb-1">
+            <UserIcon size={14} className="text-blue-500" />
+            <h3 className="font-black uppercase text-[10px] tracking-widest">{t('pdf.lessorConcerned')}</h3>
+          </div>
+          <div className={`${STYLE.CARD_BG} p-4 rounded-2xl`}>
+            <p className="text-sm font-black text-slate-900 mb-1 leading-tight">{ownerName}</p>
+            <div className="space-y-1 text-xs text-slate-500 font-medium">
+              <p className="flex items-center gap-2"><MapPin size={11} className="text-slate-400" /> {ownerAddress}</p>
+              {ownerSiret !== '-' && <p className="flex items-center gap-2"><CreditCard size={11} className="text-slate-400" /> SIRET : {ownerSiret}</p>}
+              <p className="flex items-center gap-2"><Mail size={11} className="text-slate-400" /> {ownerEmail} {ownerPhone !== '-' ? `• ${ownerPhone}` : ''}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Locataire */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-blue-600 mb-1">
             <ClipboardCheck size={14} className="text-blue-500" />
             <h3 className="font-black uppercase text-[10px] tracking-widest">{t('pdf.tenantConcerned')}</h3>
           </div>
-          <div className={`${STYLE.CARD_BG} p-5 rounded-2xl`}>
-            <p className="text-lg font-black text-slate-900 mb-1 leading-tight">{tenantName}</p>
-            <div className="space-y-1">
-              <p className="text-xs text-slate-500 flex items-center gap-2 font-medium tracking-tight"><Mail size={12} className="text-slate-300" /> {tenantEmail}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-2 font-medium"><Phone size={12} className="text-slate-300" /> {tenantPhone}</p>
+          <div className={`${STYLE.CARD_BG} p-4 rounded-2xl`}>
+            <p className="text-sm font-black text-slate-900 mb-1 leading-tight">{tenantName}</p>
+            <div className="space-y-1 text-xs text-slate-500 font-medium">
+              <p className="flex items-center gap-2"><Mail size={11} className="text-slate-400" /> {tenantEmail}</p>
+              <p className="flex items-center gap-2"><Phone size={11} className="text-slate-400" /> {tenantPhone}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Inspecteur & Entreprise/Agence */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-blue-600 mb-1">
+            <Building size={14} className="text-blue-500" />
+            <h3 className="font-black uppercase text-[10px] tracking-widest">{t('pdf.inspectorAndCompany')}</h3>
+          </div>
+          <div className={`${STYLE.CARD_BG} p-4 rounded-2xl`}>
+            <p className="text-sm font-black text-slate-900 mb-1 leading-tight">{companyName}</p>
+            <div className="space-y-1 text-xs text-slate-500 font-medium">
+              <p><span className="font-semibold text-slate-700">{t('pdf.inspectorRole')} :</span> {inspectorName}</p>
+              <p className="flex items-center gap-2"><MapPin size={11} className="text-slate-400" /> {companyAddress}</p>
+              {companySiret !== '-' && <p className="flex items-center gap-2"><CreditCard size={11} className="text-slate-400" /> SIRET : {companySiret}</p>}
+              <p className="flex items-center gap-2"><Mail size={11} className="text-slate-400" /> {companyEmail} {companyPhone !== '-' ? `• ${companyPhone}` : ''}</p>
             </div>
           </div>
         </div>

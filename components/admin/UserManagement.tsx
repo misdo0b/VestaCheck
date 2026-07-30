@@ -103,6 +103,9 @@ export default function UserManagement() {
         role: normalizedData.role as UserRole,
         agencyId: normalizedData.agencyId || 'N/A',
         organizationId: currentUser?.organizationId || '',
+        address: normalizedData.address || '',
+        siret: normalizedData.siret || '',
+        phone: normalizedData.phone || '',
         serverVersion: 1,
         lastModified: new Date().toISOString(),
         syncStatus: 'pending'
