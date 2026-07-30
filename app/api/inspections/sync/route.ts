@@ -23,28 +23,31 @@ export async function POST(req: Request) {
 
     console.log(`[Sync] Début du traitement de ${mutations.length} mutations`);
 
+    const isUUID = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    const toUUID = (val: any) => isUUID(val) ? val : null;
+
     for (const mutation of mutations) {
       const { type, entity, entityId, data } = mutation;
 
-      if (entity === 'inspection' && type === 'UPDATE') {
-        console.log(`[Sync] Traitement de l'inspection: ${entityId}`);
+      if (entity === 'inspection' && (type === 'UPDATE' || type === 'CREATE')) {
+        console.log(`[Sync] Traitement de l'inspection (${type}): ${entityId}`);
 
         // 1. Upsert de l'inspection principale
         const { error: inspError } = await supabase.from('inspections').upsert({
           id: entityId,
-          property_id: data.propertyId,
-          inspector_id: data.inspectorId,
-          owner_id: data.ownerId,
-          tenant_id: data.tenantId,
-          agency_id: data.agencyId,
-          organization_id: data.organizationId,
-          date: data.date,
-          type: data.type,
+          property_id: toUUID(data.propertyId),
+          inspector_id: toUUID(data.inspectorId),
+          owner_id: toUUID(data.ownerId),
+          tenant_id: toUUID(data.tenantId),
+          agency_id: toUUID(data.agencyId),
+          organization_id: toUUID(data.organizationId),
+          date: data.date ? new Date(data.date).toISOString() : new Date().toISOString(),
+          type: data.type || 'Entrée',
           counters: data.counters || { water: 0, electricity: 0 },
           general_observations: data.generalObservations || '',
           is_finalized: data.isFinalized || false,
           last_modified: data.lastModified || new Date().toISOString(),
-          property_address: data.propertyAddress,
+          property_address: data.propertyAddress || '',
           key_inventories: data.keyInventories || [],
           signatures: data.signatures || { tenant: { type: 'Aucune' }, inspector: { type: 'Aucune' } }
         });
