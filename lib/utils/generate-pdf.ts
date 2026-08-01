@@ -91,33 +91,46 @@ export const generatePDF = async (
     const usableWidth = pdfWidth - (margin * 2); // 170mm
 
     // 3. Récupération des informations complémentaires d'identification
-    const getTenantById = useTenantStore.getState().getTenantById;
-    const tenant = activeData.tenantId ? getTenantById(activeData.tenantId) : null;
-    const tenantName = tenant?.name || activeData.manualTenant?.name || activeT('pdf.unspecified');
-    const tenantEmail = tenant?.email || activeData.manualTenant?.email || '-';
-    const tenantPhone = tenant?.phone || activeData.manualTenant?.phone || '-';
+    let tenant = (activeData as any).tenant || null;
+    let users: any[] = [];
+    let agencies: any[] = [];
+    let organizations: any[] = [];
 
-    const users = useUserStore.getState().users;
-    const agencies = useAgencyStore.getState().agencies;
-    const organizations = useOrganizationStore.getState().organizations;
+    if (typeof window !== 'undefined') {
+      try {
+        const getTenantById = useTenantStore.getState().getTenantById;
+        if (!tenant && activeData.tenantId) {
+          tenant = getTenantById(activeData.tenantId);
+        }
+        users = useUserStore.getState().users || [];
+        agencies = useAgencyStore.getState().agencies || [];
+        organizations = useOrganizationStore.getState().organizations || [];
+      } catch (e) {
+        // Fallback pour SSR
+      }
+    }
 
-    const owner = users.find(u => u.id === activeData.ownerId);
-    const ownerName = owner?.name || activeT('pdf.unspecified');
-    const ownerAddress = owner?.address || activeT('pdf.unspecifiedAddress');
-    const ownerSiret = owner?.siret || '-';
-    const ownerEmail = owner?.email || '-';
-    const ownerPhone = owner?.phone || '-';
+    const tenantName = (activeData as any).tenantName || tenant?.name || activeData.manualTenant?.name || activeT('pdf.unspecified');
+    const tenantEmail = (activeData as any).tenantEmail || tenant?.email || activeData.manualTenant?.email || '-';
+    const tenantPhone = (activeData as any).tenantPhone || tenant?.phone || activeData.manualTenant?.phone || '-';
 
-    const inspector = users.find(u => u.id === activeData.inspectorId);
-    const inspectorName = inspector?.name || activeT('pdf.unspecified');
+    const owner = (activeData as any).owner || users.find((u: any) => u.id === activeData.ownerId);
+    const ownerName = (activeData as any).ownerName || owner?.name || activeT('pdf.unspecified');
+    const ownerAddress = (activeData as any).ownerAddress || owner?.address || owner?.adressePostale || activeT('pdf.unspecifiedAddress');
+    const ownerSiret = (activeData as any).ownerSiret || owner?.siret || '-';
+    const ownerEmail = (activeData as any).ownerEmail || owner?.email || '-';
+    const ownerPhone = (activeData as any).ownerPhone || owner?.phone || '-';
 
-    const agency = agencies.find(a => a.id === activeData.agencyId || a.id === inspector?.agencyId);
-    const organization = organizations.find(o => o.id === activeData.organizationId || o.id === agency?.organizationId || o.id === inspector?.organizationId);
-    const companyName = organization?.raisonSociale || agency?.name || 'VestaCheck';
-    const companyAddress = agency?.address || organization?.adressePostale || '-';
-    const companySiret = organization?.siret || '-';
-    const companyPhone = agency?.phone || '-';
-    const companyEmail = agency?.email || inspector?.email || '-';
+    const inspector = (activeData as any).inspector || users.find((u: any) => u.id === activeData.inspectorId);
+    const inspectorName = (activeData as any).inspectorName || inspector?.name || activeT('pdf.unspecified');
+
+    const agency = (activeData as any).agency || agencies.find((a: any) => a.id === activeData.agencyId || a.id === inspector?.agencyId);
+    const organization = (activeData as any).organization || organizations.find((o: any) => o.id === activeData.organizationId || o.id === agency?.organizationId || o.id === inspector?.organizationId);
+    const companyName = (activeData as any).companyName || organization?.raisonSociale || organization?.raison_sociale || agency?.name || 'VestaCheck';
+    const companyAddress = (activeData as any).companyAddress || agency?.address || organization?.adressePostale || organization?.adresse_postale || '-';
+    const companySiret = (activeData as any).companySiret || organization?.siret || '-';
+    const companyPhone = (activeData as any).companyPhone || agency?.phone || '-';
+    const companyEmail = (activeData as any).companyEmail || agency?.email || inspector?.email || '-';
 
     // 4. Tracé de l'en-tête (Logo premium de l'application ou repli vectoriel)
     let logoLoaded = false;
@@ -611,14 +624,152 @@ export const generatePDF = async (
 };
 
 /**
+ * Enrichit les données brutes d'une inspection avec toutes ses entités liées (Supabase) côté serveur.
+ */
+export const fetchFullInspectionDataServer = async (supabase: any, rawData: any) => {
+  const inspectionId = typeof rawData === 'string' ? rawData : rawData?.id;
+
+  let insp = typeof rawData === 'object' && rawData?.property_address ? rawData : null;
+  if (!insp && inspectionId) {
+    const { data: dbInsp } = await supabase
+      .from('inspections')
+      .select('*')
+      .eq('id', inspectionId)
+      .single();
+    insp = dbInsp;
+  }
+
+  if (!insp) insp = rawData || {};
+
+  const propAddress = insp.property_address || insp.propertyAddress || '';
+  const inspType = insp.type || 'Entrée';
+  const inspDate = insp.date || new Date().toISOString();
+  const inspectorId = insp.inspector_id || insp.inspectorId;
+  const ownerId = insp.owner_id || insp.ownerId;
+  const tenantId = insp.tenant_id || insp.tenantId;
+  const agencyId = insp.agency_id || insp.agencyId;
+  const organizationId = insp.organization_id || insp.organizationId;
+
+  let rooms = insp.rooms;
+  if ((!rooms || rooms.length === 0) && inspectionId) {
+    const { data: dbRooms } = await supabase
+      .from('rooms')
+      .select(`
+        id, name, display_order,
+        inspection_items (
+          id, label, condition, comment, display_order,
+          photos (
+            id, cloud_url, compressed_base64, is_synced, has_full_res
+          )
+        )
+      `)
+      .eq('inspection_id', inspectionId)
+      .order('display_order', { ascending: true });
+
+    if (dbRooms && dbRooms.length > 0) {
+      rooms = dbRooms.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        displayOrder: r.display_order,
+        items: (r.inspection_items || []).map((item: any) => ({
+          id: item.id,
+          label: item.label,
+          condition: item.condition,
+          comment: item.comment,
+          photos: (item.photos || []).map((p: any) => ({
+            id: p.id,
+            cloudUrl: p.cloud_url,
+            compressedBase64: p.compressed_base64,
+            isSynced: p.is_synced,
+            hasFullRes: p.has_full_res
+          }))
+        }))
+      }));
+    }
+  }
+
+  let tenant = null;
+  if (tenantId) {
+    const { data: t } = await supabase.from('tenants').select('*').eq('id', tenantId).single();
+    tenant = t;
+  }
+
+  let owner = null;
+  if (ownerId) {
+    const { data: o } = await supabase.from('users').select('*').eq('id', ownerId).single();
+    owner = o;
+  }
+
+  let inspector = null;
+  if (inspectorId) {
+    const { data: i } = await supabase.from('users').select('*').eq('id', inspectorId).single();
+    inspector = i;
+  }
+
+  let agency = null;
+  if (agencyId || inspector?.agency_id) {
+    const { data: a } = await supabase.from('agencies').select('*').eq('id', agencyId || inspector?.agency_id).single();
+    agency = a;
+  }
+
+  let organization = null;
+  const targetOrgId = organizationId || agency?.organization_id || inspector?.organization_id;
+  if (targetOrgId) {
+    const { data: org } = await supabase.from('organizations').select('*').eq('id', targetOrgId).single();
+    organization = org;
+  }
+
+  return {
+    ...insp,
+    id: insp.id || inspectionId,
+    propertyAddress: propAddress,
+    date: inspDate,
+    type: inspType,
+    counters: insp.counters || { water: 0, electricity: 0 },
+    keyInventories: insp.key_inventories || insp.keyInventories || [],
+    signatures: insp.signatures || { tenant: { type: 'Aucune' }, inspector: { type: 'Aucune' } },
+    generalObservations: insp.general_observations || insp.generalObservations || '',
+    rooms: rooms || [],
+
+    tenant,
+    tenantName: tenant?.name || insp.manual_tenant?.name || insp.manualTenant?.name,
+    tenantEmail: tenant?.email || insp.manual_tenant?.email || insp.manualTenant?.email,
+    tenantPhone: tenant?.phone || insp.manual_tenant?.phone || insp.manualTenant?.phone,
+
+    owner,
+    ownerName: owner?.name,
+    ownerAddress: owner?.address || owner?.adresse_postale,
+    ownerSiret: owner?.siret,
+    ownerEmail: owner?.email,
+    ownerPhone: owner?.phone,
+
+    inspector,
+    inspectorName: inspector?.name,
+
+    agency,
+    organization,
+    companyName: organization?.raison_sociale || organization?.raisonSociale || agency?.name || 'VestaCheck',
+    companyAddress: agency?.address || organization?.adresse_postale || organization?.adressePostale || '-',
+    companySiret: organization?.siret || '-',
+    companyPhone: agency?.phone || '-',
+    companyEmail: agency?.email || inspector?.email || '-'
+  };
+};
+
+/**
  * Génère le Buffer du document PDF pour l'envoi en pièce jointe d'e-mail côté serveur.
  */
 export const generatePDFBuffer = async (
-  data: InspectionFormData,
+  data: any,
+  supabase?: any,
   t?: (key: string) => string,
   locale: string = 'fr'
 ): Promise<Buffer> => {
-  const pdf = await generatePDF('rapport.pdf', 'rapport.pdf', data, t, locale);
+  let activeData = data;
+  if (supabase) {
+    activeData = await fetchFullInspectionDataServer(supabase, data);
+  }
+  const pdf = await generatePDF('rapport.pdf', 'rapport.pdf', activeData, t, locale);
   const arrayBuffer = pdf.output('arraybuffer');
   return Buffer.from(arrayBuffer);
 };

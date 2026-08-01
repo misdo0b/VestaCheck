@@ -174,7 +174,7 @@ export async function POST(req: Request) {
                 let pdfAttachment: { filename: string; content: Buffer } | undefined = undefined;
                 try {
                   const { generatePDFBuffer } = await import('@/lib/utils/generate-pdf');
-                  const pdfBuffer = await generatePDFBuffer(data);
+                  const pdfBuffer = await generatePDFBuffer(data, supabase);
                   const safeAddr = (data.propertyAddress || 'Bien').replace(/[^a-zA-Z0-9]/g, '_');
                   const pdfFilename = `Etat_des_lieux_${safeAddr}_${data.type || 'Entree'}.pdf`;
                   pdfAttachment = {
