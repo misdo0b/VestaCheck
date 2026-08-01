@@ -115,47 +115,9 @@ export const InspectionCompletedEmail = ({
               </Row>
             </Section>
 
-            {/* Utility Counters Card (Mainly useful for Tenant or Agent quick recap) */}
-            {counters && (
-              <Section style={countersBox}>
-                <Heading style={countersTitle}>Relevés de compteurs saisis</Heading>
-                <Row style={counterRow}>
-                  <Column style={counterCol}>
-                    <Text style={counterName}>Électricité</Text>
-                    <Text style={counterVal}>{counters.electricity} kWh</Text>
-                  </Column>
-                  <Column style={counterCol}>
-                    <Text style={counterName}>Eau froide</Text>
-                    <Text style={counterVal}>{counters.water} m³</Text>
-                  </Column>
-                  {counters.gas !== undefined && (
-                    <Column style={counterCol}>
-                      <Text style={counterName}>Gaz</Text>
-                      <Text style={counterVal}>{counters.gas} m³</Text>
-                    </Column>
-                  )}
-                </Row>
-              </Section>
-            )}
-
-            {/* Action Area */}
-            <Section style={buttonContainer}>
-              {isAgent ? (
-                <Button style={btn} href={reportUrl}>
-                  Consulter sur mon tableau de bord
-                </Button>
-              ) : (
-                <Button style={btn} href={reportUrl}>
-                  Télécharger mon exemplaire PDF
-                </Button>
-              )}
-            </Section>
-
-            {!isAgent && (
-              <Text style={warningText}>
-                Important : Nous vous conseillons de télécharger ce document et de le conserver précieusement pendant toute la durée de votre bail ou de votre gestion locative.
-              </Text>
-            )}
+            <Text style={attachmentNote}>
+              📎 <strong>Pièce jointe :</strong> Votre rapport d'état des lieux officiel au format PDF est directement joint à cet e-mail. Nous vous conseillons de le conserver précieusement pendant toute la durée de votre bail ou gestion locative.
+            </Text>
 
             <Hr style={divider} />
 
@@ -343,15 +305,15 @@ const btn = {
   boxShadow: '0 4px 12px rgba(79, 70, 229, 0.15)',
 };
 
-const warningText = {
-  color: '#b45309',
-  backgroundColor: '#fffbeb',
-  borderRadius: '6px',
-  border: '1px solid #fef3c7',
-  padding: '12px 16px',
-  fontSize: '13px',
+const attachmentNote = {
+  color: '#1e293b',
+  backgroundColor: '#f1f5f9',
+  borderRadius: '8px',
+  border: '1px solid #e2e8f0',
+  padding: '14px 18px',
+  fontSize: '14px',
   lineHeight: '1.5',
-  margin: '16px 0',
+  margin: '20px 0',
 };
 
 const link = {

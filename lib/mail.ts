@@ -72,11 +72,15 @@ interface InspectionCompletedParams {
     electricity: number;
     gas?: number;
   };
+  pdfAttachment?: {
+    filename: string;
+    content: Buffer | string;
+  };
 }
 
 /**
  * Déclenche les e-mails de confirmation de clôture d'état des lieux.
- * Un e-mail est envoyé à l'Agent et un e-mail est envoyé au Locataire avec des contenus personnalisés.
+ * Un e-mail est envoyé à l'Agent et un e-mail est envoyé au Locataire avec des contenus personnalisés et le PDF joint.
  */
 export async function sendInspectionCompletedEmails(params: InspectionCompletedParams) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -85,12 +89,20 @@ export async function sendInspectionCompletedEmails(params: InspectionCompletedP
   const agentSubject = `[Clôturé] État des lieux signé - ${params.propertyAddress}`;
   const tenantSubject = `Votre exemplaire d'état des lieux - ${params.propertyAddress}`;
 
+  const attachments = params.pdfAttachment ? [
+    {
+      filename: params.pdfAttachment.filename,
+      content: params.pdfAttachment.content,
+    }
+  ] : undefined;
+
   try {
     if (!resend) {
-      console.log('--- [SIMULATION MAILS CLÔTURE ÉTAT DES LIEUX] ---');
+      console.log('--- [SIMULATION MAILS CLÔTURE ÉTAT DES LIEUX AVEC PIÈCE JOINTE PDF] ---');
       console.log(`[Agent] To: ${params.agentEmail} | Subject: ${agentSubject}`);
       console.log(`[Locataire] To: ${params.tenantEmail} | Subject: ${tenantSubject}`);
       console.log(`Détails: Bien situé au ${params.propertyAddress}, type ${params.inspectionType}`);
+      console.log(`PDF Joint: ${params.pdfAttachment?.filename || 'Aucun'}`);
       console.log('--------------------------------------------------');
       return { success: true, simulated: true };
     }
@@ -100,6 +112,7 @@ export async function sendInspectionCompletedEmails(params: InspectionCompletedP
       from: DEFAULT_FROM,
       to: [params.agentEmail],
       subject: agentSubject,
+      attachments,
       react: React.createElement(InspectionCompletedEmail, {
         recipientType: 'agent',
         recipientName: params.agentName,
@@ -117,6 +130,7 @@ export async function sendInspectionCompletedEmails(params: InspectionCompletedP
       from: DEFAULT_FROM,
       to: [params.tenantEmail],
       subject: tenantSubject,
+      attachments,
       react: React.createElement(InspectionCompletedEmail, {
         recipientType: 'tenant',
         recipientName: params.tenantName,

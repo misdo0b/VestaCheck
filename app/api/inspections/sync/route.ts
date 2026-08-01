@@ -169,7 +169,22 @@ export async function POST(req: Request) {
               }
 
               if (agentEmail) {
-                console.log(`[Sync] Envoi automatique des e-mails pour l'inspection finalisée ${entityId}`);
+                console.log(`[Sync] Génération du PDF et envoi automatique des e-mails pour l'inspection finalisée ${entityId}`);
+                
+                let pdfAttachment: { filename: string; content: Buffer } | undefined = undefined;
+                try {
+                  const { generatePDFBuffer } = await import('@/lib/utils/generate-pdf');
+                  const pdfBuffer = await generatePDFBuffer(data);
+                  const safeAddr = (data.propertyAddress || 'Bien').replace(/[^a-zA-Z0-9]/g, '_');
+                  const pdfFilename = `Etat_des_lieux_${safeAddr}_${data.type || 'Entree'}.pdf`;
+                  pdfAttachment = {
+                    filename: pdfFilename,
+                    content: pdfBuffer,
+                  };
+                } catch (pdfErr) {
+                  console.error(`[Sync] Échec de la génération PDF pour l'inspection ${entityId}:`, pdfErr);
+                }
+
                 await sendInspectionCompletedEmails({
                   agentEmail,
                   agentName,
@@ -180,7 +195,7 @@ export async function POST(req: Request) {
                   date: data.date || new Date().toISOString(),
                   agencyName,
                   inspectionId: entityId,
-                  counters: data.counters,
+                  pdfAttachment,
                 });
               }
             } catch (emailErr) {
