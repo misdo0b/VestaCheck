@@ -7,12 +7,22 @@ import Link from 'next/link';
 import { LogOut, User as UserIcon, ShieldCheck, Building2, Users, MapPin, Briefcase } from 'lucide-react';
 import { useAgencyStore } from '@/store/useAgencyStore';
 import { useOrganizationStore } from '@/store/useOrganizationStore';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useSync } from '@/hooks/useSync';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { agencies } = useAgencyStore();
   const { organizations } = useOrganizationStore();
+  const { t } = useTranslation();
+  const { processQueue } = useSync();
+
+  React.useEffect(() => {
+    if (status === 'authenticated' && session) {
+      processQueue();
+    }
+  }, [status, session, processQueue]);
 
   if (status === 'loading') {
     return (
@@ -33,11 +43,11 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 py-12">
         <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Bienvenue, {user?.name || 'Utilisateur'}</h1>
+            <h1 className="text-4xl font-bold text-white mb-2">{t('dashboard.welcome')}, {user?.name || 'Utilisateur'}</h1>
             <div className="flex flex-wrap gap-3">
               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-wider">
                 <ShieldCheck size={14} />
-                {role}
+                {t(`roles.${role}`) || role}
               </span>
               {userAgency && (
                 <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wider">
@@ -62,10 +72,10 @@ export default function DashboardPage() {
             <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Building2 className="w-6 h-6 text-blue-500" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-1">Parc Immobilier</h3>
-            <p className="text-slate-400 text-sm mb-4">Gérez vos biens, consultez l'historique et lancez de nouveaux états des lieux.</p>
+            <h3 className="text-lg font-semibold text-white mb-1">{t('dashboard.propertiesTitle')}</h3>
+            <p className="text-slate-400 text-sm mb-4">{t('dashboard.propertiesDesc')}</p>
             <div className="text-blue-400 text-sm font-medium hover:underline flex items-center gap-1">
-              Accéder <span>→</span>
+              {t('dashboard.access')} <span>→</span>
             </div>
           </Link>
 
@@ -74,10 +84,10 @@ export default function DashboardPage() {
             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Users className="w-6 h-6 text-emerald-500" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-1">Locataires</h3>
-            <p className="text-slate-400 text-sm mb-4">Gérez la base des locataires, suivez leur statut et leurs rattachements.</p>
+            <h3 className="text-lg font-semibold text-white mb-1">{t('dashboard.tenantsTitle')}</h3>
+            <p className="text-slate-400 text-sm mb-4">{t('dashboard.tenantsDesc')}</p>
             <div className="text-emerald-400 text-sm font-medium hover:underline flex items-center gap-1">
-              Accéder <span>→</span>
+              {t('dashboard.access')} <span>→</span>
             </div>
           </Link>
 
@@ -87,10 +97,10 @@ export default function DashboardPage() {
                 <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <UserIcon className="w-6 h-6 text-indigo-500" />
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-1">Administration</h3>
-                <p className="text-slate-400 text-sm mb-4">Gestion des utilisateurs et des permissions.</p>
+                <h3 className="text-lg font-semibold text-white mb-1">{t('dashboard.adminTitle')}</h3>
+                <p className="text-slate-400 text-sm mb-4">{t('dashboard.adminDesc')}</p>
                 <div className="text-indigo-400 text-sm font-medium hover:underline flex items-center gap-1">
-                  Accéder <span>→</span>
+                  {t('dashboard.access')} <span>→</span>
                 </div>
               </Link>
 
@@ -98,10 +108,10 @@ export default function DashboardPage() {
                 <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Building2 className="w-6 h-6 text-amber-500" />
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-1">Agences</h3>
-                <p className="text-slate-400 text-sm mb-4">Gestion des agences et succursales.</p>
+                <h3 className="text-lg font-semibold text-white mb-1">{t('dashboard.agenciesTitle')}</h3>
+                <p className="text-slate-400 text-sm mb-4">{t('dashboard.agenciesDesc')}</p>
                 <div className="text-amber-400 text-sm font-medium hover:underline flex items-center gap-1">
-                  Accéder <span>→</span>
+                  {t('dashboard.access')} <span>→</span>
                 </div>
               </Link>
             </>

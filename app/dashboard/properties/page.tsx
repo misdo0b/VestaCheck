@@ -5,12 +5,16 @@ import { useSession } from 'next-auth/react';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { useTenantStore } from '@/store/useTenantStore';
+import { useUserStore } from '@/store/useUserStore';
 import { PropertyCard } from '@/components/properties/PropertyCard';
 import { PropertyListItem } from '@/components/properties/PropertyListItem';
 import { PropertyModal } from '@/components/properties/PropertyModal';
-import { Plus, Search, Building2, Filter, LayoutGrid, List, X, SlidersHorizontal } from 'lucide-react';
+import { Plus, Search, Building2, Filter, LayoutGrid, List, X } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useSync } from '@/hooks/useSync';
 
 export default function PropertiesPage() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const { properties } = usePropertyStore();
   const { inspections } = useInspectionStore();
@@ -23,13 +27,13 @@ export default function PropertiesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  const { fetchProperties } = usePropertyStore();
+  const { processQueue } = useSync();
 
   React.useEffect(() => {
     if (session) {
-      fetchProperties();
+      processQueue();
     }
-  }, [session, fetchProperties]);
+  }, [session, processQueue]);
   
   // New States
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -80,7 +84,7 @@ export default function PropertiesPage() {
 
       return matchesSearch && matchesStatus && matchesType && matchesSurface && matchesRooms;
     });
-  }, [properties, userRole, userId, searchQuery, filters, inspections]);
+  }, [properties, userRole, userId, searchQuery, filters, inspections, tenants]);
 
   const resetFilters = () => {
     setFilters({
@@ -102,16 +106,16 @@ export default function PropertiesPage() {
               <div className="p-2 bg-blue-600/20 rounded-xl border border-blue-600/30">
                 <Building2 className="w-8 h-8 text-blue-500" />
               </div>
-              Parc Immobilier
+              {t('properties.title')}
             </h1>
-            <p className="text-slate-400">Gérez vos biens et consultez leur historique d'occupation.</p>
+            <p className="text-slate-400">{t('properties.subtitle')}</p>
           </div>
           <button 
             onClick={() => setIsModalOpen(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-2xl shadow-blue-600/20 active:scale-95"
           >
             <Plus className="w-6 h-6" />
-            Nouveau Bien
+            {t('properties.newPropertyBtn')}
           </button>
         </div>
 
@@ -122,7 +126,7 @@ export default function PropertiesPage() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
               <input 
                 type="text"
-                placeholder="Rechercher un bien, une adresse..."
+                placeholder={t('properties.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-950 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-white focus:border-blue-500/50 focus:bg-slate-900 outline-none transition-all placeholder:text-slate-600"
@@ -140,7 +144,7 @@ export default function PropertiesPage() {
                 }`}
               >
                 <Filter className={`w-4 h-4 ${isFilterOpen ? 'fill-current' : ''}`} />
-                <span>Filtres</span>
+                <span>{t('properties.filtersBtn')}</span>
                 {(filters.status !== 'all' || filters.type !== 'all' || filters.minSurface || filters.minRooms) && (
                   <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse ml-1" />
                 )}
@@ -157,7 +161,7 @@ export default function PropertiesPage() {
                       ? 'bg-blue-600 text-white shadow-lg' 
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
-                  title="Vue Grille"
+                  title={t('properties.viewGridTooltip')}
                 >
                   <LayoutGrid className="w-5 h-5" />
                 </button>
@@ -168,7 +172,7 @@ export default function PropertiesPage() {
                       ? 'bg-blue-600 text-white shadow-lg' 
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
-                  title="Vue Liste"
+                  title={t('properties.viewListTooltip')}
                 >
                   <List className="w-5 h-5" />
                 </button>
@@ -182,35 +186,35 @@ export default function PropertiesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Status */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 ml-1">Statut d'occupation</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 ml-1">{t('properties.filterStatusLabel')}</label>
                   <select 
                     value={filters.status}
                     onChange={(e) => setFilters({...filters, status: e.target.value})}
                     className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500/50 transition-colors"
                   >
-                    <option value="all">Tous les statuts</option>
-                    <option value="occupied">Occupé</option>
-                    <option value="vacant">Vacant</option>
+                    <option value="all">{t('properties.filterStatusAll')}</option>
+                    <option value="occupied">{t('properties.filterStatusOccupied')}</option>
+                    <option value="vacant">{t('properties.filterStatusVacant')}</option>
                   </select>
                 </div>
 
                 {/* Property Type */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 ml-1">Type de bien</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 ml-1">{t('properties.filterTypeLabel')}</label>
                   <select 
                     value={filters.type}
                     onChange={(e) => setFilters({...filters, type: e.target.value})}
                     className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500/50 transition-colors"
                   >
-                    <option value="all">Tous les types</option>
-                    <option value="Appartement">Appartement</option>
-                    <option value="Maison">Maison</option>
+                    <option value="all">{t('properties.filterTypeAll')}</option>
+                    <option value="Appartement">{t('properties.filterTypeAppartement')}</option>
+                    <option value="Maison">{t('properties.filterTypeMaison')}</option>
                   </select>
                 </div>
 
                 {/* Min Surface */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 ml-1">Surface Min (m²)</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 ml-1">{t('properties.filterSurfaceLabel')}</label>
                   <input 
                     type="number"
                     value={filters.minSurface}
@@ -223,7 +227,7 @@ export default function PropertiesPage() {
                 {/* Min Rooms */}
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 ml-1">Nb. Pièces Min</label>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 ml-1">{t('properties.filterRoomsLabel')}</label>
                     <input 
                       type="number"
                       value={filters.minRooms}
@@ -235,7 +239,7 @@ export default function PropertiesPage() {
                   <button 
                     onClick={resetFilters}
                     className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-                    title="Réinitialiser"
+                    title={t('properties.filterResetTooltip')}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -272,16 +276,15 @@ export default function PropertiesPage() {
             <div className="w-20 h-20 bg-slate-900 border border-white/5 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
               <Building2 className="w-10 h-10 text-slate-700" />
             </div>
-            <h3 className="text-2xl font-bold text-white mb-2">Aucun bien trouvé</h3>
+            <h3 className="text-2xl font-bold text-white mb-2">{t('properties.emptyStateTitle')}</h3>
             <p className="text-slate-500 max-w-sm mx-auto">
-              Nous n'avons trouvé aucun bien correspondant à vos critères actuels. 
-              Essayez de réinitialiser les filtres ou d'ajouter un nouveau bien.
+              {t('properties.emptyStateDesc')}
             </p>
             <button 
               onClick={resetFilters}
               className="mt-8 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-slate-300 hover:bg-white/10 transition-all font-medium"
             >
-              Effacer tous les filtres
+              {t('properties.clearFiltersBtn')}
             </button>
           </div>
         )}

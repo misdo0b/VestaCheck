@@ -7,6 +7,7 @@ interface PropertyState {
   templates: PropertyTemplate[];
   loading: boolean;
   error: string | null;
+  currentUser?: { id: string; role: string; agencyId: string; organizationId: string };
 
   // Actions
   initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
@@ -30,9 +31,10 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
   templates: [],
   loading: false,
   error: null,
+  currentUser: undefined,
 
   initStore: async (user) => {
-    set({ loading: true });
+    set({ loading: true, currentUser: user });
     try {
       const [allLocalProps, localTemplates] = await Promise.all([
         db.properties.toArray(),
@@ -46,6 +48,9 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
 
         if (user.role === 'Administrateur') {
           return (property as any).organizationId === user.organizationId;
+        }
+        if (user.role === 'Propriétaire') {
+          return property.ownerId === user.id;
         }
         return property.agencyId === user.agencyId;
       });
@@ -78,21 +83,89 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        await db.properties.bulkPut(data);
         
-        const currentProperties = get().properties;
-        const newProperties = [...currentProperties];
-
-        data.forEach((newProp: Property) => {
-          const index = newProperties.findIndex(p => p.id === newProp.id);
-          if (index !== -1) {
-            newProperties[index] = newProp;
-          } else {
-            newProperties.push(newProp);
+        const localProperties = await db.properties.toArray();
+        const user = get().currentUser;
+        
+        // Cloisonnement : filtrer les propriétés locales par rapport au périmètre de l'utilisateur
+        const filteredLocal = user ? localProperties.filter(lp => {
+          if ('propertyId' in lp) return false;
+          if (user.role === 'Administrateur') {
+            return (lp as any).organizationId === user.organizationId;
           }
-        });
+          if (user.role === 'Propriétaire') {
+            return lp.ownerId === user.id;
+          }
+          return lp.agencyId === user.agencyId;
+        }) : localProperties.filter(lp => !('propertyId' in lp));
 
-        set({ properties: newProperties, loading: false });
+        const serverPropsMap = new Map<string, Property>(data.map((p: Property) => [p.id, p]));
+        
+        const mergedProperties: Property[] = [];
+        const toUpload: Property[] = [];
+
+        // 1. Parcourir les propriétés locales filtrées
+        for (const lp of filteredLocal) {
+          // Filtrer les templates pollués
+          if ('propertyId' in lp) continue;
+          
+          const sp = serverPropsMap.get(lp.id);
+          if (!sp) {
+            // Existe localement mais pas sur le serveur -> Upload requis
+            toUpload.push(lp);
+            mergedProperties.push({
+              ...lp,
+              syncStatus: 'pending'
+            });
+          } else {
+            // Existe des deux côtés -> Comparer les dates
+            const localTime = new Date(lp.lastModified).getTime();
+            const serverTime = new Date(sp.lastModified).getTime();
+            
+            if (localTime > serverTime || lp.syncStatus === 'pending' || lp.syncStatus === 'error') {
+              toUpload.push(lp);
+              mergedProperties.push({
+                ...lp,
+                syncStatus: 'pending'
+              });
+            } else {
+              mergedProperties.push({
+                ...sp,
+                syncStatus: 'synced'
+              });
+            }
+          }
+        }
+
+        // 2. Ajouter les biens du serveur inexistants localement
+        const localIds = new Set(localProperties.map(p => p.id));
+        for (const sp of data) {
+          if (!localIds.has(sp.id)) {
+            mergedProperties.push({
+              ...sp,
+              syncStatus: 'synced'
+            });
+          }
+        }
+
+        // 3. Enregistrer les mutations manquantes pour l'upload
+        if (toUpload.length > 0) {
+          console.log(`[Sync] ${toUpload.length} propriétés détectées pour réconciliation vers le serveur.`);
+          for (const prop of toUpload) {
+            const queueItems = await db.mutationQueue.where('entityId').equals(prop.id).toArray();
+            if (queueItems.length === 0) {
+              await db.enqueueMutation({
+                type: 'CREATE',
+                entity: 'property',
+                entityId: prop.id,
+                data: prop
+              });
+            }
+          }
+        }
+
+        await db.properties.bulkPut(mergedProperties);
+        set({ properties: mergedProperties, loading: false });
       }
     } catch (err) {
       console.error('Fetch properties failed:', err);
@@ -182,6 +255,17 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
 
     try {
       await db.properties.delete(id);
+      
+      // Nettoyer les relations dans les locataires locaux et enqueuer la mise à jour
+      const { useTenantStore } = await import('@/store/useTenantStore');
+      const tenantStore = useTenantStore.getState();
+      const affectedTenants = tenantStore.tenants.filter(t => (t.propertyIds || []).includes(id));
+      
+      for (const tenant of affectedTenants) {
+        const updatedPropertyIds = tenant.propertyIds.filter(pid => pid !== id);
+        await tenantStore.updateTenant(tenant.id, { propertyIds: updatedPropertyIds });
+      }
+
       await db.enqueueMutation({
         type: 'DELETE',
         entity: 'property',

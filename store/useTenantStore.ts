@@ -6,6 +6,7 @@ interface TenantState {
   tenants: Tenant[];
   loading: boolean;
   error: string | null;
+  currentUser?: { id: string; role: string; agencyId: string; organizationId: string };
 
   // Actions
   initStore: (user: { id: string; role: string; agencyId: string; organizationId: string }) => Promise<void>;
@@ -24,15 +25,16 @@ export const useTenantStore = create<TenantState>((set, get) => ({
   tenants: [],
   loading: false,
   error: null,
+  currentUser: undefined,
 
   initStore: async (user) => {
-    set({ loading: true });
+    set({ loading: true, currentUser: user });
     try {
       const allLocalTenants = await db.tenants.toArray();
       
       // Segmentation des données
       const filteredTenants = allLocalTenants.filter(tenant => {
-        if (user.role === 'Administrateur') {
+        if (user.role === 'Administrateur' || user.role === 'Propriétaire') {
           return tenant.organizationId === user.organizationId;
         }
         return tenant.agencyId === user.agencyId;
@@ -53,15 +55,81 @@ export const useTenantStore = create<TenantState>((set, get) => ({
         const data = await response.json();
         const serverTenants = data.tenants || [];
         
-        // Mise à jour de la base globale avec les données serveur
-        // syncStatus est 'synced' car cela vient directement du serveur
-        const syncedTenants = serverTenants.map((t: any) => ({
-          ...t,
-          syncStatus: 'synced'
-        }));
+        const localTenants = await db.tenants.toArray();
+        const user = get().currentUser;
 
-        await db.tenants.bulkPut(syncedTenants);
-        set({ tenants: syncedTenants, loading: false });
+        // Cloisonnement : filtrer les locataires locaux par rapport au périmètre de l'utilisateur
+        const filteredLocal = user ? localTenants.filter(lt => {
+          if (user.role === 'Administrateur' || user.role === 'Propriétaire') {
+            return lt.organizationId === user.organizationId;
+          }
+          return lt.agencyId === user.agencyId;
+        }) : localTenants;
+
+        const serverTenantsMap = new Map<string, Tenant>(serverTenants.map((t: Tenant) => [t.id, t]));
+        
+        const mergedTenants: Tenant[] = [];
+        const toUpload: Tenant[] = [];
+
+        // 1. Parcourir les locataires locaux filtrés
+        for (const lt of filteredLocal) {
+          const st = serverTenantsMap.get(lt.id);
+          if (!st) {
+            // Existe localement mais pas sur le serveur -> Upload requis
+            toUpload.push(lt);
+            mergedTenants.push({
+              ...lt,
+              syncStatus: 'pending'
+            });
+          } else {
+            // Existe des deux côtés -> Comparer les dates
+            const localTime = new Date(lt.lastModified).getTime();
+            const serverTime = new Date(st.lastModified).getTime();
+            
+            if (localTime > serverTime || lt.syncStatus === 'pending' || lt.syncStatus === 'error') {
+              toUpload.push(lt);
+              mergedTenants.push({
+                ...lt,
+                syncStatus: 'pending'
+              });
+            } else {
+              mergedTenants.push({
+                ...st,
+                syncStatus: 'synced'
+              });
+            }
+          }
+        }
+
+        // 2. Ajouter les locataires du serveur inexistants localement
+        const localIds = new Set(localTenants.map(t => t.id));
+        for (const st of serverTenants) {
+          if (!localIds.has(st.id)) {
+            mergedTenants.push({
+              ...st,
+              syncStatus: 'synced'
+            });
+          }
+        }
+
+        // 3. Enregistrer les mutations manquantes pour l'upload
+        if (toUpload.length > 0) {
+          console.log(`[Sync] ${toUpload.length} locataires détectés pour réconciliation vers le serveur.`);
+          for (const tenant of toUpload) {
+            const queueItems = await db.mutationQueue.where('entityId').equals(tenant.id).toArray();
+            if (queueItems.length === 0) {
+              await db.enqueueMutation({
+                type: 'CREATE',
+                entity: 'tenant',
+                entityId: tenant.id,
+                data: tenant
+              });
+            }
+          }
+        }
+
+        await db.tenants.bulkPut(mergedTenants);
+        set({ tenants: mergedTenants, loading: false });
       }
     } catch (err) {
       console.error('Failed to fetch tenants:', err);

@@ -6,6 +6,9 @@ import { uploadInspectionPhoto } from '@/app/actions/media';
 const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
 const fixInvalidIds = (inspection: InspectionReport): InspectionReport => {
+  if (!inspection || !inspection.rooms || !Array.isArray(inspection.rooms)) {
+    return inspection;
+  }
   let changed = false;
   const seenIds = new Set<string>();
 
@@ -21,7 +24,7 @@ const fixInvalidIds = (inspection: InspectionReport): InspectionReport => {
     }
     seenIds.add(roomId);
 
-    const updatedItems = room.items.map(item => {
+    const updatedItems = (room.items || []).map(item => {
       let itemChanged = false;
       let itemId = item.id;
       
@@ -32,7 +35,7 @@ const fixInvalidIds = (inspection: InspectionReport): InspectionReport => {
       }
       seenIds.add(itemId);
 
-      const updatedPhotos = item.photos.map(photo => {
+      const updatedPhotos = (item.photos || []).map(photo => {
         if (!isUUID(photo.id) || seenIds.has(photo.id)) {
           changed = true;
           const newPhotoId = crypto.randomUUID();
@@ -86,7 +89,7 @@ interface InspectionState {
   // Synchronisation
   setSyncStatus: (status: SyncStatus) => void;
   syncPendingPhotos: (inspectionId: string) => Promise<void>;
-  finalizeInspection: (id: string, data: InspectionReport) => Promise<void>;
+  finalizeInspection: (id: string, report: Partial<InspectionReport>) => Promise<void>;
 }
 
 export const useInspectionStore = create<InspectionState>((set, get) => ({
@@ -107,6 +110,9 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         .filter(inspection => {
           if (user.role === 'Administrateur') {
             return (inspection as any).organizationId === user.organizationId;
+          }
+          if (user.role === 'Propriétaire') {
+            return inspection.ownerId === user.id;
           }
           return inspection.agencyId === user.agencyId;
         })
@@ -209,7 +215,8 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     await db.enqueueMutation({
       type: 'DELETE',
       entity: 'inspection',
-      entityId: id
+      entityId: id,
+      data: { id }
     });
     set(state => ({
       inspections: state.inspections.filter(i => i.id !== id),
@@ -255,6 +262,8 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
       itemId,
       blob: photo.blob,
       isSynced: false,
+      compressedBase64: photo.compressedBase64,
+      status: 'PENDING' as const,
       lastModified: new Date().toISOString()
     });
 
@@ -303,6 +312,70 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     });
 
     await get().updateInspection(current.id, { rooms: updatedRooms });
+  },
+
+  finalizeInspection: async (id, data) => {
+    const current = get().inspections.find(i => i.id === id);
+    
+    // Si l'état des lieux n'existe pas en local (cas d'une création directe), on initialise une structure par défaut
+    const baseReport = current || {
+      id,
+      propertyId: data.propertyId || '',
+      propertyAddress: data.propertyAddress || '',
+      date: data.date || new Date().toISOString().split('T')[0],
+      type: data.type || 'Entrée',
+      ownerId: data.ownerId || '',
+      inspectorId: data.inspectorId || '',
+      tenantId: data.tenantId || '',
+      agencyId: data.agencyId || '',
+      organizationId: data.organizationId || '',
+      counters: data.counters || { water: 0, electricity: 0, gas: 0 },
+      keyInventories: data.keyInventories || [],
+      generalObservations: data.generalObservations || '',
+      signatures: data.signatures || {
+        tenant: { type: 'Aucune' },
+        inspector: { type: 'Aucune' }
+      },
+      rooms: data.rooms || [],
+      isFinalized: false,
+      serverVersion: 0,
+      syncStatus: 'pending' as const
+    };
+
+    const updated = fixInvalidIds({
+      ...baseReport,
+      ...data,
+      agencyId: data.agencyId || baseReport.agencyId || '',
+      organizationId: data.organizationId || baseReport.organizationId || '',
+      isFinalized: true,
+      syncStatus: 'pending' as const,
+      lastModified: new Date().toISOString()
+    } as InspectionReport);
+
+    await db.inspections.put(updated);
+    await db.enqueueMutation({
+      type: current ? 'UPDATE' : 'CREATE',
+      entity: 'inspection',
+      entityId: id,
+      data: updated
+    });
+
+    set(state => {
+      const exists = state.inspections.some(i => i.id === id);
+      const nextInspections = exists
+        ? state.inspections.map(i => i.id === id ? updated : i)
+        : [updated, ...state.inspections];
+
+      return {
+        inspections: nextInspections,
+        currentInspection: state.currentInspection?.id === id ? updated : state.currentInspection
+      };
+    });
+
+    // Lancer la synchronisation des photos HD en arrière-plan
+    get().syncPendingPhotos(id).catch(err => {
+      console.error("[Sync] Erreur lors de la synchronisation des photos :", err);
+    });
   },
 
   setSyncStatus: (status) => set({ syncStatus: status }),
@@ -395,21 +468,5 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         });
       }
     }
-  },
-
-  finalizeInspection: async (id, data) => {
-    const finalized = { ...data, isFinalized: true, lastModified: new Date().toISOString() };
-    await db.inspections.put(finalized);
-    await db.enqueueMutation({
-      type: 'UPDATE',
-      entity: 'inspection',
-      entityId: id,
-      data: finalized
-    });
-
-    set(state => ({
-      inspections: state.inspections.map(i => i.id === id ? finalized : i),
-      currentInspection: state.currentInspection?.id === id ? finalized : state.currentInspection
-    }));
   }
 }));

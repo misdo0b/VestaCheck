@@ -195,21 +195,12 @@ export default function RegisterPage() {
         toast.error('Erreur lors de la connexion automatique. Veuillez vous connecter manuellement.');
         router.push('/login');
       } else {
-        // Synchronisation forcée des stores pour récupérer les nouvelles entités
-        try {
-          await Promise.all([
-            useUserStore.getState().fetchUsers(),
-            useOrganizationStore.getState().fetchOrganizations(),
-            useAgencyStore.getState().fetchAgencies(),
-            usePropertyStore.getState().fetchProperties()
-          ]);
-        } catch (syncErr) {
-          console.warn('Post-register sync partial failure:', syncErr);
-        }
-
         reset();
-        router.push('/dashboard');
-        router.refresh();
+        // Une redirection complète par le navigateur (full reload) est le moyen le plus robuste
+        // pour garantir que les cookies de session sont correctement injectés dans tous les en-têtes
+        // et que les stores locaux et serveurs de l'application sont rechargés et synchronisés proprement
+        // via le StoreInitializer lors du montage du tableau de bord.
+        window.location.href = '/dashboard';
       }
     } catch (err: any) {
       setError(err.message);

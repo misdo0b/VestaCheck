@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAgencyStore } from '@/store/useAgencyStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useOrganizationStore } from '@/store/useOrganizationStore';
-import { Agency, UserRole } from '@/types';
+import { Agency } from '@/types';
 import { 
   Building2, 
   Plus, 
@@ -14,12 +14,8 @@ import {
   Mail, 
   Phone, 
   MapPin, 
-  MoreVertical, 
   Edit2, 
   Trash2, 
-  ShieldAlert,
-  ChevronRight,
-  Filter,
   X,
   LayoutGrid,
   List
@@ -28,19 +24,19 @@ import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useTranslation } from '@/hooks/useTranslation';
 
-const agencySchema = z.object({
-  name: z.string().min(3, "Le nom doit faire au moins 3 caractères"),
-  email: z.string().email("Email invalide"),
-  phone: z.string().min(10, "Téléphone requis"),
-  address: z.string().min(5, "L'adresse est requise"),
-  type: z.enum(['Siège', 'Établissement']),
-  organizationId: z.string().min(1, "Organisation requise")
-});
-
-type AgencyFormData = z.infer<typeof agencySchema>;
+type AgencyFormData = {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  type: 'Siège' | 'Établissement';
+  organizationId: string;
+};
 
 export default function AgenciesPage() {
+  const { t } = useTranslation();
   const { data: session, status } = useSession();
   const router = useRouter();
   const { agencies, loading, initStore, addAgency, updateAgency, deleteAgency } = useAgencyStore();
@@ -54,6 +50,24 @@ export default function AgenciesPage() {
 
   const currentUser = session?.user as any;
   const isAdmin = currentUser?.role === 'Administrateur';
+
+  // Dynamic Zod Schema for translation support
+  const agencySchema = useMemo(() => z.object({
+    name: z.string().min(3, t('adminAgencies.validationNameMin')),
+    email: z.string().email(t('adminAgencies.validationEmailInvalid')),
+    phone: z.string().min(10, t('adminAgencies.validationPhoneRequired')),
+    address: z.string().min(5, t('adminAgencies.validationAddressRequired')),
+    type: z.enum(['Siège', 'Établissement']),
+    organizationId: z.string().min(1, t('adminAgencies.validationOrgRequired'))
+  }), [t]);
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<AgencyFormData>({
+    resolver: zodResolver(agencySchema),
+    defaultValues: {
+      type: 'Établissement',
+      organizationId: currentUser?.organizationId || ''
+    }
+  });
 
   useEffect(() => {
     if (status === 'unauthenticated' || (status === 'authenticated' && !isAdmin)) {
@@ -75,31 +89,23 @@ export default function AgenciesPage() {
     );
   }, [agencies, searchQuery]);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<AgencyFormData>({
-    resolver: zodResolver(agencySchema),
-    defaultValues: {
-      type: 'Établissement',
-      organizationId: currentUser?.organizationId || ''
-    }
-  });
-
   const onSubmit = async (data: AgencyFormData) => {
     try {
       if (editingAgency) {
         await updateAgency(editingAgency.id, data);
-        toast.success("Agence mise à jour !");
+        toast.success(t('adminAgencies.updateSuccess'));
       } else {
         await addAgency({
           ...data,
           id: crypto.randomUUID()
         });
-        toast.success("Nouvelle agence créée !");
+        toast.success(t('adminAgencies.createSuccess'));
       }
       setIsModalOpen(false);
       setEditingAgency(null);
       reset();
     } catch (error) {
-      toast.error("Une erreur est survenue");
+      toast.error(t('adminAgencies.errorGeneric'));
     }
   };
 
@@ -110,9 +116,9 @@ export default function AgenciesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Supprimer cette agence ?")) {
+    if (confirm(t('adminAgencies.deleteConfirm'))) {
       await deleteAgency(id);
-      toast.success("Agence supprimée");
+      toast.success(t('adminAgencies.deleteSuccess'));
     }
   };
 
@@ -134,9 +140,9 @@ export default function AgenciesPage() {
               <div className="p-2.5 bg-blue-600/20 rounded-2xl border border-blue-600/30">
                 <Building2 className="w-8 h-8 text-blue-500" />
               </div>
-              <h1 className="text-4xl font-extrabold text-white tracking-tight">Gestion des Agences</h1>
+              <h1 className="text-4xl font-extrabold text-white tracking-tight">{t('adminAgencies.title')}</h1>
             </div>
-            <p className="text-slate-400 ml-1">Configurez les succursales et le siège de votre organisation.</p>
+            <p className="text-slate-400 ml-1">{t('adminAgencies.subtitle')}</p>
           </div>
           
           <button 
@@ -151,7 +157,7 @@ export default function AgenciesPage() {
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-2xl shadow-blue-600/30 active:scale-95 group"
           >
             <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
-            Nouvelle Agence
+            {t('adminAgencies.newAgencyBtn')}
           </button>
         </div>
 
@@ -161,7 +167,7 @@ export default function AgenciesPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
             <input 
               type="text"
-              placeholder="Rechercher une agence..."
+              placeholder={t('adminAgencies.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-950/50 border border-white/10 rounded-2xl pl-12 pr-4 py-3.5 text-white focus:border-blue-500/50 focus:bg-slate-900 outline-none transition-all placeholder:text-slate-600"
@@ -220,7 +226,7 @@ export default function AgenciesPage() {
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                         agency.type === 'Siège' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                       }`}>
-                        {agency.type}
+                        {agency.type === 'Siège' ? t('adminAgencies.typeHeadquarters') : t('adminAgencies.typeBranch')}
                       </span>
                     </div>
                     
@@ -247,7 +253,7 @@ export default function AgenciesPage() {
                     className="flex-1 bg-white/5 hover:bg-white/10 text-slate-300 py-3 rounded-2xl transition-all flex items-center justify-center gap-2 font-medium"
                   >
                     <Edit2 size={16} />
-                    Modifier
+                    {t('adminAgencies.editTooltip')}
                   </button>
                   <button 
                     onClick={() => handleDelete(agency.id)}
@@ -262,8 +268,8 @@ export default function AgenciesPage() {
         ) : (
           <div className="text-center py-32 bg-slate-900/20 border border-dashed border-white/10 rounded-[48px] backdrop-blur-sm animate-pulse">
             <Building2 className="w-16 h-16 text-slate-800 mx-auto mb-6" />
-            <h3 className="text-2xl font-bold text-white mb-2">Aucune agence trouvée</h3>
-            <p className="text-slate-500">Commencez par ajouter une nouvelle agence pour votre organisation.</p>
+            <h3 className="text-2xl font-bold text-white mb-2">{t('adminAgencies.emptyStateTitle')}</h3>
+            <p className="text-slate-500">{t('adminAgencies.emptyStateDesc')}</p>
           </div>
         )}
       </div>
@@ -279,7 +285,7 @@ export default function AgenciesPage() {
                 <div className="p-2 bg-blue-600/10 rounded-xl">
                   <Building2 size={24} className="text-blue-500" />
                 </div>
-                {editingAgency ? 'Modifier l\'agence' : 'Nouvelle Agence'}
+                {editingAgency ? t('adminAgencies.modalEditTitle') : t('adminAgencies.modalNewTitle')}
               </h2>
               <button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-white/5 rounded-2xl text-slate-400 transition-colors">
                 <X size={24} />
@@ -289,33 +295,33 @@ export default function AgenciesPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
               <div className="grid grid-cols-1 gap-6">
                 <div>
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Nom de l'agence</label>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{t('adminAgencies.nameLabel')}</label>
                   <input 
                     {...register('name')}
                     className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="Ex: Agence Paris Centre"
+                    placeholder={t('adminAgencies.namePlaceholder')}
                   />
                   {errors.name && <p className="text-red-400 text-xs mt-2 ml-1">{errors.name.message}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Type</label>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{t('adminAgencies.typeLabel')}</label>
                     <select 
                       {...register('type')}
-                      className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all appearance-none"
+                      className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
                     >
-                      <option value="Établissement">Établissement</option>
-                      <option value="Siège">Siège</option>
+                      <option value="Établissement">{t('adminAgencies.typeBranch')}</option>
+                      <option value="Siège">{t('adminAgencies.typeHeadquarters')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Organisation</label>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{t('adminAgencies.orgLabel')}</label>
                     <select 
                       {...register('organizationId')}
-                      className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all appearance-none"
+                      className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
                     >
-                      <option value="">Sélectionner...</option>
+                      <option value="">{t('adminAgencies.orgPlaceholder')}</option>
                       {organizations.map(org => (
                         <option key={org.id} value={org.id}>{org.raisonSociale}</option>
                       ))}
@@ -325,22 +331,22 @@ export default function AgenciesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Email de contact</label>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{t('adminAgencies.emailLabel')}</label>
                   <input 
                     {...register('email')}
                     className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="contact@agence.fr"
+                    placeholder={t('adminAgencies.emailPlaceholder')}
                   />
                   {errors.email && <p className="text-red-400 text-xs mt-2 ml-1">{errors.email.message}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Adresse postale</label>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{t('adminAgencies.addressLabel')}</label>
                   <textarea 
                     {...register('address')}
                     rows={3}
                     className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none transition-all resize-none"
-                    placeholder="10 rue de Rivoli, 75001 Paris"
+                    placeholder={t('adminAgencies.addressPlaceholder')}
                   />
                   {errors.address && <p className="text-red-400 text-xs mt-2 ml-1">{errors.address.message}</p>}
                 </div>
@@ -351,7 +357,7 @@ export default function AgenciesPage() {
                   type="submit"
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-4 font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95"
                 >
-                  {editingAgency ? 'Enregistrer les modifications' : 'Créer l\'agence'}
+                  {editingAgency ? t('adminAgencies.submitEditBtn') : t('adminAgencies.submitCreateBtn')}
                 </button>
               </div>
             </form>

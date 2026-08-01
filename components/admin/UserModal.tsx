@@ -1,24 +1,26 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSession } from 'next-auth/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { X, UserPlus, Save, Mail, User as UserIcon, Building } from 'lucide-react';
+import { X, UserPlus, Save, Mail, User as UserIcon, Building, MapPin, Phone, CreditCard } from 'lucide-react';
 import { User, UserRole } from '@/types';
 import { useAgencyStore } from '@/store/useAgencyStore';
 import { useEffect } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 
-const userSchema = z.object({
-  name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
-  email: z.string().email('Adresse email invalide'),
-  password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères').optional().or(z.literal('')),
-  role: z.enum(['Administrateur', 'Agent', 'Propriétaire']),
-  agencyId: z.string().optional(),
-});
-
-type UserFormData = z.infer<typeof userSchema>;
+type UserFormData = {
+  name: string;
+  email: string;
+  password?: string;
+  role: 'Administrateur' | 'Agent' | 'Propriétaire';
+  agencyId?: string;
+  address?: string;
+  siret?: string;
+  phone?: string;
+};
 
 interface UserModalProps {
   isOpen: boolean;
@@ -28,8 +30,21 @@ interface UserModalProps {
 }
 
 export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModalProps) {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const { agencies, initStore } = useAgencyStore();
+
+  // Dynamic Zod Schema for translations
+  const userSchema = useMemo(() => z.object({
+    name: z.string().min(2, t('adminUsers.validationNameMin')),
+    email: z.string().email(t('adminUsers.validationEmailInvalid')),
+    password: z.string().min(8, t('adminUsers.validationPasswordMin')).optional().or(z.literal('')),
+    role: z.enum(['Administrateur', 'Agent', 'Propriétaire']),
+    agencyId: z.string().optional(),
+    address: z.string().optional(),
+    siret: z.string().optional(),
+    phone: z.string().optional(),
+  }), [t]);
 
   const {
     register,
@@ -43,6 +58,9 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
       email: user?.email || '',
       role: user?.role || 'Agent',
       agencyId: user?.agencyId || '',
+      address: user?.address || '',
+      siret: user?.siret || '',
+      phone: user?.phone || '',
     },
   });
 
@@ -70,9 +88,9 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
             </div>
             <div>
               <h2 className="text-xl font-bold text-white leading-none mb-1">
-                {user ? 'Modifier l\'utilisateur' : 'Nouvel Utilisateur'}
+                {user ? t('adminUsers.modalEditTitle') : t('adminUsers.modalNewTitle')}
               </h2>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-tight">VestaCheck Administration</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-tight">{t('adminUsers.modalSubtitle')}</p>
             </div>
           </div>
           <button 
@@ -87,12 +105,12 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
         <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6 space-y-5">
           {/* Name */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Nom complet</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">{t('adminUsers.nameLabel')}</label>
             <div className="relative group">
               <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input 
                 {...register('name')}
-                placeholder="Ex: Jean Martin"
+                placeholder={t('adminUsers.namePlaceholder')}
                 className={`w-full bg-slate-950 border ${errors.name ? 'border-red-500/50' : 'border-white/5'} rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 ${errors.name ? 'focus:ring-red-500/20' : 'focus:ring-blue-500/20'} transition-all`}
               />
             </div>
@@ -101,13 +119,13 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
 
           {/* Email */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Adresse Email</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">{t('adminUsers.emailLabel')}</label>
             <div className="relative group">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input 
                 {...register('email')}
                 type="email"
-                placeholder="jean.martin@exemple.com"
+                placeholder={t('adminUsers.emailPlaceholder')}
                 className={`w-full bg-slate-950 border ${errors.email ? 'border-red-500/50' : 'border-white/5'} rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 ${errors.email ? 'focus:ring-red-500/20' : 'focus:ring-blue-500/20'} transition-all`}
               />
             </div>
@@ -117,14 +135,14 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
           {/* Password */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
-              {user ? 'Nouveau mot de passe (laisser vide pour ne pas modifier)' : 'Mot de passe initial'}
+              {user ? t('adminUsers.passwordLabelEdit') : t('adminUsers.passwordLabelNew')}
             </label>
             <div className="relative group">
               <Save className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input 
                 {...register('password')}
                 type="password"
-                placeholder={user ? "Laisser vide pour conserver l'actuel" : "••••••••"}
+                placeholder={user ? t('adminUsers.passwordPlaceholderEdit') : t('adminUsers.passwordPlaceholderNew')}
                 className={`w-full bg-slate-950 border ${errors.password ? 'border-red-500/50' : 'border-white/5'} rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 ${errors.password ? 'focus:ring-red-500/20' : 'focus:ring-blue-500/20'} transition-all`}
               />
             </div>
@@ -134,29 +152,68 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
           {/* Role & Agency Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Rôle</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">{t('adminUsers.roleLabel')}</label>
               <select 
                 {...register('role')}
                 className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
               >
-                <option value="Agent">Agent</option>
-                <option value="Administrateur">Administrateur</option>
-                <option value="Propriétaire">Propriétaire</option>
+                <option value="Agent">{t('roles.Agent')}</option>
+                <option value="Administrateur">{t('roles.Administrateur')}</option>
+                <option value="Propriétaire">{t('roles.Propriétaire')}</option>
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Agence de rattachement</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">{t('adminUsers.agencyLabel')}</label>
               <div className="relative group">
                 <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <select 
                   {...register('agencyId')}
                   className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
                 >
-                  <option value="">Sélectionner une agence...</option>
+                  <option value="">{t('adminUsers.agencySelectPlaceholder')}</option>
                   {agencies.map(agency => (
                     <option key={agency.id} value={agency.id}>{agency.name}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Adresse postale (optionnel)</label>
+            <div className="relative group">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input 
+                {...register('address')}
+                placeholder="Ex: 12 Rue de la Paix, 75002 Paris"
+                className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* SIRET & Phone Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">N° SIRET (optionnel)</label>
+              <div className="relative group">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input 
+                  {...register('siret')}
+                  placeholder="Ex: 12345678900012"
+                  className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Téléphone (optionnel)</label>
+              <div className="relative group">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input 
+                  {...register('phone')}
+                  placeholder="Ex: 06 12 34 56 78"
+                  className="w-full bg-slate-950 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                />
               </div>
             </div>
           </div>
@@ -168,7 +225,7 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
               onClick={onClose}
               className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-sm font-medium transition-all"
             >
-              Annuler
+              {t('adminUsers.cancelBtn')}
             </button>
             <button 
               type="submit" 
@@ -180,7 +237,7 @@ export default function UserModal({ isOpen, onClose, onSubmit, user }: UserModal
               ) : (
                 <>
                   {user ? <Save className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                  {user ? 'Enregistrer les modifications' : 'Créer l\'utilisateur'}
+                  {user ? t('adminUsers.submitEditBtn') : t('adminUsers.submitCreateBtn')}
                 </>
               )}
             </button>

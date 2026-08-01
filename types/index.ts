@@ -157,8 +157,16 @@ export interface User {
   organizationId: string; // Organisation d'appartenance
   agencyId: string; // Agence obligatoire pour Agent/Admin
   
+  // Informations légales complémentaires (ex: Propriétaire / Bailleur)
+  address?: string;
+  siret?: string;
+  phone?: string;
+  
   // Champs de synchronisation
   serverVersion: number;
   lastModified: string;
   syncStatus: SyncStatus;
 }
+
+export * from './preferences';
+

@@ -2,20 +2,32 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useInspectionStore } from '@/store/useInspectionStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useTenantStore } from '@/store/useTenantStore';
+import { useUserStore } from '@/store/useUserStore';
+import { useAgencyStore } from '@/store/useAgencyStore';
+import { useOrganizationStore } from '@/store/useOrganizationStore';
 
 export function useSync() {
   const { data: session } = useSession();
-  const { syncStatus, setSyncStatus } = useInspectionStore();
-  const { fetchProperties } = usePropertyStore();
+  const pathname = usePathname();
+  const { syncStatus, setSyncStatus, fetchInspections } = useInspectionStore();
+  const { fetchProperties, fetchTemplates } = usePropertyStore();
   const { fetchTenants } = useTenantStore();
+  const { fetchUsers } = useUserStore();
+  const { fetchAgencies } = useAgencyStore();
+  const { fetchOrganizations } = useOrganizationStore();
   const isOnline = typeof window !== 'undefined' ? navigator.onLine : true;
 
   // Verrou pour empêcher des exécutions concurrentes du processQueue
   const isProcessingRef = useRef(false);
+
+  // Écoute réactive de la file d'attente des mutations locales
+  const mutationCount = useLiveQuery(() => db.mutationQueue.count());
 
   /**
    * Upload des photos HD qui n'ont pas encore été synchronisées.
@@ -25,8 +37,7 @@ export function useSync() {
     try {
       // Utilisation d'un filtre au lieu d'un where clause pour éviter les erreurs "The parameter is not a valid key"
       // sur les index bohéens dans certains environnements IndexedDB.
-      const unsyncedPhotos = await db.photos.filter(p => p.isSynced === false).toArray();
-      
+      const unsyncedPhotos = await db.photos.filter(p => !p.isSynced || (p.isSynced as any) === 0 || (p.isSynced as any) === false).toArray();
       if (unsyncedPhotos.length === 0) return;
 
       console.log(`[Sync] ${unsyncedPhotos.length} photos HD en attente d'upload...`);
@@ -51,8 +62,7 @@ export function useSync() {
           // 1. Mise à jour table photos
           await db.photos.update(photo.id, {
             isSynced: true,
-            cloudUrl: url,
-            lastModified: new Date().toISOString()
+            cloudUrl: url
           });
 
           // 2. Mise à jour en mémoire des inspections correspondantes
@@ -117,54 +127,72 @@ export function useSync() {
       // 1. Upload des photos HD d'abord
       await uploadUnsyncedPhotos();
 
-      // 2. Traitement de la file de mutations SQL
+      // 2. Traitement de la file de mutations SQL (s'il y en a)
       const rawMutations = await db.mutationQueue.toArray();
+      let hasMutationErrors = false;
       
-      // Si rien à synchroniser, on s'arrête là
-      if (rawMutations.length === 0) {
-        if (syncStatus !== 'synced') setSyncStatus('synced');
-        return;
-      }
+      if (rawMutations.length > 0) {
+        setSyncStatus('syncing');
 
-      setSyncStatus('syncing');
+        // Préparation du batch
+        const mutations = rawMutations.map(m => ({
+          ...m,
+          // On s'assure que les données sont propres pour JSON
+          data: typeof m.data === 'string' ? JSON.parse(m.data) : m.data
+        }));
 
-      // Préparation du batch
-      const mutations = rawMutations.map(m => ({
-        ...m,
-        // On s'assure que les données sont propres pour JSON
-        data: typeof m.data === 'string' ? JSON.parse(m.data) : m.data
-      }));
+        console.log(`[Sync] Envoi de ${mutations.length} mutations...`);
 
-      console.log(`[Sync] Envoi de ${mutations.length} mutations...`);
+        const response = await fetch('/api/inspections/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mutations })
+        });
 
-      const response = await fetch('/api/inspections/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mutations })
-      });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Sync failed');
+        }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Sync failed');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        // Suppression des mutations traitées avec succès
-        const processedIds = mutations.map(m => m.id);
-        await db.mutationQueue.bulkDelete(processedIds);
+        const result = await response.json();
         
-        // Rafraîchissement des données locales pour s'assurer de la cohérence avec le serveur
-        await Promise.all([
-          fetchProperties(),
-          fetchTenants()
-        ]);
+        if (result.success && Array.isArray(result.results)) {
+          const successfulIds = result.results
+            .filter((res: any) => res.status === 'success')
+            .map((res: any) => res.id);
 
+          const failedMutations = result.results.filter((res: any) => res.status === 'error');
+
+          if (successfulIds.length > 0) {
+            await db.mutationQueue.bulkDelete(successfulIds);
+          }
+          
+          if (failedMutations.length > 0) {
+            console.warn(`[Sync] ${failedMutations.length} mutations ont échoué en base : ` + JSON.stringify(failedMutations));
+            hasMutationErrors = true;
+          }
+        } else {
+          hasMutationErrors = true;
+        }
+      }
+
+      // 3. Synchronisation descendante : Toujours récupérer les dernières données
+      setSyncStatus('syncing');
+      await Promise.all([
+        fetchProperties(),
+        fetchTenants(),
+        fetchInspections(),
+        fetchTemplates(),
+        fetchUsers(),
+        fetchAgencies(),
+        fetchOrganizations()
+      ]);
+
+      if (hasMutationErrors) {
+        setSyncStatus('error');
+      } else {
         setSyncStatus('synced');
         console.log('[Sync] Synchronisation réussie');
-      } else {
-        setSyncStatus('error');
       }
     } catch (error) {
       console.error('[Sync] Erreur critique:', error);
@@ -177,14 +205,21 @@ export function useSync() {
         setSyncStatus('synced');
       }
     }
-  }, [session, syncStatus, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, isOnline]);
+  }, [session, setSyncStatus, uploadUnsyncedPhotos, fetchProperties, fetchTenants, fetchInspections, fetchTemplates, fetchUsers, fetchAgencies, fetchOrganizations, isOnline]);
 
-  // Déclenchement automatique de la synchro au montage et quand on repasse online
+  // Déclenchement automatique de la synchro au montage, quand on repasse online ou change de page
   useEffect(() => {
     if (isOnline && session) {
       processQueue();
     }
-  }, [isOnline, session, processQueue]);
+  }, [isOnline, session, processQueue, pathname]);
+
+  // Déclenchement automatique de la synchro si de nouvelles mutations locales sont en attente
+  useEffect(() => {
+    if (mutationCount !== undefined && mutationCount > 0 && isOnline && session) {
+      processQueue();
+    }
+  }, [mutationCount, isOnline, session, processQueue]);
 
   // Intervalle de sécurité (toutes les 2 minutes)
   useEffect(() => {

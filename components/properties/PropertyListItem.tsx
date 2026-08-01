@@ -6,6 +6,7 @@ import { Home, MapPin, Maximize, Layers, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useUserStore } from '@/store/useUserStore';
 import { useTenantStore } from '@/store/useTenantStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface PropertyListItemProps {
   property: Property;
@@ -13,6 +14,7 @@ interface PropertyListItemProps {
 }
 
 export function PropertyListItem({ property }: PropertyListItemProps) {
+  const { t } = useTranslation();
   const { users } = useUserStore();
   const { tenants } = useTenantStore();
   const isOccupied = tenants.some(t => (t.propertyIds || []).includes(property.id) && t.status === 'Actuel');
@@ -41,14 +43,14 @@ export function PropertyListItem({ property }: PropertyListItemProps) {
       {/* Stats - Hidden on mobile */}
       <div className="hidden md:flex items-center gap-8 px-8 border-x border-white/5">
         <div className="flex flex-col min-w-[60px]">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Surface</span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">{t('properties.surface')}</span>
           <div className="flex items-center gap-1.5 text-slate-300">
             <Maximize className="w-4 h-4 text-blue-400/60" />
             <span className="font-semibold">{property.surface} m²</span>
           </div>
         </div>
         <div className="flex flex-col min-w-[40px]">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Pièces</span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">{t('properties.rooms')}</span>
           <div className="flex items-center gap-1.5 text-slate-300">
             <Layers className="w-4 h-4 text-blue-400/60" />
             <span className="font-semibold">{property.roomCount}</span>
@@ -59,15 +61,15 @@ export function PropertyListItem({ property }: PropertyListItemProps) {
       {/* Stakeholders - Hidden on mobile */}
       <div className="hidden lg:flex items-center gap-8 px-8 border-r border-white/5">
         <div className="flex flex-col min-w-[120px]">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">Propriétaire</span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">{t('properties.ownerLabel')}</span>
           <span className="text-sm font-semibold text-slate-300 truncate max-w-[150px]">
             {users.find(u => u.id === property.ownerId)?.name || property.ownerId}
           </span>
         </div>
         <div className="flex flex-col min-w-[120px]">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1 text-blue-400/80">Agent</span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1 text-blue-400/80">{t('properties.agentLabelShort')}</span>
           <span className="text-sm font-semibold text-blue-400 truncate max-w-[150px]">
-            {users.find(u => u.id === property.agentId)?.name || property.agentId || 'Non assigné'}
+            {users.find(u => u.id === property.agentId)?.name || property.agentId || t('properties.unassigned')}
           </span>
         </div>
       </div>
@@ -79,7 +81,7 @@ export function PropertyListItem({ property }: PropertyListItemProps) {
             ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
             : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
         }`}>
-          {isOccupied ? 'Occupé' : 'Vacant'}
+          {isOccupied ? t('properties.statusOccupied') : t('properties.statusVacant')}
         </span>
         <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-slate-500 group-hover:text-blue-400 group-hover:border-blue-400/30 group-hover:bg-blue-400/5 transition-all">
           <ChevronRight className="w-5 h-5" />

@@ -23,28 +23,31 @@ export async function POST(req: Request) {
 
     console.log(`[Sync] Début du traitement de ${mutations.length} mutations`);
 
+    const isUUID = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    const toUUID = (val: any) => isUUID(val) ? val : null;
+
     for (const mutation of mutations) {
       const { type, entity, entityId, data } = mutation;
 
-      if (entity === 'inspection' && type === 'UPDATE') {
-        console.log(`[Sync] Traitement de l'inspection: ${entityId}`);
+      if (entity === 'inspection' && (type === 'UPDATE' || type === 'CREATE')) {
+        console.log(`[Sync] Traitement de l'inspection (${type}): ${entityId}`);
 
         // 1. Upsert de l'inspection principale
         const { error: inspError } = await supabase.from('inspections').upsert({
           id: entityId,
-          property_id: data.propertyId,
-          inspector_id: data.inspectorId,
-          owner_id: data.ownerId,
-          tenant_id: data.tenantId,
-          agency_id: data.agencyId,
-          organization_id: data.organizationId,
-          date: data.date,
-          type: data.type,
+          property_id: toUUID(data.propertyId),
+          inspector_id: toUUID(data.inspectorId),
+          owner_id: toUUID(data.ownerId),
+          tenant_id: toUUID(data.tenantId),
+          agency_id: toUUID(data.agencyId),
+          organization_id: toUUID(data.organizationId),
+          date: data.date ? new Date(data.date).toISOString() : new Date().toISOString(),
+          type: data.type || 'Entrée',
           counters: data.counters || { water: 0, electricity: 0 },
           general_observations: data.generalObservations || '',
           is_finalized: data.isFinalized || false,
           last_modified: data.lastModified || new Date().toISOString(),
-          property_address: data.propertyAddress,
+          property_address: data.propertyAddress || '',
           key_inventories: data.keyInventories || [],
           signatures: data.signatures || { tenant: { type: 'Aucune' }, inspector: { type: 'Aucune' } }
         });
@@ -118,17 +121,78 @@ export async function POST(req: Request) {
         }
       } else {
         // Autres types d'entités (propriétés, etc.) - Traitement générique simplifié
-        const tableName = entity === 'property' ? 'properties' :
+        const tableName = 
+          entity === 'property' ? 'properties' :
           entity === 'tenant' ? 'tenants' :
-            entity === 'user' ? 'users' : null;
+          entity === 'user' ? 'users' :
+          entity === 'template' ? 'property_templates' :
+          entity === 'agency' ? 'agencies' :
+          entity === 'organization' ? 'organizations' : null;
 
         if (tableName) {
-          const { error } = await supabase.from(tableName).upsert(data);
-          results.push({
-            id: mutation.id,
-            status: error ? 'error' : 'success',
-            error: error?.message
-          });
+          if (type === 'DELETE') {
+            const { error } = await supabase.from(tableName).delete().eq('id', entityId);
+            results.push({
+              id: mutation.id,
+              status: error ? 'error' : 'success',
+              error: error?.message
+            });
+          } else {
+            const { camelToSnake } = await import('@/lib/utils/mapping');
+            
+            // On s'assure d'inclure l'identifiant pour que l'upsert fonctionne comme un update/insert ciblé.
+            // On convertit également les clés camelCase en snake_case pour la base de données.
+            const payload = camelToSnake({
+              id: entityId,
+              ...data
+            });
+
+            // Si c'est un utilisateur et qu'un mot de passe en clair est fourni, on le hache
+            if (entity === 'user' && payload.password && !payload.password.startsWith('$2a$')) {
+              const { hashPassword } = await import('@/lib/utils/password');
+              payload.password = await hashPassword(payload.password);
+            }
+
+            // Extraire les property_ids pour la table de jointure et nettoyer le payload
+            const propertyIds = data.propertyIds || [];
+            delete payload.property_ids;
+            delete payload.property_ids_list;
+            delete payload.template_ids;
+            delete payload.template_ids_list;
+
+            const { error } = await supabase.from(tableName).upsert(payload);
+            if (error) {
+              console.error(`[Sync] Erreur upsert ${entity} ${entityId}:`, error);
+            }
+            
+            let relationError = null;
+            if (!error && entity === 'tenant' && data.propertyIds !== undefined) {
+              try {
+                // Nettoyage des anciennes associations
+                const { error: deleteErr } = await supabase.from('property_tenants').delete().eq('tenant_id', entityId);
+                if (deleteErr) throw deleteErr;
+                
+                // Insertion des nouvelles associations
+                if (propertyIds.length > 0) {
+                  const relations = propertyIds.map((pid: string) => ({
+                    tenant_id: entityId,
+                    property_id: pid
+                  }));
+                  const { error: insertErr } = await supabase.from('property_tenants').insert(relations);
+                  if (insertErr) throw insertErr;
+                }
+              } catch (relationErr: any) {
+                console.error(`[Sync] Erreur lors de la synchronisation des relations property_tenants pour le locataire ${entityId}:`, relationErr);
+                relationError = relationErr;
+              }
+            }
+
+            results.push({
+              id: mutation.id,
+              status: (error || relationError) ? 'error' : 'success',
+              error: error?.message || relationError?.message
+            });
+          }
         }
       }
     }

@@ -6,6 +6,7 @@ interface AgencyStore {
   agencies: Agency[];
   loading: boolean;
   error: string | null;
+  currentUser?: { role: string; organizationId: string };
 
   // Actions
   initStore: (user: { role: string; organizationId: string }) => Promise<void>;
@@ -20,9 +21,10 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
   agencies: [],
   loading: false,
   error: null,
+  currentUser: undefined,
 
   initStore: async (user) => {
-    set({ loading: true });
+    set({ loading: true, currentUser: user });
     try {
       const allLocalAgencies = await db.agencies.toArray();
       
@@ -45,10 +47,80 @@ export const useAgencyStore = create<AgencyStore>((set, get) => ({
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        // Filtrage serveur simulé ou réel
         const filtered = Array.isArray(data) ? (organizationId ? data.filter((a: any) => a.organizationId === organizationId) : data) : [];
-        await db.agencies.bulkPut(filtered);
-        set({ agencies: filtered, loading: false });
+        
+        const localAgencies = await db.agencies.toArray();
+        const user = get().currentUser;
+
+        // Cloisonnement : filtrer les agences locales par rapport au périmètre de l'utilisateur
+        const filteredLocal = user ? localAgencies.filter(agency => {
+          return agency.organizationId === user.organizationId;
+        }) : localAgencies;
+
+        const serverAgenciesMap = new Map<string, Agency>(filtered.map((a: Agency) => [a.id, a]));
+        
+        const mergedAgencies: Agency[] = [];
+        const toUpload: Agency[] = [];
+
+        // 1. Parcourir les agences locales filtrées
+        for (const la of filteredLocal) {
+          const sa = serverAgenciesMap.get(la.id);
+          if (!sa) {
+            // Existe localement mais pas sur le serveur -> Upload requis
+            toUpload.push(la);
+            mergedAgencies.push({
+              ...la,
+              syncStatus: 'pending'
+            });
+          } else {
+            // Existe des deux côtés -> Comparer les dates
+            const localTime = new Date(la.lastModified).getTime();
+            const serverTime = new Date(sa.lastModified).getTime();
+            
+            if (localTime > serverTime || la.syncStatus === 'pending' || la.syncStatus === 'error') {
+              toUpload.push(la);
+              mergedAgencies.push({
+                ...la,
+                syncStatus: 'pending'
+              });
+            } else {
+              mergedAgencies.push({
+                ...sa,
+                syncStatus: 'synced'
+              });
+            }
+          }
+        }
+
+        // 2. Ajouter les agences du serveur inexistantes localement
+        const localIds = new Set(localAgencies.map(a => a.id));
+        for (const sa of filtered) {
+          if (!localIds.has(sa.id)) {
+            mergedAgencies.push({
+              ...sa,
+              syncStatus: 'synced'
+            });
+          }
+        }
+
+        // 3. Enregistrer les mutations manquantes pour l'upload
+        if (toUpload.length > 0) {
+          console.log(`[Sync] ${toUpload.length} agences détectées pour réconciliation vers le serveur.`);
+          for (const agency of toUpload) {
+            const queueItems = await db.mutationQueue.where('entityId').equals(agency.id).toArray();
+            if (queueItems.length === 0) {
+              await db.enqueueMutation({
+                type: 'CREATE',
+                entity: 'agency',
+                entityId: agency.id,
+                data: agency
+              });
+            }
+          }
+        }
+
+        await db.agencies.bulkPut(mergedAgencies);
+        set({ agencies: mergedAgencies, loading: false });
       }
     } catch (error) {
       console.warn('Fetch agencies failed, using local data:', error);

@@ -14,17 +14,20 @@ import {
 import { PropertyModal } from '@/components/properties/PropertyModal';
 import { PDFTemplate } from '@/components/pdf/PDFTemplate';
 import { generatePDF } from '@/lib/utils/generate-pdf';
+import { PhotoBlobStorage } from '@/lib/utils/blob-storage';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useUserStore } from '@/store/useUserStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function PropertyDetailPage() {
+  const { t, language } = useTranslation();
   const { id } = useParams();
   const router = useRouter();
   const { properties, templates, getTemplatesByProperty, fetchTemplates } = usePropertyStore();
   const { inspections, fetchInspections } = useInspectionStore();
-  const { tenants } = useTenantStore();
-  const { users } = useUserStore();
+  const { tenants, fetchTenants } = useTenantStore();
+  const { users, fetchUsers } = useUserStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
 
@@ -32,8 +35,10 @@ export default function PropertyDetailPage() {
     if (id) {
       fetchInspections(id as string);
       fetchTemplates(id as string);
+      fetchUsers();
+      fetchTenants();
     }
-  }, [id, fetchInspections, fetchTemplates]);
+  }, [id, fetchInspections, fetchTemplates, fetchUsers, fetchTenants]);
 
   const property = properties.find(p => p.id === id);
   const owner = users.find(u => u.id === property?.ownerId);
@@ -57,8 +62,8 @@ export default function PropertyDetailPage() {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
         <Building2 className="w-16 h-16 text-slate-800 mb-4" />
-        <h1 className="text-2xl font-bold text-white mb-2">Accès restreint ou bien non trouvé</h1>
-        <button onClick={() => router.push('/dashboard/properties')} className="text-blue-400 hover:underline">Retourner à la liste</button>
+        <h1 className="text-2xl font-bold text-white mb-2">{t('propertyDetails.restrictedAccess')}</h1>
+        <button onClick={() => router.push('/dashboard/properties')} className="text-blue-400 hover:underline">{t('propertyDetails.backToList')}</button>
       </div>
     );
   }
@@ -69,6 +74,22 @@ export default function PropertyDetailPage() {
   const handleExportPDF = async (inspection: any) => {
     setExportingId(inspection.id);
     try {
+      const enrichedInspection = JSON.parse(JSON.stringify(inspection));
+
+      // Enrichissement avec les photos HD si présentes en local
+      for (const room of enrichedInspection.rooms || []) {
+        for (const item of room.items || []) {
+          for (const photo of item.photos || []) {
+            if (photo.hasFullRes) {
+              const hdData = await PhotoBlobStorage.getPhotoHD(photo.id);
+              if (hdData) {
+                photo.fullResBase64 = hdData;
+              }
+            }
+          }
+        }
+      }
+
       await new Promise(resolve => setTimeout(resolve, 500));
       const tenant = tenants.find(t => t.id === inspection.tenantId);
       const nameToUse = tenant?.name || 'Inconnu';
@@ -78,11 +99,11 @@ export default function PropertyDetailPage() {
         .toLowerCase();
       
       const fileName = `Rapport_${safeTenantName}_${inspection.date.replace(/\//g, '-')}.pdf`;
-      await generatePDF('inspection-report-pdf-history', fileName);
-      toast.success("PDF généré avec succès !");
+      await generatePDF('inspection-report-pdf-history', fileName, enrichedInspection, t, language);
+      toast.success(t('inspection.toastSuccessPDF'));
     } catch (error) {
       console.error("Erreur lors de l'export PDF:", error);
-      toast.error("Une erreur est survenue lors de la génération du PDF.");
+      toast.error(t('inspection.toastErrorPDF'));
     } finally {
       setExportingId(null);
     }
@@ -102,7 +123,7 @@ export default function PropertyDetailPage() {
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">{property.name}</h1>
-              <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Détails du bien</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('propertyDetails.detailsTitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -111,14 +132,14 @@ export default function PropertyDetailPage() {
               className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
             >
               <Edit3 className="w-4 h-4" />
-              Modifier
+              {t('tenants.editTooltip')}
             </button>
             <Link 
               href={`/dashboard/inspections/new?propertyId=${property.id}`}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-blue-600/20"
             >
               <Plus className="w-4 h-4" />
-              Nouvel État
+              {t('newInspection.newInspectionTitle')}
             </Link>
           </div>
         </div>
@@ -131,18 +152,18 @@ export default function PropertyDetailPage() {
             <section className="bg-slate-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-sm">
               <div className="flex flex-wrap gap-6 mb-8 mt-2">
                 <div className="flex-1 min-w-[140px] p-4 rounded-2xl bg-white/5 border border-white/5">
-                  <div className="text-slate-500 text-xs mb-1 uppercase font-bold tracking-widest">Status</div>
+                  <div className="text-slate-500 text-xs mb-1 uppercase font-bold tracking-widest">{t('propertyDetails.status')}</div>
                   <div className={`text-lg font-bold ${isOccupied ? 'text-green-400' : 'text-amber-400'}`}>
-                    {isOccupied ? 'Occupé' : 'Vacant'}
+                    {isOccupied ? t('properties.statusOccupied') : t('properties.statusVacant')}
                   </div>
                 </div>
                 <div className="flex-1 min-w-[140px] p-4 rounded-2xl bg-white/5 border border-white/5">
-                  <div className="text-slate-500 text-xs mb-1 uppercase font-bold tracking-widest">Surface</div>
+                  <div className="text-slate-500 text-xs mb-1 uppercase font-bold tracking-widest">{t('propertyDetails.surface')}</div>
                   <div className="text-lg font-bold text-white">{property.surface} m²</div>
                 </div>
                 <div className="flex-1 min-w-[140px] p-4 rounded-2xl bg-white/5 border border-white/5">
-                  <div className="text-slate-500 text-xs mb-1 uppercase font-bold tracking-widest">Pièces</div>
-                  <div className="text-lg font-bold text-white">{property.roomCount} Pièces</div>
+                  <div className="text-slate-500 text-xs mb-1 uppercase font-bold tracking-widest">{t('properties.rooms')}</div>
+                  <div className="text-lg font-bold text-white">{property.roomCount} {t('properties.roomsSuffix')}</div>
                 </div>
               </div>
 
@@ -152,7 +173,7 @@ export default function PropertyDetailPage() {
                     <MapPin className="w-5 h-5 text-blue-400" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">Adresse</h4>
+                    <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('propertyDetails.address')}</h4>
                     <p className="text-lg text-white">{property.address}</p>
                   </div>
                 </div>
@@ -162,7 +183,7 @@ export default function PropertyDetailPage() {
                     <User className="w-5 h-5 text-purple-400" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">Propriétaire</h4>
+                    <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('propertyDetails.owner')}</h4>
                     <p className="text-lg text-white font-medium">{owner?.name || property.ownerId}</p>
                   </div>
                 </div>
@@ -172,8 +193,8 @@ export default function PropertyDetailPage() {
                     <CheckCircle2 className="w-5 h-5 text-blue-400" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1 text-blue-400/80">Agent responsable</h4>
-                    <p className="text-lg text-blue-400 font-medium">{agent?.name || property.agentId || 'Non assigné'}</p>
+                    <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1 text-blue-400/80">{t('propertyDetails.agent')}</h4>
+                    <p className="text-lg text-blue-400 font-medium">{agent?.name || property.agentId || t('properties.unassigned')}</p>
                   </div>
                 </div>
               </div>
@@ -183,7 +204,7 @@ export default function PropertyDetailPage() {
             <section>
               <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                 <Clock className="w-6 h-6 text-blue-500" />
-                Historique des États des Lieux
+                {t('propertyDetails.timelineTitle')}
               </h3>
               
               <div className="space-y-4">
@@ -214,20 +235,20 @@ export default function PropertyDetailPage() {
                                 ? 'bg-green-500/10 text-green-400' 
                                 : 'bg-red-500/10 text-red-400'
                             }`}>
-                              {inspection.type}
+                              {t(`inspection.types.${inspection.type}` as any)}
                             </span>
                             <span className="text-slate-500 text-sm flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              {new Date(inspection.date).toLocaleDateString('fr-FR')}
+                              {new Date(inspection.date).toLocaleDateString(language)}
                             </span>
                           </div>
                           {inspection.isFinalized ? (
                             <span className="text-green-500 flex items-center gap-1 text-xs">
-                              <CheckCircle2 className="w-3 h-3" /> finalisé
+                              <CheckCircle2 className="w-3 h-3" /> {t('propertyDetails.isFinalized')}
                             </span>
                           ) : (
                             <span className="text-amber-500 flex items-center gap-1 text-xs font-medium">
-                              En cours
+                              {t('propertyDetails.isDraft')}
                             </span>
                           )}
                         </div>
@@ -239,17 +260,17 @@ export default function PropertyDetailPage() {
                               return (
                                 <>
                                   <h4 className="text-white font-semibold mb-1 group-hover:text-blue-400 transition-colors">
-                                    Locataire: {tenant ? (
+                                    {t('inspection.tenant')} : {tenant ? (
                                       <Link 
                                         href={`/dashboard/tenants?search=${encodeURIComponent(tenant.name)}`}
                                         className="hover:underline hover:text-blue-400 transition-all"
                                       >
                                         {tenant.name}
                                       </Link>
-                                    ) : 'Non renseigné'}
+                                    ) : t('pdf.unspecified')}
                                   </h4>
                                   <p className="text-slate-500 text-xs italic">
-                                    Inspecteur: {inspector?.name || inspection.inspectorId}
+                                    {t('pdf.inspectorRole')} : {inspector?.name || inspection.inspectorId}
                                   </p>
                                 </>
                               );
@@ -261,7 +282,7 @@ export default function PropertyDetailPage() {
                                 className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-all border border-white/5"
                              >
                                 <Eye size={14} />
-                                {inspection.isFinalized ? 'Voir' : 'Continuer'}
+                                {inspection.isFinalized ? t('propertyDetails.actionView') : t('propertyDetails.actionContinue')}
                              </Link>
                              
                              {inspection.isFinalized && (
@@ -282,7 +303,7 @@ export default function PropertyDetailPage() {
                 ) : (
                   <div className="bg-slate-900/40 border border-dashed border-white/10 rounded-2xl p-8 text-center">
                     <FileText className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-                    <p className="text-slate-500">Aucun état des lieux enregistré pour ce bien.</p>
+                    <p className="text-slate-500">{t('propertyDetails.noInspections')}</p>
                   </div>
                 )}
               </div>
@@ -292,18 +313,18 @@ export default function PropertyDetailPage() {
           {/* Sidebar / Actions */}
           <div className="space-y-6">
             <div className="bg-blue-600 rounded-3xl p-6 shadow-xl shadow-blue-600/20">
-              <h4 className="text-white font-bold mb-2">Prêt pour un état ?</h4>
-              <p className="text-blue-100 text-sm mb-6">Utilisez un template existant ou commencez à blanc pour ce bien.</p>
+              <h4 className="text-white font-bold mb-2">{t('propertyDetails.readyPromptTitle')}</h4>
+              <p className="text-blue-100 text-sm mb-6">{t('propertyDetails.readyPromptDesc')}</p>
               <Link 
                 href={`/dashboard/inspections/new?propertyId=${property.id}`}
                 className="w-full bg-white text-blue-600 rounded-xl py-3 font-bold hover:bg-blue-50 transition-colors shadow-lg flex items-center justify-center"
               >
-                Démarrer l'inspection
+                {t('propertyDetails.startInspectionBtn')}
               </Link>
             </div>
 
             <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6">
-              <h4 className="text-white font-bold mb-4">Templates du bien</h4>
+              <h4 className="text-white font-bold mb-4">{t('propertyDetails.templatesTitle')}</h4>
               <div className="space-y-3">
                 {propertyTemplates.length > 0 ? (
                   propertyTemplates.map(template => (
@@ -311,27 +332,27 @@ export default function PropertyDetailPage() {
                       <button className="flex-1 flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-sm transition-colors text-left">
                         <div className="flex flex-col">
                           <span className="text-white font-medium">{template.name}</span>
-                          <span className="text-[10px] text-slate-500 uppercase">{template.rooms.length} pièces configurées</span>
+                          <span className="text-[10px] text-slate-500 uppercase">{template.rooms.length} {t('propertyDetails.roomsConfigured')}</span>
                         </div>
                         <ChevronRight className="w-4 h-4 text-slate-500" />
                       </button>
                       <Link 
                         href={`/dashboard/templates/new?propertyId=${property.id}&templateId=${template.id}`}
                         className="p-3 bg-white/5 hover:bg-blue-600/20 border border-white/5 hover:border-blue-500/20 rounded-xl text-slate-500 hover:text-blue-400 transition-all flex items-center justify-center"
-                        title="Modifier le template"
+                        title={t('tenants.editTooltip')}
                       >
                         <Edit3 className="w-4 h-4" />
                       </Link>
                     </div>
                   ))
                 ) : (
-                  <p className="text-slate-500 text-xs">Aucun template spécifique lié.</p>
+                  <p className="text-slate-500 text-xs">{t('propertyDetails.noTemplates')}</p>
                 )}
                 <Link 
                   href={`/dashboard/templates/new?propertyId=${property.id}`}
                   className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20 text-xs transition-colors mt-4"
                 >
-                  <Plus className="w-3 h-3" /> Créer un template
+                  <Plus className="w-3 h-3" /> {t('propertyDetails.createTemplateBtn')}
                 </Link>
               </div>
             </div>

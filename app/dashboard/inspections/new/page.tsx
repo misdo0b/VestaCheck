@@ -9,8 +9,10 @@ import { InspectionForm } from '@/components/forms/InspectionForm';
 import { ArrowLeft, LayoutGrid, FileText, Sparkles, ShieldAlert } from 'lucide-react';
 import { PropertyTemplate } from '@/types';
 import { cloneWithNewIds } from '@/lib/utils/mapping';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function NewInspectionForm() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -37,10 +39,10 @@ function NewInspectionForm() {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
         <ShieldAlert className="w-16 h-16 text-slate-800 mb-4" />
         <h1 className="text-xl font-bold text-white mb-4">
-          {!property ? "Bien non trouvé" : "Accès non autorisé"}
+          {!property ? t('newInspection.notFoundTitle') : t('newInspection.unauthorizedTitle')}
         </h1>
         <button onClick={() => router.push('/dashboard/properties')} className="text-blue-400 hover:underline">
-          Retour aux biens
+          {t('newInspection.backToProperties')}
         </button>
       </div>
     );
@@ -81,7 +83,7 @@ function NewInspectionForm() {
             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            Retour au choix
+            {t('newInspection.backToChoice')}
           </button>
         </div>
         <InspectionForm initialData={initialData as any} />
@@ -93,8 +95,8 @@ function NewInspectionForm() {
     <div className="min-h-screen bg-slate-950 text-slate-200 p-6">
       <div className="max-w-3xl mx-auto py-12">
         <header className="mb-12 text-center">
-          <h1 className="text-3xl font-bold text-white mb-4">Nouvel État des Lieux</h1>
-          <p className="text-slate-400">Pour le bien: <span className="text-blue-400 font-semibold">{property.name}</span></p>
+          <h1 className="text-3xl font-bold text-white mb-4">{t('newInspection.newInspectionTitle')}</h1>
+          <p className="text-slate-400">{t('newInspection.forProperty')} <span className="text-blue-400 font-semibold">{property.name}</span></p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -106,8 +108,8 @@ function NewInspectionForm() {
             <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
               <FileText className="w-8 h-8 text-blue-500" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">À blanc</h3>
-            <p className="text-slate-400 text-sm">Commencez avec une structure par défaut vide.</p>
+            <h3 className="text-xl font-bold text-white mb-2">{t('newInspection.optionBlankTitle')}</h3>
+            <p className="text-slate-400 text-sm">{t('newInspection.optionBlankDesc')}</p>
           </button>
 
           {/* Option B: Template */}
@@ -115,8 +117,8 @@ function NewInspectionForm() {
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6">
               <LayoutGrid className="w-8 h-8 text-emerald-500" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">À partir d'un template</h3>
-            <p className="text-slate-400 text-sm mb-6">Réutilisez une configuration pré-enregistrée pour ce bien.</p>
+            <h3 className="text-xl font-bold text-white mb-2">{t('newInspection.optionTemplateTitle')}</h3>
+            <p className="text-slate-400 text-sm mb-6">{t('newInspection.optionTemplateDesc')}</p>
             
             <div className="space-y-3 mt-auto">
               {templates.length > 0 ? (
@@ -132,7 +134,7 @@ function NewInspectionForm() {
                 ))
               ) : (
                 <div className="text-slate-600 text-xs italic p-4 bg-white/5 border border-dashed border-white/5 rounded-xl">
-                  Aucun template disponible pour ce bien.
+                  {t('newInspection.noTemplatesAvailable')}
                 </div>
               )}
             </div>
@@ -144,8 +146,9 @@ function NewInspectionForm() {
 }
 
 export default function NewInspectionPage() {
+  const { t } = useTranslation();
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Chargement...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">{t('newInspection.loading')}</div>}>
       <NewInspectionForm />
     </Suspense>
   );
