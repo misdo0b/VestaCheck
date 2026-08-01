@@ -166,25 +166,32 @@ export async function POST(
       });
     }
 
-    // Préparation des compteurs s'ils existent
-    const counters = inspection.counters ? {
-      water: inspection.counters.water || 0,
-      electricity: inspection.counters.electricity || 0,
-      gas: inspection.counters.gas
-    } : undefined;
+    let pdfAttachment: { filename: string; content: Buffer } | undefined = undefined;
+    try {
+      const { generatePDFBuffer } = await import('@/lib/utils/generate-pdf');
+      const pdfBuffer = await generatePDFBuffer(inspection as any);
+      const safeAddr = (inspection.property_address || 'Bien').replace(/[^a-zA-Z0-9]/g, '_');
+      const pdfFilename = `Etat_des_lieux_${safeAddr}_${inspection.type || 'Entree'}.pdf`;
+      pdfAttachment = {
+        filename: pdfFilename,
+        content: pdfBuffer,
+      };
+    } catch (pdfErr) {
+      console.error(`[Finalize] Échec de la génération PDF pour l'inspection ${inspectionId}:`, pdfErr);
+    }
 
-    // Envoi des e-mails (Agent + Locataire si désiré et si l'e-mail est présent)
+    // Envoi des e-mails (Agent + Locataire avec PDF joint)
     const emailResult = await sendInspectionCompletedEmails({
       agentEmail,
       agentName,
-      tenantEmail: notifyTenant && tenantEmail ? tenantEmail : agentEmail, // Fallback vers l'agent si pas d'email locataire pour test
+      tenantEmail: notifyTenant && tenantEmail ? tenantEmail : agentEmail,
       tenantName,
       propertyAddress: inspection.property_address || 'Adresse non spécifiée',
       inspectionType: inspection.type || 'Entrée',
       date: inspection.date || new Date().toISOString(),
       agencyName,
       inspectionId,
-      counters,
+      pdfAttachment,
     });
 
     return NextResponse.json({

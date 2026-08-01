@@ -12,14 +12,26 @@ import { dictionaries } from '@/lib/i18n/dictionaries';
  * Récupère une image depuis une URL locale et la convertit en chaîne Base64.
  */
 const getBase64ImageFromUrl = async (url: string): Promise<string> => {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return '';
+    if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const mimeType = response.headers.get('content-type') || 'image/png';
+      return `data:${mimeType};base64,${buffer.toString('base64')}`;
+    }
+  } catch (e) {
+    return '';
+  }
 };
 
 /**
@@ -115,10 +127,14 @@ export const generatePDF = async (
         const logoFormat = logoBase64.includes('image/png') || logoBase64.includes('image/PNG') ? 'PNG' : 'JPEG';
         // Charger l'image pour obtenir son aspect ratio naturel
         const dims = await new Promise<{ width: number; height: number }>((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-          img.onerror = () => resolve({ width: 200, height: 40 }); // dimensions par défaut si erreur
-          img.src = logoBase64;
+          if (typeof window !== 'undefined' && typeof Image !== 'undefined') {
+            const img = new Image();
+            img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+            img.onerror = () => resolve({ width: 200, height: 40 });
+            img.src = logoBase64;
+          } else {
+            resolve({ width: 200, height: 40 });
+          }
         });
 
         // On souhaite que la hauteur du logo soit de 12mm pour une excellente visibilité et un impact premium
@@ -569,24 +585,40 @@ export const generatePDF = async (
       pdf.text(legalTextLine3, pdfWidth / 2, 292, { align: 'center' });
     }
 
-    // 13. Déclenchement du téléchargement navigateur natif via Blob URL
+    // 13. Déclenchement du téléchargement navigateur natif via Blob URL (si côté client)
     const finalFileName = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
-    const pdfBlob = pdf.output('blob');
-    const blobURL = URL.createObjectURL(pdfBlob);
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const pdfBlob = pdf.output('blob');
+      const blobURL = URL.createObjectURL(pdfBlob);
 
-    const downloadLink = document.createElement('a');
-    downloadLink.href = blobURL;
-    downloadLink.download = finalFileName;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobURL;
+      downloadLink.download = finalFileName;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
 
-    setTimeout(() => {
-      document.body.removeChild(downloadLink);
-      URL.revokeObjectURL(blobURL);
-    }, 100);
+      setTimeout(() => {
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(blobURL);
+      }, 100);
+    }
 
+    return pdf;
   } catch (error) {
     console.error("Erreur critique lors de la génération vectorielle du PDF :", error);
     throw error;
   }
+};
+
+/**
+ * Génère le Buffer du document PDF pour l'envoi en pièce jointe d'e-mail côté serveur.
+ */
+export const generatePDFBuffer = async (
+  data: InspectionFormData,
+  t?: (key: string) => string,
+  locale: string = 'fr'
+): Promise<Buffer> => {
+  const pdf = await generatePDF('rapport.pdf', 'rapport.pdf', data, t, locale);
+  const arrayBuffer = pdf.output('arraybuffer');
+  return Buffer.from(arrayBuffer);
 };
