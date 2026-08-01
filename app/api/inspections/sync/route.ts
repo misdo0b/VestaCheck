@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { auth } from '@/lib/auth';
+import { sendInspectionCompletedEmails } from '@/lib/mail';
 
 /**
  * Route de synchronisation atomique pour les inspections.
@@ -116,6 +117,76 @@ export async function POST(req: Request) {
 
         if (!hasError) {
           results.push({ id: mutation.id, status: 'success' });
+
+          // 3. Envoi automatique des e-mails si l'état des lieux est finalisé
+          if (data.isFinalized) {
+            try {
+              const inspectorId = toUUID(data.inspectorId);
+              let agentEmail = session?.user?.email || '';
+              let agentName = session?.user?.name || '';
+
+              if (inspectorId) {
+                const { data: agent } = await supabase
+                  .from('users')
+                  .select('name, email')
+                  .eq('id', inspectorId)
+                  .single();
+                if (agent?.email) agentEmail = agent.email;
+                if (agent?.name) agentName = agent.name;
+              }
+
+              let tenantName = 'Locataire';
+              let tenantEmail = '';
+              const tenantId = toUUID(data.tenantId);
+
+              if (tenantId) {
+                const { data: tenant } = await supabase
+                  .from('tenants')
+                  .select('name, email')
+                  .eq('id', tenantId)
+                  .single();
+                if (tenant) {
+                  tenantName = tenant.name;
+                  tenantEmail = tenant.email;
+                }
+              } else if (data.manualTenant) {
+                tenantName = data.manualTenant.name || 'Locataire';
+                tenantEmail = data.manualTenant.email || '';
+              } else if (data.signatures?.tenant?.name) {
+                tenantName = data.signatures.tenant.name;
+              }
+
+              let agencyName = 'VestaCheck Partner';
+              const agencyId = toUUID(data.agencyId);
+
+              if (agencyId) {
+                const { data: agency } = await supabase
+                  .from('agencies')
+                  .select('name')
+                  .eq('id', agencyId)
+                  .single();
+                if (agency?.name) agencyName = agency.name;
+              }
+
+              if (agentEmail) {
+                console.log(`[Sync] Envoi automatique des e-mails pour l'inspection finalisée ${entityId}`);
+                await sendInspectionCompletedEmails({
+                  agentEmail,
+                  agentName,
+                  tenantEmail: tenantEmail || agentEmail,
+                  tenantName,
+                  propertyAddress: data.propertyAddress || 'Adresse non spécifiée',
+                  inspectionType: data.type || 'Entrée',
+                  date: data.date || new Date().toISOString(),
+                  agencyName,
+                  inspectionId: entityId,
+                  counters: data.counters,
+                });
+              }
+            } catch (emailErr) {
+              console.error(`[Sync] Erreur lors de l'envoi d'e-mail pour l'inspection ${entityId}:`, emailErr);
+            }
+          }
         } else {
           results.push({ id: mutation.id, status: 'error', error: 'Erreur lors du traitement de la hiérarchie des pièces' });
         }
