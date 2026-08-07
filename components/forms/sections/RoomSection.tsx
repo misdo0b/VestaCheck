@@ -186,8 +186,8 @@ const InspectionItemCard: React.FC<{
             )}
           </div>
 
-          <div className="flex items-center gap-4">
-             <div className="relative w-full sm:w-40">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
+             <div className="relative w-full sm:w-44 shrink-0">
                 <select
                   {...register(`rooms.${roomIndex}.items.${itemIndex}.condition` as const)}
                   className={`w-full bg-slate-950/80 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer ${getConditionStyles(condition)}`}
@@ -203,12 +203,12 @@ const InspectionItemCard: React.FC<{
                 </div>
              </div>
              
-             {/* Observation condensée */}
-             <div className="flex-1">
+             {/* Observation / Commentaire */}
+             <div className="w-full flex-1">
                <input
                  {...register(`rooms.${roomIndex}.items.${itemIndex}.comment` as const)}
                  placeholder={t('inspection.observationPlaceholder')}
-                 className="w-full bg-transparent border-b border-white/5 focus:border-white/20 outline-none text-[11px] text-slate-400 placeholder:text-slate-700 italic"
+                 className="w-full bg-slate-950/40 sm:bg-transparent border border-white/10 sm:border-0 sm:border-b sm:border-white/5 focus:border-blue-500/50 focus:bg-slate-950/80 rounded-xl sm:rounded-none px-3 py-2 sm:px-0 sm:py-1 outline-none text-xs text-slate-300 placeholder:text-slate-500 italic transition-all"
                />
              </div>
           </div>
