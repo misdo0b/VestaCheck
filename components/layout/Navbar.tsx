@@ -40,16 +40,23 @@ export const Navbar = () => {
 
   return (
     <nav className="border-b border-white/5 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-[100] w-full">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2">
         <Link 
           href="/dashboard" 
-          className="flex items-center hover:opacity-90 active:scale-95 py-2 h-full"
+          className="flex items-center hover:opacity-90 active:scale-95 py-2 h-full shrink-0"
           title="Retour au Dashboard"
         >
+          {/* Logo horizontal complet pour desktop */}
           <img 
             src="/assets/logo-horizontal.png" 
             alt="VestaCheck Logo" 
-            className="h-full w-auto object-contain max-h-[80px]"
+            className="hidden sm:block h-full w-auto object-contain max-h-[80px]"
+          />
+          {/* Logo icône compact pour mobile */}
+          <img 
+            src="/assets/vestacheck-logo.png" 
+            alt="VestaCheck Logo" 
+            className="block sm:hidden h-9 w-auto object-contain"
           />
         </Link>
         <div className="hidden md:flex items-center gap-1 bg-white/5 border border-white/10 rounded-2xl p-1 backdrop-blur-md">
@@ -81,7 +88,7 @@ export const Navbar = () => {
 
         {/* User Actions */}
         {session?.user && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             {/* Nouveau composant de synchronisation (Compact) */}
             <SyncStatusIndicator />
 
@@ -89,7 +96,7 @@ export const Navbar = () => {
             <div className="relative" ref={langDropdownRef}>
               <button
                 onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-900/50 border border-white/10 hover:bg-slate-900/80 hover:border-white/20 transition-all text-xs font-bold uppercase tracking-wider text-slate-300"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-full bg-slate-900/50 border border-white/10 hover:bg-slate-900/80 hover:border-white/20 transition-all text-xs font-bold uppercase tracking-wider text-slate-300"
                 title="Changer de langue / Change language"
               >
                 <Globe className="w-3.5 h-3.5 text-slate-400" />
@@ -131,24 +138,52 @@ export const Navbar = () => {
             <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+                className="flex items-center gap-1.5 sm:gap-3 px-2 sm:px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+                title={t('common.settings') || "Paramètres"}
               >
-                <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center">
+                <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center shrink-0">
                   <User className="w-3.5 h-3.5 text-slate-400" />
                 </div>
-                <span className="text-xs font-medium text-slate-300">{(session.user as any).name}</span>
-                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <span className="hidden sm:inline text-xs font-medium text-slate-300 truncate max-w-[120px]">{(session.user as any).name}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Dropdown Menu */}
               {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
                   <div className="p-2 border-b border-white/5">
-                    <p className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <p className="px-2 text-xs font-semibold text-slate-200 truncate">
+                      {(session.user as any).name}
+                    </p>
+                    <p className="px-2 text-[10px] font-medium text-slate-400 uppercase tracking-wider mt-0.5">
                       {t(`roles.${(session.user as any).role}`) || (session.user as any).role}
                     </p>
                   </div>
                   <div className="p-1">
+                    <div className="md:hidden">
+                      <Link 
+                        href="/dashboard"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        {t('common.dashboard')}
+                      </Link>
+                      <Link 
+                        href="/dashboard/properties"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        {t('common.properties')}
+                      </Link>
+                      <Link 
+                        href="/dashboard/tenants"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        {t('common.tenants')}
+                      </Link>
+                      <div className="my-1 border-t border-white/5" />
+                    </div>
                     <Link 
                       href="/dashboard/organization"
                       onClick={() => setIsDropdownOpen(false)}
