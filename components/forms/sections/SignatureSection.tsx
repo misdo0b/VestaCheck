@@ -7,7 +7,11 @@ import { PenTool, Lock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 
-export const SignatureSection: React.FC = () => {
+interface SignatureSectionProps {
+  isLocked?: boolean;
+}
+
+export const SignatureSection: React.FC<SignatureSectionProps> = ({ isLocked = false }) => {
   const { data: session } = useSession();
   const { register, trigger, setValue, watch, formState: { errors } } = useFormContext<InspectionFormData>();
   const [activePad, setActivePad] = React.useState<'tenant' | 'inspector' | null>(null);
@@ -18,9 +22,12 @@ export const SignatureSection: React.FC = () => {
   const inspectorSig = watch('signatures.inspector');
   const isFinalized = watch('isFinalized');
 
+  const bothSignaturesPresent = !!(tenantSig?.drawData && inspectorSig?.drawData);
+  const isDataLocked = !!(tenantSig?.drawData || inspectorSig?.drawData);
+
   const openSignaturePad = async (role: 'tenant' | 'inspector') => {
-    // On ne permet pas de signer si le rapport est déjà finalisé
-    if (isFinalized) return;
+    // On ne permet pas de signer si le rapport est déjà scellé en base
+    if (isLocked) return;
     
     // On déclenche la validation de TOUT le formulaire avant de permettre la signature (Exigence du verrouillage)
     const isValid = await trigger();
@@ -75,9 +82,6 @@ export const SignatureSection: React.FC = () => {
     setActivePad(null);
   };
 
-  const isLocked = !!(tenantSig?.drawData && inspectorSig?.drawData);
-  const isDataLocked = !!(tenantSig?.drawData || inspectorSig?.drawData);
-
   // Composant réutilisable pour la boîte de signature
   const SignatureBox = ({ role, label, data }: { role: 'tenant' | 'inspector', label: string, data?: string }) => (
     <div className="space-y-4">
@@ -94,7 +98,7 @@ export const SignatureSection: React.FC = () => {
             <button
               type="button"
               onClick={() => openSignaturePad(role)}
-              disabled={isFinalized}
+              disabled={isLocked}
               className="flex items-center gap-3 px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-500 transition-all text-sm font-black shadow-xl shadow-blue-600/20 active:scale-95 disabled:opacity-50 disabled:scale-100"
             >
               <PenTool size={18} />
@@ -109,13 +113,13 @@ export const SignatureSection: React.FC = () => {
 
   return (
     <div className="bg-slate-900/50 p-8 rounded-2xl shadow-xl border border-white/5 mb-8 overflow-hidden relative backdrop-blur-sm">
-      {isDataLocked && !isLocked && (
+      {isDataLocked && !bothSignaturesPresent && (
         <div className="absolute top-6 right-8 flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20 text-[10px] font-bold uppercase tracking-wider animate-pulse transition-all">
           <Lock size={12} /> {t('inspection.signaturesLocked')}
         </div>
       )}
 
-      {isLocked && (
+      {bothSignaturesPresent && (
         <div className="absolute top-6 right-8 flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider transition-all">
           <CheckCircle2 size={12} className="text-emerald-400" /> {t('inspection.signaturesComplete')}
         </div>
@@ -136,21 +140,25 @@ export const SignatureSection: React.FC = () => {
       </div>
 
       <div className="mt-10 pt-8 border-t border-white/5">
-        <label className={`flex items-start gap-4 p-5 rounded-2xl border transition-all group ${
-          isFinalized 
+        <label className={`flex items-start gap-4 p-5 rounded-2xl border transition-all select-none group ${
+          isLocked 
             ? 'bg-slate-900/40 border-white/5 cursor-default' 
-            : 'bg-blue-500/5 border-blue-500/10 cursor-pointer hover:bg-blue-500/10'
+            : !bothSignaturesPresent
+              ? 'bg-slate-900/20 border-white/5 cursor-not-allowed opacity-60'
+              : isFinalized
+                ? 'bg-blue-500/10 border-blue-500/30 cursor-pointer shadow-lg shadow-blue-500/5'
+                : 'bg-slate-900/40 border-white/10 hover:border-white/20 cursor-pointer'
         }`}>
           <div className="mt-0.5">
             <input
               {...register('isFinalized')}
               type="checkbox"
-              disabled={isFinalized || !tenantSig?.drawData || !inspectorSig?.drawData}
+              disabled={isLocked || !bothSignaturesPresent}
               className="w-5 h-5 rounded-lg bg-slate-900 border-white/10 text-blue-600 focus:ring-blue-500/20 focus:ring-offset-0 disabled:opacity-30 cursor-pointer transition-all disabled:cursor-not-allowed"
             />
           </div>
           <span className={`text-sm font-medium leading-relaxed transition-colors ${
-            isFinalized ? 'text-slate-500' : 'text-slate-300 group-hover:text-white'
+            isLocked ? 'text-slate-500' : isFinalized ? 'text-white font-semibold' : 'text-slate-300 group-hover:text-white'
           }`}>
             {t('inspection.certifyAccuracy')}
             <span className="block text-xs text-slate-500 mt-1 font-normal italic">{t('inspection.legalValueNote')}</span>
