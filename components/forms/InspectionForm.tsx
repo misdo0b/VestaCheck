@@ -322,12 +322,12 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
     if (!isTemplateMode) {
       if (!bothSignaturesPresent) {
         setCurrentStep(3);
-        toast.error(t('inspection.signaturesRequired') || "Veuillez apposer les deux signatures (locataire et inspecteur) avant de finaliser.");
+        toast.error(t('inspection.signaturesRequired', "Veuillez apposer les deux signatures (locataire et inspecteur) avant de finaliser."));
         return;
       }
       if (!data.isFinalized) {
         setCurrentStep(3);
-        toast.error(t('inspection.certifyRequired') || "Veuillez cocher la case certifiant l'exactitude des informations.");
+        toast.error(t('inspection.certifyRequired', "Veuillez cocher la case certifiant l'exactitude des informations."));
         return;
       }
     }
@@ -559,7 +559,7 @@ export const InspectionForm: React.FC<Props> = ({ initialData, isTemplateMode = 
 
           {!isTemplateMode && currentStep === 3 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <SignatureSection />
+              <SignatureSection isLocked={isLocked} />
             </div>
           )}
         </div>
